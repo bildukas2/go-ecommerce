@@ -115,3 +115,43 @@ Each phase is shippable and testable end-to-end.
 Notes:
 - Keep dependencies minimal at start; add `chi` or `sqlc` later only when it clearly improves ergonomics or safety
 - Maintain module boundaries: routes + storage + migrations per module
+
+## 7) MVP Policies & Conventions
+
+### Cart Cookie
+- Name: `cart_id`
+- Attributes: `HttpOnly=true`, `SameSite=Lax`, `Path=/`, `Max-Age=30 days`
+- `Secure=true` in production (HTTPS); may be `false` in local dev
+- Behavior: if cookie is missing/invalid/not found → create new cart and set/overwrite cookie
+
+### Cart ID Format
+- UUID v4 string
+- Validate UUID format server-side before DB lookup; reject/replace invalid values
+
+### Pricing & Totals
+- On add-to-cart: copy `product_variants.price_cents` into `cart_items.unit_price_cents`
+- On checkout: compute totals from `cart_items` snapshot, not live product pricing
+- Promotions/price refresh: out-of-scope for MVP; consider in Phase 2
+- Money: always integers in cents; currency from `CURRENCY` env (default `EUR`)
+
+### Order Numbering
+- Format example: `ORD-YYYYMMDD-XXXX` where `XXXX` is zero-padded base10 sequence or short id
+- Enforce uniqueness with a unique index on `orders.number`; on conflict, regenerate and retry
+
+### Categories Response
+- MVP returns a flat list of categories (no tree). Parent/child tree is Phase 2
+
+### Stripe MVP Note
+- Redirect-based “paid” marking is MVP-only; Phase 2 adds webhooks for reliability
+
+### Admin Scope (MVP)
+- Admin includes orders list and order detail only. Product/inventory editing is deferred to Phase 2
+
+### API Conventions
+- Pagination: `page` (default `1`, min `1`) and `limit` (default `20`, max `100`)
+- Error JSON shape: `{ "error": { "code": string, "message": string, "details"?: any } }`
+- All monetary fields are integers in cents; currency code upper-case ISO-4217
+
+### Module Enablement
+- Future hook: `ENABLED_MODULES` env to selectively enable optional modules
+- No dynamic plugin loading; modules are compiled in
