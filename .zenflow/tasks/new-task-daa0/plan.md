@@ -36,7 +36,8 @@ Save to `{@artifacts_path}/spec.md` with:
 - Delivery phases (incremental, testable milestones)
 - Verification approach using project lint/test commands
 
-### [ ] Step: Planning
+### [x] Step: Planning
+<!-- chat-id: d1844797-1d2e-44a0-aadc-44183b452832 -->
 
 Create a detailed implementation plan based on `{@artifacts_path}/spec.md`.
 
@@ -52,8 +53,100 @@ If the feature is trivial and doesn't warrant full specification, update this wo
 
 Save to `{@artifacts_path}/plan.md`.
 
-### [ ] Step: Implementation
+### [ ] Step: Dev Environment Baseline
+- Ensure `.env.example` includes: `DATABASE_URL`, `REDIS_URL`, `PORT`, `NEXT_PUBLIC_API_URL`, `ADMIN_USER`, `ADMIN_PASS`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`, `CURRENCY`
+- Ensure `docker-compose.yml` provides Postgres 16 and Redis 7 with volumes and default ports; confirm service names match app envs
+- Contracts: one-command dev via `docker compose up`
+- Verification: `docker compose up` starts Postgres/Redis healthy; `psql` connects; `redis-cli PING` returns PONG
 
-This step should be replaced with detailed implementation tasks from the Planning step.
+### [ ] Step: Bootstrap API (Server, Router, Health/Ready)
+- Add `cmd/api/main.go` wiring config, logger, graceful shutdown; create `internal/app/router.go` and `internal/platform/http` helpers
+- Implement `GET /health` and `GET /ready` handlers with JSON responses
+- Contracts: `GET /health` → `{status:"ok"}`, `GET /ready` → `{db:"down", redis:"down"}` before clients are wired
+- Verification: `go build ./...`; run API locally; curl `/health` and `/ready` return expected JSON
 
-If Planning didn't replace this step, execute the tasks in `{@artifacts_path}/plan.md`, updating checkboxes as you go. Run planned tests/lint and record results in plan.md.
+### [ ] Step: Database & Redis Platform + Migrations Baseline
+- Create `internal/platform/db` (connection pool, max open/idle), `internal/platform/redis` (client init)
+- Add `migrations/` and integrate `goose` runner (dev-only) or document CLI use; add empty baseline migration
+- Wire `ready` handler to check DB/Redis connectivity
+- Contracts: Postgres at `DATABASE_URL`; Redis at `REDIS_URL`; goose migrations live in `migrations/`
+- Verification: `goose postgres "$DATABASE_URL" up` applies baseline; `/ready` returns `{db:"ok", redis:"ok"}`
+
+### [ ] Step: Catalog — Migrations + Seed Data
+- Write SQL for tables: `products`, `product_variants`, `categories`, `product_categories`, `images`
+- Add seed migration or simple seed script for demo products, variants, categories, images
+- Contracts: schemas per spec; slugs unique; basic sample data present
+- Verification: apply migrations; query counts > 0 for products/variants/categories/images
+
+### [ ] Step: Catalog — Storage Layer
+- Implement `internal/storage/catalog` with prepared statements for list products (with pagination/category), get by slug, list categories
+- Add unit tests using a test database and transaction rollback
+- Contracts: functions expose pagination inputs/outputs; errors follow shared error shape
+- Verification: `go test ./internal/storage/catalog` passes
+
+### [ ] Step: Catalog — HTTP Endpoints
+- Implement handlers in `internal/modules/catalog`: `GET /products`, `GET /products/:slug`, `GET /categories`; parse `page`/`limit`
+- Use `internal/platform/http` for JSON, errors, pagination meta
+- Add handler tests via `httptest` with a seeded test DB
+- Contracts: response shapes per spec, including pagination meta on list
+- Verification: curl endpoints return expected data from seed
+
+### [ ] Step: Cart — Migrations
+- Write SQL for `carts` and `cart_items` with constraints; add indexes as obvious (FKs, lookups)
+- Contracts: quantity check > 0; FK integrity
+- Verification: migrations apply cleanly; constraints enforced by DB
+
+### [ ] Step: Cart — Storage + Business Logic
+- Implement `internal/storage/cart` for create/retrieve cart, add item, update qty, remove item, compute totals
+- Business rules: copy `unit_price_cents` from variant at add time; totals from snapshot
+- Add unit tests for cart operations and totals
+- Contracts: cart identity by UUID; totals consistent with items
+- Verification: `go test ./internal/storage/cart` passes
+
+### [ ] Step: Cart — HTTP Endpoints
+- Handlers: `POST /cart` (issue/read `cart_id` cookie), `GET /cart`, `POST /cart/items`, `PATCH /cart/items/:id`, `DELETE /cart/items/:id`
+- Cookie: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age=30d` (Secure in prod)
+- Add handler tests covering cookie lifecycle and item CRUD
+- Contracts: JSON error shape on invalid input; cookie behavior per spec
+- Verification: curl flow creates cart, adds/updates/removes items, returns totals
+
+### [ ] Step: Orders — Migrations
+- Write SQL for `orders` and `order_items`; unique `orders.number`; supporting indexes
+- Contracts: enforce uniqueness; referential integrity
+- Verification: migrations apply; uniqueness enforced
+
+### [ ] Step: Checkout + Orders Implementation
+- Implement `internal/storage/orders`; generate order number; create order from cart; mark status
+- Implement `POST /checkout` handler: validate cart, compute totals, create order, integrate Stripe (test mode) behind an interface; mark paid on return flag
+- Add unit tests for order number generation and storage; handler happy-path test
+- Contracts: `POST /checkout` returns `{order_id, payment_status}`; no webhooks in MVP
+- Verification: curl checkout on a cart returns order; DB shows created order/items
+
+### [ ] Step: Web — Scaffold
+- Create `web/` Next.js (App Router) with TypeScript, Tailwind, shadcn/ui; configure `NEXT_PUBLIC_API_URL`
+- Basic layout and provider wiring; install minimal deps only
+- Contracts: scripts `npm run lint` and `npm run build` work
+- Verification: run lint/build successfully; dev server renders home page
+
+### [ ] Step: Storefront — Catalog Pages
+- Implement Home (JolyUI blocks), Product Listing with filters + skeletons, Product Detail with variants + add to cart
+- Bind to backend APIs; handle loading/error states; mobile-first responsiveness
+- Contracts: uses endpoints `GET /products`, `GET /products/:slug`, `POST /cart`
+- Verification: navigate pages; add-to-cart updates cart drawer state
+
+### [ ] Step: Storefront — Cart Drawer, Checkout, Success
+- Implement cart drawer with optimistic updates; Checkout page and Order Success page
+- Contracts: uses endpoints `GET/POST/PATCH/DELETE /cart*`, `POST /checkout`
+- Verification: complete end-to-end flow from PLP/PDP to success page
+
+### [ ] Step: Admin — Basic Auth + Orders Views
+- Protect admin routes with Basic Auth using `ADMIN_USER`/`ADMIN_PASS`
+- Implement Orders list and Order detail (frontend pages bound to API)
+- Contracts: endpoints `GET /admin/orders`, `GET /admin/orders/:id`
+- Verification: admin pages load with credentials; list and detail render
+
+### [ ] Step: Final Verification & Polish
+- Backend: `go test ./...`; run API; `goose up` on fresh DB works
+- Frontend: `npm run lint` and `npm run build` in `web/`
+- Manual sanity: home, list, detail, cart drawer, checkout creates order visible in admin
+- Contracts: acceptance criteria in PRD met; no leaking secrets; consistent error JSON
