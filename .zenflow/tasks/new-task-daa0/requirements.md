@@ -46,19 +46,18 @@ A minimal, modern e‑commerce platform that enables browsing products, adding t
 ### 6.3 Cart
 - Data: carts, cart_items
 - Endpoints:
-  - Create/retrieve cart (anonymous first; link by cookie/session id)
+  - Create/retrieve cart (anonymous; link via HttpOnly cookie `cart_id`)
   - Add item, update quantity, remove item
   - Get cart details with computed totals
 
 ### 6.4 Orders / Checkout
 - Data: orders, order_items
 - Endpoint: `POST /checkout` to create an order from a cart
-- Payment: simple Stripe integration (test mode), minimal happy‑path flow
+- Payment: simple Stripe integration (test mode), minimal happy‑path flow; mark order paid after Stripe redirect confirmation (no webhooks in MVP)
 
 ### 6.5 Minimal Admin
 - Basic auth (single user or simple credential gate) for admin routes
-- Views to list orders and see order detail
-- Simple product/inventory management (create/update product, adjust stock)
+- Views to list orders and see order detail (MVP scope: orders view only; product editing deferred to Phase 2)
 
 ## 7. Non‑Functional Requirements
 - Performance: snappy UX; list endpoints paginated; image sizes appropriate for client
