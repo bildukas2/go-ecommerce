@@ -141,7 +141,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: `POST /checkout` returns `{order_id, checkout_url, status:"pending_payment"}`; no webhooks in MVP
 - Verification: curl checkout on a cart returns order; DB shows created order/items
 
-### [ ] Step: Web — Scaffold
+### [x] Step: Web — Scaffold
+<!-- chat-id: 7b21c962-8149-4013-ba28-4216ad669491 -->
 - Create `web/` Next.js (App Router) with TypeScript, Tailwind, shadcn/ui; configure `NEXT_PUBLIC_API_URL`
 - Basic layout and provider wiring; install minimal deps only
 - Contracts: scripts `npm run lint` and `npm run build` work
