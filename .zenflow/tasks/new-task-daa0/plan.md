@@ -126,7 +126,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: JSON error shape on invalid input; cookie behavior per spec
 - Verification: curl flow creates cart, adds/updates/removes items, returns totals
 
-### [ ] Step: Orders — Migrations
+### [x] Step: Orders — Migrations
+<!-- chat-id: 79c565f1-f84a-45af-a85f-5e7436459cd3 -->
 - Write SQL for `orders` and `order_items`; unique `orders.number`; supporting indexes
 - Contracts: enforce uniqueness; referential integrity; use Postgres ENUM type `order_status` with values: `pending_payment`, `paid`, `cancelled`
 - Verification: migrations apply; uniqueness enforced
