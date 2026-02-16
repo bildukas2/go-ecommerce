@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import { parseCheckoutResponse } from "./checkout-state";
 
 function apiJoin(path: string): string {
   const base = new URL(API_URL);
@@ -153,7 +154,8 @@ export async function checkout(): Promise<{ order_id: string; checkout_url: stri
   const url = new URL(apiJoin("checkout"));
   const res = await fetch(url.toString(), { method: "POST", credentials: "include" });
   if (!res.ok) throw new Error(`Failed to checkout: ${res.status}`);
-  return res.json();
+  const payload: unknown = await res.json();
+  return parseCheckoutResponse(payload);
 }
 
 // Admin API (server-side only)

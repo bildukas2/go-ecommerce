@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { firstSearchParam } from "@/lib/checkout-state";
 
 export default async function CheckoutSuccessPage({
   searchParams,
@@ -6,8 +7,7 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const rawOrderId = params.order_id;
-  const orderId = Array.isArray(rawOrderId) ? rawOrderId[0] : rawOrderId;
+  const orderId = firstSearchParam(params.order_id);
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-14 space-y-6 text-center">

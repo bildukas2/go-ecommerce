@@ -31,7 +31,8 @@ export default function CheckoutPage() {
       <h1 className="text-2xl font-semibold">Checkout</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">Proceed to payment using the provider in test mode.</p>
       {error && <div className="text-sm text-red-600">{error}</div>}
-      <Button onClick={onCheckout} disabled={loading}>{loading ? "Redirecting…" : "Proceed to Payment"}</Button>
+      <Button onClick={onCheckout} disabled={loading}>{loading ? "Redirecting..." : "Proceed to Payment"}</Button>
     </div>
   );
 }
+
