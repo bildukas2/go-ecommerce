@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -44,5 +45,19 @@ func NewRouter(deps Deps) http.Handler {
 		_ = platformhttp.JSON(w, http.StatusOK, resp)
 	})
 	registerEnabledModules(mux)
-	return mux
+
+	rateLimiter := platformhttp.NewRateLimiter(deps.Redis, 30, time.Minute)
+	wrapped := applyAdminMiddleware(mux, rateLimiter)
+	return wrapped
+}
+
+func applyAdminMiddleware(mux *http.ServeMux, rateLimiter *platformhttp.RateLimiter) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/admin") {
+			handler := platformhttp.SecurityHeaders(rateLimiter.Middleware(mux))
+			handler.ServeHTTP(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
 }
