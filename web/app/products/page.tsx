@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { getCategories, getProducts } from "@/lib/api";
 
-export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ page?: string; category?: string }> }) {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const params = await searchParams;
-  const page = Number(params.page ?? 1) || 1;
-  const category = params.category ?? "";
+  const rawPage = Array.isArray(params.page) ? params.page[0] : params.page;
+  const parsedPage = Number.parseInt(rawPage ?? "1", 10);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const rawCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const category = typeof rawCategory === "string" ? rawCategory : "";
 
   const [{ items, total, page: currentPage, limit }, cats] = await Promise.all([
     getProducts({ page, limit: 12, category: category || undefined }),
@@ -47,17 +54,23 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {items.map((p) => (
-            <Link key={p.id} href={`/products/${encodeURIComponent(p.slug)}`} className="group rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 hover:shadow-sm transition-shadow">
-              <div className="aspect-square w-full rounded-md bg-neutral-100 dark:bg-neutral-900 mb-3 group-hover:opacity-95 transition" />
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium leading-tight line-clamp-2">{p.title}</h3>
-                <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">{p.description}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {items.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {items.map((p) => (
+              <Link key={p.id} href={`/products/${encodeURIComponent(p.slug)}`} className="group rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 hover:shadow-sm transition-shadow">
+                <div className="aspect-square w-full rounded-md bg-neutral-100 dark:bg-neutral-900 mb-3 group-hover:opacity-95 transition" />
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium leading-tight line-clamp-2">{p.title}</h3>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">{p.description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-8 text-center">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">No products found for this filter.</p>
+          </div>
+        )}
 
         <div className="mt-8 flex items-center justify-center gap-3">
           <PaginationLink href={`/products?${new URLSearchParams({ ...(category ? { category } : {}), page: String(Math.max(1, currentPage - 1)) }).toString()}`} disabled={currentPage <= 1}>
