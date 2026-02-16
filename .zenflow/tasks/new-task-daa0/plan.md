@@ -53,7 +53,8 @@ If the feature is trivial and doesn't warrant full specification, update this wo
 
 Save to `{@artifacts_path}/plan.md`.
 
-### [ ] Step: Dev Environment Baseline
+### [x] Step: Dev Environment Baseline
+<!-- chat-id: fdc4f1ec-7bb5-4cfe-850a-c20aae9fce1a -->
 - Ensure `.env.example` includes: `DATABASE_URL`, `REDIS_URL`, `PORT`, `NEXT_PUBLIC_API_URL`, `ADMIN_USER`, `ADMIN_PASS`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`, `CURRENCY`
 - Ensure `docker-compose.yml` provides Postgres 16 and Redis 7 with volumes and default ports; confirm service names match app envs
 - Contracts: one-command dev via `docker compose up`
