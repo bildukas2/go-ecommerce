@@ -6,6 +6,16 @@ export const dynamic = "force-dynamic";
 type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
+  const user = process.env.ADMIN_USER;
+  const pass = process.env.ADMIN_PASS;
+  if (!user || !pass) {
+    return (
+      <div className="mx-auto max-w-5xl p-6">
+        <h1 className="text-2xl font-semibold mb-2">Admin Not Configured</h1>
+        <p className="text-sm text-gray-600">Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.</p>
+      </div>
+    );
+  }
   const page = parseInt(typeof searchParams?.page === "string" ? searchParams!.page : Array.isArray(searchParams?.page) ? searchParams!.page[0]! : "1", 10) || 1;
   const limit = parseInt(typeof searchParams?.limit === "string" ? searchParams!.limit : Array.isArray(searchParams?.limit) ? searchParams!.limit[0]! : "20", 10) || 20;
   const { items } = await getAdminOrders({ page, limit });

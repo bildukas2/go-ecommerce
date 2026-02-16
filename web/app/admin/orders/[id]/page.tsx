@@ -6,6 +6,16 @@ type Params = { params: { id: string } };
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrderDetailPage({ params }: Params) {
+  const user = process.env.ADMIN_USER;
+  const pass = process.env.ADMIN_PASS;
+  if (!user || !pass) {
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <h1 className="text-2xl font-semibold mb-2">Admin Not Configured</h1>
+        <p className="text-sm text-gray-600">Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.</p>
+      </div>
+    );
+  }
   const order = await getAdminOrder(params.id);
   return (
     <div className="mx-auto max-w-4xl p-6">
