@@ -130,6 +130,26 @@ func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, err
 	return items, nil
 }
 
+type OrderMetrics struct {
+	TotalOrders    int `json:"total_orders"`
+	PendingPayment int `json:"pending_payment"`
+	Paid           int `json:"paid"`
+	Cancelled      int `json:"cancelled"`
+}
+
+func (s *Store) GetOrderMetrics(ctx context.Context) (OrderMetrics, error) {
+	var m OrderMetrics
+	err := s.db.QueryRowContext(ctx, `
+		SELECT 
+			COUNT(*),
+			COUNT(*) FILTER (WHERE status = 'pending_payment'),
+			COUNT(*) FILTER (WHERE status = 'paid'),
+			COUNT(*) FILTER (WHERE status = 'cancelled')
+		FROM orders
+	`).Scan(&m.TotalOrders, &m.PendingPayment, &m.Paid, &m.Cancelled)
+	return m, err
+}
+
 func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
 	var o Order
 	if err := s.db.QueryRowContext(ctx, "SELECT id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at FROM orders WHERE id = $1", id).Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {

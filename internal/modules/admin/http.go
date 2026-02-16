@@ -39,6 +39,7 @@ func (m *module) Close() error {
 func (m *module) Name() string { return "admin" }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/admin/dashboard", m.wrapAuth(m.handleDashboard))
 	mux.HandleFunc("/admin/orders", m.wrapAuth(m.handleOrders))
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
 }
@@ -57,6 +58,45 @@ func (m *module) wrapAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+	if m.orders == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	metrics, err := m.orders.GetOrderMetrics(r.Context())
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "metrics error")
+		return
+	}
+
+	recent, err := m.orders.ListOrders(r.Context(), 10, 0)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "recent orders error")
+		return
+	}
+
+	recentOut := make([]map[string]any, 0, len(recent))
+	for _, o := range recent {
+		recentOut = append(recentOut, map[string]any{
+			"id":          o.ID,
+			"number":      o.Number,
+			"status":      o.Status,
+			"total_cents": o.TotalCents,
+			"created_at":  o.CreatedAt,
+		})
+	}
+
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+		"metrics":       metrics,
+		"recent_orders": recentOut,
+	})
 }
 
 func (m *module) handleOrders(w http.ResponseWriter, r *http.Request) {

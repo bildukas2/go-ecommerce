@@ -70,3 +70,37 @@ func TestCheckoutCreatesOrderPendingPayment(t *testing.T) {
 		t.Fatalf("no order items")
 	}
 }
+
+func TestGetOrderMetrics(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping metrics test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var regclass *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.orders')").Scan(&regclass); err != nil || regclass == nil || *regclass == "" {
+		t.Skip("orders table not present; apply migrations to run this test")
+	}
+
+	orderStore, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	// Just verify we can call it without error
+	metrics, err := orderStore.GetOrderMetrics(ctx)
+	if err != nil {
+		t.Fatalf("GetOrderMetrics error: %v", err)
+	}
+
+	// At least 0 orders
+	if metrics.TotalOrders < 0 {
+		t.Fatalf("negative total orders: %d", metrics.TotalOrders)
+	}
+}
