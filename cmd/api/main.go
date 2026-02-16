@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	_ "goecommerce/internal/modules/catalog"
+	"goecommerce/internal/modules/catalog"
 	"goecommerce/internal/app"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
@@ -49,6 +49,7 @@ func main() {
 		}
 	}
 
+	app.RegisterModule(catalog.NewModule(deps))
 	router := app.NewRouter(deps)
 
 	srv := &http.Server{

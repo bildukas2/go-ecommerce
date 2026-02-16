@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"strconv"
@@ -11,7 +12,17 @@ import (
 	storcat "goecommerce/internal/storage/catalog"
 )
 
-type module struct{}
+type module struct{ store *storcat.Store }
+
+func NewModule(deps app.Deps) app.Module {
+	var s *storcat.Store
+	if deps.DB != nil {
+		if st, err := storcat.NewStore(context.Background(), deps.DB); err == nil {
+			s = st
+		}
+	}
+	return &module{store: s}
+}
 
 func (m *module) Name() string { return "catalog" }
 
@@ -19,14 +30,6 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/products", m.handleProductsList)
 	mux.HandleFunc("/products/", m.handleProductDetail)
 	mux.HandleFunc("/categories", m.handleCategories)
-}
-
-func init() {
-	app.RegisterModule(&module{})
-}
-
-func getDB() *sql.DB {
-	return app.CurrentDeps().DB
 }
 
 func (m *module) handleProductsList(w http.ResponseWriter, r *http.Request) {
@@ -38,23 +41,16 @@ func (m *module) handleProductsList(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	db := getDB()
-	if db == nil {
+	if m.store == nil {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
 	ctx := r.Context()
-	store, err := storcat.NewStore(ctx, db)
-	if err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "store init error")
-		return
-	}
-	defer store.Close()
 	qp := r.URL.Query()
 	page := atoiDefault(qp.Get("page"), 1)
 	limit := atoiDefault(qp.Get("limit"), 20)
 	cat := strings.TrimSpace(qp.Get("category"))
-	res, err := store.ListProducts(ctx, storcat.ListProductsParams{
+	res, err := m.store.ListProducts(ctx, storcat.ListProductsParams{
 		Pagination:  storcat.Pagination{Page: page, Limit: limit},
 		CategorySlug: cat,
 	})
@@ -89,19 +85,12 @@ func (m *module) handleProductDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	db := getDB()
-	if db == nil {
+	if m.store == nil {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
 	ctx := r.Context()
-	store, err := storcat.NewStore(ctx, db)
-	if err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "store init error")
-		return
-	}
-	defer store.Close()
-	p, err := store.GetProductBySlug(ctx, slug)
+	p, err := m.store.GetProductBySlug(ctx, slug)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			platformhttp.Error(w, http.StatusNotFound, "not found")
@@ -122,19 +111,12 @@ func (m *module) handleCategories(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	db := getDB()
-	if db == nil {
+	if m.store == nil {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
 	ctx := r.Context()
-	store, err := storcat.NewStore(ctx, db)
-	if err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "store init error")
-		return
-	}
-	defer store.Close()
-	items, err := store.ListCategories(ctx)
+	items, err := m.store.ListCategories(ctx)
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "list error")
 		return

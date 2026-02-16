@@ -21,7 +21,6 @@ type Deps struct {
 }
 
 func NewRouter(deps Deps) http.Handler {
-	SetDeps(deps)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		_ = platformhttp.JSON(w, http.StatusOK, map[string]string{"status": "ok"})

@@ -14,12 +14,6 @@ type Module interface {
 
 var modulesRegistry = map[string]Module{}
 
-var currentDeps Deps
-
-func SetDeps(d Deps) { currentDeps = d }
-
-func CurrentDeps() Deps { return currentDeps }
-
 func normalizeName(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
