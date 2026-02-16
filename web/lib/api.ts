@@ -12,8 +12,26 @@ export type Product = {
   slug: string;
   title: string;
   description: string;
+  variants: ProductVariant[];
+  images: ProductImage[];
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type ProductVariant = {
+  id: string;
+  sku: string;
+  priceCents: number;
+  currency: string;
+  stock: number;
+  attributes: Record<string, string | number | boolean | null>;
+};
+
+export type ProductImage = {
+  id: string;
+  url: string;
+  alt: string;
+  sort: number;
 };
 
 export type Category = {
