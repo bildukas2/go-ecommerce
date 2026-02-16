@@ -109,7 +109,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: quantity check > 0; FK integrity
 - Verification: migrations apply cleanly; constraints enforced by DB
 
-### [ ] Step: Cart — Storage + Business Logic
+### [x] Step: Cart — Storage + Business Logic
+<!-- chat-id: 1ea778c2-eb60-4049-b734-c281359a2838 -->
 - Implement `internal/storage/cart` for create/retrieve cart, add item, update qty, remove item, compute totals
 - Business rules: copy `unit_price_cents` from variant at add time; totals from snapshot
 - Skip detailed unit tests in MVP (covered by Checkout business test)

@@ -79,7 +79,14 @@ func moduleMigrationDirs() ([]string, error) {
 		return nil, err
 	}
 	enabled := parseEnabled(os.Getenv("ENABLED_MODULES"))
-	dirs := make([]string, 0, len(entries))
+	dirs := make([]string, 0, len(entries)+1)
+	
+	// Add root migrations directory if it exists
+	globalMigDir := filepath.Join(root, "migrations")
+	if st, err := os.Stat(globalMigDir); err == nil && st.IsDir() {
+		dirs = append(dirs, globalMigDir)
+	}
+
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
