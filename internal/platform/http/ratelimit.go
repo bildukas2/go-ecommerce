@@ -95,6 +95,7 @@ func (rl *RateLimiter) checkFallback(ip string) bool {
 }
 
 func extractIP(r *http.Request) string {
+	// TODO: For production, only trust X-Forwarded-For if behind a known/trusted proxy.
 	xff := r.Header.Get("X-Forwarded-For")
 	if xff != "" {
 		parts := strings.Split(xff, ",")

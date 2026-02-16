@@ -89,6 +89,7 @@ func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			"number":      o.Number,
 			"status":      o.Status,
 			"total_cents": o.TotalCents,
+			"currency":    o.Currency,
 			"created_at":  o.CreatedAt,
 		})
 	}
