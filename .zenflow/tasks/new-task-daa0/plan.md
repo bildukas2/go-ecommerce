@@ -60,7 +60,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: one-command dev via `docker compose up`
 - Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U <compose_user> -c "\\l"` works; `docker compose exec redis redis-cli PING` returns PONG
 
-### [ ] Step: Bootstrap API (Server, Router, Health/Ready)
+### [x] Step: Bootstrap API (Server, Router, Health/Ready)
+<!-- chat-id: 6c8dc7bc-fbfd-4786-99ef-6d6d2cddf199 -->
 - Add `cmd/api/main.go` wiring config, logger, graceful shutdown; create `internal/app/router.go` and `internal/platform/http` helpers
 - Implement `GET /health` and `GET /ready` handlers with JSON responses
 - Contracts: `GET /health` → `{status:"ok"}`, `GET /ready` → `{db:"down", redis:"down"}` before clients are wired
