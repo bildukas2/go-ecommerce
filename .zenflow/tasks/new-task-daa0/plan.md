@@ -132,7 +132,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: enforce uniqueness; referential integrity; use Postgres ENUM type `order_status` with values: `pending_payment`, `paid`, `cancelled`
 - Verification: migrations apply; uniqueness enforced
 
-### [ ] Step: Checkout + Orders Implementation
+### [x] Step: Checkout + Orders Implementation
+<!-- chat-id: 6f0d2637-2c60-47d7-b138-2b15f4009c12 -->
 - Implement `internal/storage/orders`; generate order number; create order from cart; set initial status `pending_payment`
 - Implement `POST /checkout` handler: validate cart, compute totals, create order, integrate Stripe (test mode) behind an interface; return `checkout_url` to redirect; do not mark paid in MVP
 - MVP stock handling: check stock at checkout only (no reservation on add-to-cart)
