@@ -1,5 +1,6 @@
 -- +goose Up
 -- Order status enum
+-- +goose StatementBegin
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
@@ -7,6 +8,7 @@ BEGIN
   END IF;
 END
 $$;
+-- +goose StatementEnd
 
 -- Orders table
 CREATE TABLE IF NOT EXISTS orders (

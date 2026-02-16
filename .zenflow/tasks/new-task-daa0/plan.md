@@ -168,7 +168,7 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: endpoints `GET /admin/orders`, `GET /admin/orders/:id` served by Go API as JSON; Next.js admin pages call these APIs
 - Verification: admin pages load with credentials; list and detail render
 
-### [ ] Step: Final Verification & Polish
+### [x] Step: Final Verification & Polish
 - Backend: `go test ./...`; run API; `goose up` on fresh DB works
 - Frontend: `npm run lint` and `npm run build` in `web/`
 - Manual sanity: home, list, detail, cart drawer, checkout creates order visible in admin
