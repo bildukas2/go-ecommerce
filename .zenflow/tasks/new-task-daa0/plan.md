@@ -57,7 +57,7 @@ Save to `{@artifacts_path}/plan.md`.
 - Ensure `.env.example` includes: `DATABASE_URL`, `REDIS_URL`, `PORT`, `NEXT_PUBLIC_API_URL`, `ADMIN_USER`, `ADMIN_PASS`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`, `CURRENCY`
 - Ensure `docker-compose.yml` provides Postgres 16 and Redis 7 with volumes and default ports; confirm service names match app envs
 - Contracts: one-command dev via `docker compose up`
-- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U <compose_user> -c "\\l"` works (use the user from compose, e.g., `app` or `postgres`); `docker compose exec redis redis-cli PING` returns PONG
+- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U postgres -c "\\l"` works; `docker compose exec redis redis-cli PING` returns PONG
 
 ### [ ] Step: Bootstrap API (Server, Router, Health/Ready)
 - Add `cmd/api/main.go` wiring config, logger, graceful shutdown; create `internal/app/router.go` and `internal/platform/http` helpers
@@ -118,7 +118,7 @@ Save to `{@artifacts_path}/plan.md`.
 
 ### [ ] Step: Orders — Migrations
 - Write SQL for `orders` and `order_items`; unique `orders.number`; supporting indexes
-- Contracts: enforce uniqueness; referential integrity; allowed statuses: `pending_payment`, `paid`, `cancelled` (use CHECK constraint or enum)
+- Contracts: enforce uniqueness; referential integrity; use Postgres ENUM type `order_status` with values: `pending_payment`, `paid`, `cancelled`
 - Verification: migrations apply; uniqueness enforced
 
 ### [ ] Step: Checkout + Orders Implementation
