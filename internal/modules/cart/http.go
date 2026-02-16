@@ -25,7 +25,9 @@ func NewModule(deps app.Deps) app.Module {
 }
 
 func (m *module) Close() error {
-	if m.store != nil { return m.store.Close() }
+	if m.store != nil {
+		return m.store.Close()
+	}
 	return nil
 }
 
@@ -131,9 +133,9 @@ func (m *module) handleCartItems(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusBadRequest, "no cart")
 		return
 	}
-	var body struct{
+	var body struct {
 		VariantID string `json:"variant_id"`
-		Quantity int `json:"quantity"`
+		Quantity  int    `json:"quantity"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		platformhttp.Error(w, http.StatusBadRequest, "invalid body")
@@ -171,7 +173,9 @@ func (m *module) handleCartItemByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	itemID := r.URL.Path[len("/cart/items/"):]
-	if i := strings.IndexByte(itemID, '/'); i >= 0 { itemID = itemID[:i] }
+	if i := strings.IndexByte(itemID, '/'); i >= 0 {
+		itemID = itemID[:i]
+	}
 	itemID = strings.TrimSpace(itemID)
 	if itemID == "" {
 		http.NotFound(w, r)
@@ -179,7 +183,9 @@ func (m *module) handleCartItemByID(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPatch:
-		var body struct{ Quantity int `json:"quantity"` }
+		var body struct {
+			Quantity int `json:"quantity"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			platformhttp.Error(w, http.StatusBadRequest, "invalid body")
 			return
@@ -216,7 +222,9 @@ func (m *module) handleCartItemByID(w http.ResponseWriter, r *http.Request) {
 
 func readCartID(r *http.Request) (string, bool) {
 	c, err := r.Cookie("cart_id")
-	if err != nil { return "", false }
+	if err != nil {
+		return "", false
+	}
 	return strings.TrimSpace(c.Value), true
 }
 
@@ -234,7 +242,11 @@ func setCartCookie(w http.ResponseWriter, r *http.Request, cartID string) {
 }
 
 func isSecure(r *http.Request) bool {
-	if r.TLS != nil { return true }
-	if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") { return true }
+	if r.TLS != nil {
+		return true
+	}
+	if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		return true
+	}
 	return false
 }

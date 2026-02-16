@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/joho/godotenv"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
 )
 
@@ -80,7 +80,7 @@ func moduleMigrationDirs() ([]string, error) {
 	}
 	enabled := parseEnabled(os.Getenv("ENABLED_MODULES"))
 	dirs := make([]string, 0, len(entries)+1)
-	
+
 	// Add root migrations directory if it exists
 	globalMigDir := filepath.Join(root, "migrations")
 	if st, err := os.Stat(globalMigDir); err == nil && st.IsDir() {

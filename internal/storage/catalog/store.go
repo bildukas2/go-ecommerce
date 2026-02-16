@@ -82,7 +82,9 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		FROM products p
 		ORDER BY p.title ASC
 		LIMIT $1 OFFSET $2`)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	stmtListByCat, err := db.PrepareContext(ctx, `
 		SELECT p.id, p.slug, p.title, p.description, p.created_at, p.updated_at
@@ -92,10 +94,14 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		WHERE c.slug = $1
 		ORDER BY p.title ASC
 		LIMIT $2 OFFSET $3`)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	stmtCount, err := db.PrepareContext(ctx, `SELECT COUNT(*) FROM products`)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	stmtCountByCat, err := db.PrepareContext(ctx, `
 		SELECT COUNT(*)
@@ -103,16 +109,22 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		JOIN product_categories pc ON pc.product_id = p.id
 		JOIN categories c ON c.id = pc.category_id
 		WHERE c.slug = $1`)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	stmtGetBySlug, err := db.PrepareContext(ctx, `
 		SELECT id, slug, title, description, created_at, updated_at
 		FROM products WHERE slug = $1`)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	stmtListCats, err := db.PrepareContext(ctx, `
 		SELECT id, slug, name, parent_id FROM categories ORDER BY name ASC`)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	return &Store{
 		db:                         db,
@@ -136,7 +148,9 @@ func (s *Store) Close() error {
 		s.stmtListCategories,
 	}
 	for _, c := range closers {
-		if c == nil { continue }
+		if c == nil {
+			continue
+		}
 		if err := c.Close(); err != nil && firstErr == nil {
 			firstErr = err
 		}
@@ -147,8 +161,12 @@ func (s *Store) Close() error {
 func sanitizePagination(p Pagination) (page int, limit int, offset int) {
 	page = p.Page
 	limit = p.Limit
-	if page < 1 { page = 1 }
-	if limit <= 0 || limit > 100 { limit = 20 }
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
 	offset = (page - 1) * limit
 	return
 }
@@ -156,8 +174,8 @@ func sanitizePagination(p Pagination) (page int, limit int, offset int) {
 func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (ProductListResult, error) {
 	page, limit, offset := sanitizePagination(in.Pagination)
 	var (
-		rows *sql.Rows
-		err  error
+		rows  *sql.Rows
+		err   error
 		total int
 	)
 	if in.CategorySlug != "" {
@@ -172,7 +190,9 @@ func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (Produc
 		}
 		rows, err = s.stmtListProducts.QueryContext(ctx, limit, offset)
 	}
-	if err != nil { return ProductListResult{}, err }
+	if err != nil {
+		return ProductListResult{}, err
+	}
 	defer rows.Close()
 
 	items := make([]Product, 0, limit)
@@ -183,7 +203,9 @@ func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (Produc
 		}
 		items = append(items, p)
 	}
-	if err := rows.Err(); err != nil { return ProductListResult{}, err }
+	if err := rows.Err(); err != nil {
+		return ProductListResult{}, err
+	}
 
 	return ProductListResult{Items: items, Total: total, Page: page, Limit: limit}, nil
 }
@@ -193,13 +215,17 @@ func (s *Store) GetProductBySlug(ctx context.Context, slug string) (Product, err
 	err := s.stmtGetProductBySlug.QueryRowContext(ctx, slug).Scan(
 		&p.ID, &p.Slug, &p.Title, &p.Description, &p.CreatedAt, &p.UpdatedAt,
 	)
-	if err != nil { return Product{}, err }
+	if err != nil {
+		return Product{}, err
+	}
 	return p, nil
 }
 
 func (s *Store) ListCategories(ctx context.Context) ([]Category, error) {
 	rows, err := s.stmtListCategories.QueryContext(ctx)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 	var out []Category
 	for rows.Next() {
@@ -209,6 +235,8 @@ func (s *Store) ListCategories(ctx context.Context) ([]Category, error) {
 		}
 		out = append(out, c)
 	}
-	if err := rows.Err(); err != nil { return nil, err }
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return out, nil
 }

@@ -25,7 +25,9 @@ func NewModule(deps app.Deps) app.Module {
 }
 
 func (m *module) Close() error {
-	if m.store != nil { return m.store.Close() }
+	if m.store != nil {
+		return m.store.Close()
+	}
 	return nil
 }
 
@@ -56,7 +58,7 @@ func (m *module) handleProductsList(w http.ResponseWriter, r *http.Request) {
 	limit := atoiDefault(qp.Get("limit"), 20)
 	cat := strings.TrimSpace(qp.Get("category"))
 	res, err := m.store.ListProducts(ctx, storcat.ListProductsParams{
-		Pagination:  storcat.Pagination{Page: page, Limit: limit},
+		Pagination:   storcat.Pagination{Page: page, Limit: limit},
 		CategorySlug: cat,
 	})
 	if err != nil {

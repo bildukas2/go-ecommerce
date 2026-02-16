@@ -11,34 +11,36 @@ import (
 )
 
 type Order struct {
-	ID           string
-	Number       string
-	Status       string
-	Currency     string
+	ID            string
+	Number        string
+	Status        string
+	Currency      string
 	SubtotalCents int
 	ShippingCents int
 	TaxCents      int
 	TotalCents    int
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Items        []OrderItem
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Items         []OrderItem
 }
 
 type OrderItem struct {
-	ID              string
-	OrderID         string
+	ID               string
+	OrderID          string
 	ProductVariantID string
-	UnitPriceCents  int
-	Currency        string
-	Quantity        int
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	UnitPriceCents   int
+	Currency         string
+	Quantity         int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
-type Store struct { db *sql.DB }
+type Store struct{ db *sql.DB }
 
 func NewStore(_ context.Context, db *sql.DB) (*Store, error) {
-	if db == nil { return nil, errors.New("nil db") }
+	if db == nil {
+		return nil, errors.New("nil db")
+	}
 	return &Store{db: db}, nil
 }
 
@@ -49,19 +51,29 @@ func generateOrderNumber(now time.Time) string {
 }
 
 func (s *Store) CreateFromCart(ctx context.Context, c storcart.Cart) (Order, error) {
-	if c.ID == "" { return Order{}, errors.New("invalid cart") }
-	if len(c.Items) == 0 { return Order{}, errors.New("empty cart") }
+	if c.ID == "" {
+		return Order{}, errors.New("invalid cart")
+	}
+	if len(c.Items) == 0 {
+		return Order{}, errors.New("empty cart")
+	}
 	currency := c.Totals.Currency
-	if currency == "" { return Order{}, errors.New("invalid currency") }
+	if currency == "" {
+		return Order{}, errors.New("invalid currency")
+	}
 	for _, it := range c.Items {
 		var stock int
 		if err := s.db.QueryRowContext(ctx, "SELECT stock FROM product_variants WHERE id = $1", it.ProductVariantID).Scan(&stock); err != nil {
 			return Order{}, err
 		}
-		if stock < it.Quantity { return Order{}, errors.New("insufficient stock") }
+		if stock < it.Quantity {
+			return Order{}, errors.New("insufficient stock")
+		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil { return Order{}, err }
+	if err != nil {
+		return Order{}, err
+	}
 	defer func() { _ = tx.Rollback() }()
 	now := time.Now()
 	num := generateOrderNumber(now)
@@ -86,15 +98,23 @@ func (s *Store) CreateFromCart(ctx context.Context, c storcart.Cart) (Order, err
 		items = append(items, oi)
 	}
 	o.Items = items
-	if err := tx.Commit(); err != nil { return Order{}, err }
+	if err := tx.Commit(); err != nil {
+		return Order{}, err
+	}
 	return o, nil
 }
 
 func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, error) {
-	if limit <= 0 { limit = 20 }
-	if offset < 0 { offset = 0 }
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	rows, err := s.db.QueryContext(ctx, "SELECT id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 	var items []Order
 	for rows.Next() {
@@ -104,7 +124,9 @@ func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, err
 		}
 		items = append(items, o)
 	}
-	if err := rows.Err(); err != nil { return nil, err }
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 
@@ -114,7 +136,9 @@ func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
 		return Order{}, err
 	}
 	rows, err := s.db.QueryContext(ctx, "SELECT id, order_id, product_variant_id, unit_price_cents, currency, quantity, created_at, updated_at FROM order_items WHERE order_id = $1 ORDER BY created_at ASC", o.ID)
-	if err != nil { return Order{}, err }
+	if err != nil {
+		return Order{}, err
+	}
 	defer rows.Close()
 	for rows.Next() {
 		var it OrderItem
@@ -123,6 +147,8 @@ func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
 		}
 		o.Items = append(o.Items, it)
 	}
-	if err := rows.Err(); err != nil { return Order{}, err }
+	if err := rows.Err(); err != nil {
+		return Order{}, err
+	}
 	return o, nil
 }

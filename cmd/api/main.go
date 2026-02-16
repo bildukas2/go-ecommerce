@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"goecommerce/internal/modules/catalog"
-	"goecommerce/internal/modules/cart"
-	"goecommerce/internal/modules/orders"
-	"goecommerce/internal/modules/admin"
 	"goecommerce/internal/app"
+	"goecommerce/internal/modules/admin"
+	"goecommerce/internal/modules/cart"
+	"goecommerce/internal/modules/catalog"
+	"goecommerce/internal/modules/orders"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
 )
