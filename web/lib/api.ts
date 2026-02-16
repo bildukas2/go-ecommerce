@@ -49,6 +49,14 @@ export type ProductListResponse = {
   limit: number;
 };
 
+function normalizeProduct(raw: Product): Product {
+  return {
+    ...raw,
+    images: Array.isArray(raw.images) ? raw.images : [],
+    variants: Array.isArray(raw.variants) ? raw.variants : [],
+  };
+}
+
 export async function getProducts(params: { page?: number; limit?: number; category?: string } = {}): Promise<ProductListResponse> {
   const url = new URL(apiJoin("products"));
   if (params.page) url.searchParams.set("page", String(params.page));
@@ -57,14 +65,19 @@ export async function getProducts(params: { page?: number; limit?: number; categ
 
   const res = await fetch(url.toString(), { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`);
-  return res.json();
+  const payload = await res.json() as ProductListResponse;
+  return {
+    ...payload,
+    items: Array.isArray(payload.items) ? payload.items.map(normalizeProduct) : [],
+  };
 }
 
 export async function getProduct(slug: string): Promise<Product> {
   const url = new URL(apiJoin(`products/${encodeURIComponent(slug)}`));
   const res = await fetch(url.toString(), { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`Failed to fetch product: ${res.status}`);
-  return res.json();
+  const payload = await res.json() as Product;
+  return normalizeProduct(payload);
 }
 
 export async function getCategories(): Promise<{ items: Category[] }> {

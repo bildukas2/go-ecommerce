@@ -16,7 +16,7 @@ function formatMoney(cents: number, currency: string): string {
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProduct(slug);
-  const primaryImage = product.images[0];
+  const primaryImage = product.images?.[0];
   const firstAvailableVariant = product.variants.find((variant) => variant.stock > 0) ?? product.variants[0];
 
   return (
