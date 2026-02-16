@@ -4,6 +4,8 @@ WORKDIR /app
 COPY go.* ./
 RUN go mod download
 COPY . .
+# Ensure required modules are added when repo go.mod hasn't been updated yet
+RUN go get github.com/redis/go-redis/v9 github.com/jackc/pgx/v5/stdlib && go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o api ./cmd/api
 
 # run
