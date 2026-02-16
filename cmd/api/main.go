@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"goecommerce/internal/modules/catalog"
+	"goecommerce/internal/modules/cart"
 	"goecommerce/internal/app"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
@@ -50,6 +51,7 @@ func main() {
 	}
 
 	app.RegisterModule(catalog.NewModule(deps))
+	app.RegisterModule(cart.NewModule(deps))
 	router := app.NewRouter(deps)
 
 	srv := &http.Server{

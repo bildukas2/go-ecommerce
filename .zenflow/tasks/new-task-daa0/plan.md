@@ -117,7 +117,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: cart identity by UUID; totals consistent with items
 - Verification: storage implementation compiles; logic used by checkout flow (no separate storage test here to keep MVP minimal)
 
-### [ ] Step: Cart — HTTP Endpoints
+### [x] Step: Cart — HTTP Endpoints
+<!-- chat-id: 5c6b781d-4c60-4ff6-8116-5d05e53acf9a -->
 - Handlers: `POST /cart` (issue/read `cart_id` cookie), `GET /cart`, `POST /cart/items`, `PATCH /cart/items/:id`, `DELETE /cart/items/:id`
 - Cookie: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age=30d` (Secure in prod)
 - POST /cart is idempotent: ensure cart exists; returns current cart
