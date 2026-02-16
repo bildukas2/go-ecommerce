@@ -57,7 +57,7 @@ Save to `{@artifacts_path}/plan.md`.
 - Ensure `.env.example` includes: `DATABASE_URL`, `REDIS_URL`, `PORT`, `NEXT_PUBLIC_API_URL`, `ADMIN_USER`, `ADMIN_PASS`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`, `CURRENCY`
 - Ensure `docker-compose.yml` provides Postgres 16 and Redis 7 with volumes and default ports; confirm service names match app envs
 - Contracts: one-command dev via `docker compose up`
-- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U postgres -c "\\l"` works; `docker compose exec redis redis-cli PING` returns PONG
+- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U <compose_user> -c "\\l"` works; `docker compose exec redis redis-cli PING` returns PONG
 
 ### [ ] Step: Bootstrap API (Server, Router, Health/Ready)
 - Add `cmd/api/main.go` wiring config, logger, graceful shutdown; create `internal/app/router.go` and `internal/platform/http` helpers
@@ -106,7 +106,7 @@ Save to `{@artifacts_path}/plan.md`.
 - Business rules: copy `unit_price_cents` from variant at add time; totals from snapshot
 - Skip detailed unit tests in MVP (covered by Checkout business test)
 - Contracts: cart identity by UUID; totals consistent with items
-- Verification: `go test ./internal/storage/cart` passes
+- Verification: storage implementation compiles; logic used by checkout flow (no separate storage test here to keep MVP minimal)
 
 ### [ ] Step: Cart — HTTP Endpoints
 - Handlers: `POST /cart` (issue/read `cart_id` cookie), `GET /cart`, `POST /cart/items`, `PATCH /cart/items/:id`, `DELETE /cart/items/:id`
