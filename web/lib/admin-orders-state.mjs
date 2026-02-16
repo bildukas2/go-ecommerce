@@ -11,6 +11,14 @@ export function parsePositiveIntParam(value, fallback) {
 }
 
 export function isUnauthorizedAdminError(error) {
+  return hasStatusCode(error, 401);
+}
+
+export function isNotFoundAdminError(error) {
+  return hasStatusCode(error, 404);
+}
+
+function hasStatusCode(error, statusCode) {
   if (!(error instanceof Error)) return false;
-  return /\b401\b/.test(error.message);
+  return new RegExp(`\\b${statusCode}\\b`).test(error.message);
 }

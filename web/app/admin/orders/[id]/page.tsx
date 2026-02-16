@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAdminOrder } from "@/lib/api";
-import { isUnauthorizedAdminError } from "@/lib/admin-orders-state";
+import { isNotFoundAdminError, isUnauthorizedAdminError } from "@/lib/admin-orders-state";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -31,7 +31,7 @@ export default async function AdminOrderDetailPage({ params }: Params) {
   } catch (error) {
     if (isUnauthorizedAdminError(error)) {
       fetchError = "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials.";
-    } else if (error instanceof Error && /\b404\b/.test(error.message)) {
+    } else if (isNotFoundAdminError(error)) {
       fetchError = "Order not found.";
     } else {
       fetchError = "Failed to fetch order. Please retry.";
@@ -53,7 +53,19 @@ export default async function AdminOrderDetailPage({ params }: Params) {
   }
 
   if (!order) {
-    return null;
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Order Detail</h1>
+          <Link href="/admin/orders" className="text-blue-600 hover:underline">
+            Back to orders
+          </Link>
+        </div>
+        <div className="rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+          Order data is unavailable.
+        </div>
+      </div>
+    );
   }
 
   return (

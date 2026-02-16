@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isUnauthorizedAdminError, parsePositiveIntParam } from "./admin-orders-state.mjs";
+import { isNotFoundAdminError, isUnauthorizedAdminError, parsePositiveIntParam } from "./admin-orders-state.mjs";
 
 test("parsePositiveIntParam returns fallback when param is missing or invalid", () => {
   assert.equal(parsePositiveIntParam(undefined, 1), 1);
@@ -18,4 +18,10 @@ test("isUnauthorizedAdminError detects 401 responses", () => {
   assert.equal(isUnauthorizedAdminError(new Error("Failed to fetch orders: 401")), true);
   assert.equal(isUnauthorizedAdminError(new Error("Failed to fetch orders: 500")), false);
   assert.equal(isUnauthorizedAdminError({ message: "401" }), false);
+});
+
+test("isNotFoundAdminError detects 404 responses", () => {
+  assert.equal(isNotFoundAdminError(new Error("Failed to fetch order: 404")), true);
+  assert.equal(isNotFoundAdminError(new Error("Failed to fetch order: 401")), false);
+  assert.equal(isNotFoundAdminError({ message: "404" }), false);
 });
