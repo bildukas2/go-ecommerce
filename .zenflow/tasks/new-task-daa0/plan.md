@@ -81,7 +81,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: Postgres at `DATABASE_URL`; Redis at `REDIS_URL`; goose migrations live in `migrations/`
 - Verification: `goose postgres "$DATABASE_URL" up` applies baseline; `/ready` returns `{db:"ok", redis:"ok"}`
 
-### [ ] Step: Catalog — Migrations + Seed Data
+### [x] Step: Catalog — Migrations + Seed Data
+<!-- chat-id: 32852159-1df7-4143-b72a-64b724d8c3e6 -->
 - Write SQL for tables: `products`, `product_variants`, `categories`, `product_categories`, `images`
 - Add simple SQL seed migration for demo products, variants, categories, images
 - Contracts: schemas per spec; slugs unique; basic sample data present
