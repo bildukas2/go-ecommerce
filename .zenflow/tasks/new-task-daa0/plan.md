@@ -95,7 +95,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: functions expose pagination inputs/outputs; errors follow shared error shape
 - Verification: `go test ./internal/storage/catalog` passes
 
-### [ ] Step: Catalog — HTTP Endpoints
+### [x] Step: Catalog — HTTP Endpoints
+<!-- chat-id: 755bd756-de87-48a7-b790-0623923d35a5 -->
 - Implement handlers in `internal/modules/catalog`: `GET /products`, `GET /products/:slug`, `GET /categories`; parse `page`/`limit`
 - Use `internal/platform/http` for JSON, errors, pagination meta
 
