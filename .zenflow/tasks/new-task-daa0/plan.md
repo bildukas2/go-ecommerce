@@ -57,7 +57,7 @@ Save to `{@artifacts_path}/plan.md`.
 - Ensure `.env.example` includes: `DATABASE_URL`, `REDIS_URL`, `PORT`, `NEXT_PUBLIC_API_URL`, `ADMIN_USER`, `ADMIN_PASS`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`, `CURRENCY`
 - Ensure `docker-compose.yml` provides Postgres 16 and Redis 7 with volumes and default ports; confirm service names match app envs
 - Contracts: one-command dev via `docker compose up`
-- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U postgres -c "\\l"` works; `docker compose exec redis redis-cli PING` returns PONG
+- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U <compose_user> -c "\\l"` works (use the user from compose, e.g., `app` or `postgres`); `docker compose exec redis redis-cli PING` returns PONG
 
 ### [ ] Step: Bootstrap API (Server, Router, Health/Ready)
 - Add `cmd/api/main.go` wiring config, logger, graceful shutdown; create `internal/app/router.go` and `internal/platform/http` helpers
@@ -72,7 +72,7 @@ Save to `{@artifacts_path}/plan.md`.
 
 ### [ ] Step: Database & Redis Platform + Migrations Baseline
 - Create `internal/platform/db` (connection pool, max open/idle), `internal/platform/redis` (client init)
-- Add `migrations/` and integrate `goose` runner (dev-only) or document CLI use; add empty baseline migration
+- Add `migrations/`; document `goose` CLI usage only (no in-app runner yet); add empty baseline migration
 - Wire `ready` handler to check DB/Redis connectivity
 - Contracts: Postgres at `DATABASE_URL`; Redis at `REDIS_URL`; goose migrations live in `migrations/`
 - Verification: `goose postgres "$DATABASE_URL" up` applies baseline; `/ready` returns `{db:"ok", redis:"ok"}`
@@ -111,6 +111,7 @@ Save to `{@artifacts_path}/plan.md`.
 ### [ ] Step: Cart — HTTP Endpoints
 - Handlers: `POST /cart` (issue/read `cart_id` cookie), `GET /cart`, `POST /cart/items`, `PATCH /cart/items/:id`, `DELETE /cart/items/:id`
 - Cookie: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age=30d` (Secure in prod)
+- POST /cart is idempotent: ensure cart exists; returns current cart
 
 - Contracts: JSON error shape on invalid input; cookie behavior per spec
 - Verification: curl flow creates cart, adds/updates/removes items, returns totals
@@ -123,6 +124,7 @@ Save to `{@artifacts_path}/plan.md`.
 ### [ ] Step: Checkout + Orders Implementation
 - Implement `internal/storage/orders`; generate order number; create order from cart; set initial status `pending_payment`
 - Implement `POST /checkout` handler: validate cart, compute totals, create order, integrate Stripe (test mode) behind an interface; return `checkout_url` to redirect; do not mark paid in MVP
+- MVP stock handling: check stock at checkout only (no reservation on add-to-cart)
 - Add 1 business test: checkout creates order with correct totals and initial status
 - Contracts: `POST /checkout` returns `{order_id, checkout_url, status:"pending_payment"}`; no webhooks in MVP
 - Verification: curl checkout on a cart returns order; DB shows created order/items
