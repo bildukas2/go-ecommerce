@@ -3,11 +3,36 @@ import { getAdminOrders } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrdersPage() {
-  const { items } = await getAdminOrders({ page: 1, limit: 50 });
+type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
+
+export default async function AdminOrdersPage({ searchParams }: PageProps) {
+  const page = parseInt(typeof searchParams?.page === "string" ? searchParams!.page : Array.isArray(searchParams?.page) ? searchParams!.page[0]! : "1", 10) || 1;
+  const limit = parseInt(typeof searchParams?.limit === "string" ? searchParams!.limit : Array.isArray(searchParams?.limit) ? searchParams!.limit[0]! : "20", 10) || 20;
+  const { items } = await getAdminOrders({ page, limit });
+  const hasPrev = page > 1;
+  const hasNext = items.length === limit; // heuristic without total count
+
   return (
     <div className="mx-auto max-w-5xl p-6">
-      <h1 className="text-2xl font-semibold mb-4">Orders</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Orders</h1>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-500">Page</span>
+          <span className="font-medium">{page}</span>
+          <div className="ml-4 flex gap-2">
+            {hasPrev ? (
+              <Link className="rounded border px-3 py-1 hover:bg-gray-50" href={`/admin/orders?page=${page - 1}&limit=${limit}`}>Prev</Link>
+            ) : (
+              <span className="rounded border px-3 py-1 text-gray-400">Prev</span>
+            )}
+            {hasNext ? (
+              <Link className="rounded border px-3 py-1 hover:bg-gray-50" href={`/admin/orders?page=${page + 1}&limit=${limit}`}>Next</Link>
+            ) : (
+              <span className="rounded border px-3 py-1 text-gray-400">Next</span>
+            )}
+          </div>
+        </div>
+      </div>
       <div className="overflow-x-auto rounded border">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-left">
