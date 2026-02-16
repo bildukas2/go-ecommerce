@@ -44,6 +44,9 @@ export async function getProduct(slug: string): Promise<Product> {
 export async function getCategories(): Promise<{ items: Category[] }> {
   const url = new URL("/categories", API_URL);
   const res = await fetch(url.toString(), { next: { revalidate: 60 } });
+  if (res.status === 404) {
+    return { items: [] };
+  }
   if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`);
   return res.json();
 }
