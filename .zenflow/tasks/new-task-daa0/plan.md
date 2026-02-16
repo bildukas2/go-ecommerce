@@ -103,7 +103,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: response shapes per spec, including pagination meta on list
 - Verification: curl endpoints return expected data from seed
 
-### [ ] Step: Cart — Migrations
+### [x] Step: Cart — Migrations
+<!-- chat-id: d4668c7b-ec0a-4888-a689-72d78488ab7c -->
 - Write SQL for `carts` and `cart_items` with constraints; add indexes as obvious (FKs, lookups)
 - Contracts: quantity check > 0; FK integrity
 - Verification: migrations apply cleanly; constraints enforced by DB
