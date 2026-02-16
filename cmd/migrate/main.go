@@ -10,11 +10,16 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/joho/godotenv"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found: %v", err)
+	}
+
 	cmd := "up"
 	if len(os.Args) > 1 {
 		cmd = strings.ToLower(strings.TrimSpace(os.Args[1]))

@@ -20,8 +20,8 @@ services:
       context: .
       dockerfile: deploy/Dockerfile.api
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
       PORT: ${PORT}
     ports:
       - "${PORT}:${PORT}"

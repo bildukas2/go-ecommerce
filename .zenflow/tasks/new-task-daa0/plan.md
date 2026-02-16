@@ -88,7 +88,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: schemas per spec; slugs unique; basic sample data present
 - Verification: apply migrations; query counts > 0 for products/variants/categories/images
 
-### [ ] Step: Catalog — Storage Layer
+### [x] Step: Catalog — Storage Layer
+<!-- chat-id: 761b07e5-1e75-45c7-a964-83f080bd123b -->
 - Implement `internal/storage/catalog` with prepared statements for list products (with pagination/category), get by slug, list categories
 - Add 1 storage wiring test (DB connect + simple query)
 - Contracts: functions expose pagination inputs/outputs; errors follow shared error shape

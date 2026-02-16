@@ -9,12 +9,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"goecommerce/internal/app"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found: %v", err)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
