@@ -57,13 +57,18 @@ Save to `{@artifacts_path}/plan.md`.
 - Ensure `.env.example` includes: `DATABASE_URL`, `REDIS_URL`, `PORT`, `NEXT_PUBLIC_API_URL`, `ADMIN_USER`, `ADMIN_PASS`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`, `CURRENCY`
 - Ensure `docker-compose.yml` provides Postgres 16 and Redis 7 with volumes and default ports; confirm service names match app envs
 - Contracts: one-command dev via `docker compose up`
-- Verification: `docker compose up` starts Postgres/Redis healthy; `psql` connects; `redis-cli PING` returns PONG
+- Verification: `docker compose up` starts Postgres/Redis healthy; `docker compose exec postgres psql -U postgres -c "\\l"` works; `docker compose exec redis redis-cli PING` returns PONG
 
 ### [ ] Step: Bootstrap API (Server, Router, Health/Ready)
 - Add `cmd/api/main.go` wiring config, logger, graceful shutdown; create `internal/app/router.go` and `internal/platform/http` helpers
 - Implement `GET /health` and `GET /ready` handlers with JSON responses
 - Contracts: `GET /health` → `{status:"ok"}`, `GET /ready` → `{db:"down", redis:"down"}` before clients are wired
 - Verification: `go build ./...`; run API locally; curl `/health` and `/ready` return expected JSON
+
+### [ ] Step: Module Registry Skeleton
+- Create `internal/app/modules.go` to register modules and parse `ENABLED_MODULES` env (comma-separated)
+- Ensure router registers routes only for enabled modules; default enables core modules
+- Verification: toggling `ENABLED_MODULES` excludes module routes; 404 for disabled module paths
 
 ### [ ] Step: Database & Redis Platform + Migrations Baseline
 - Create `internal/platform/db` (connection pool, max open/idle), `internal/platform/redis` (client init)
@@ -74,20 +79,20 @@ Save to `{@artifacts_path}/plan.md`.
 
 ### [ ] Step: Catalog — Migrations + Seed Data
 - Write SQL for tables: `products`, `product_variants`, `categories`, `product_categories`, `images`
-- Add seed migration or simple seed script for demo products, variants, categories, images
+- Add simple SQL seed migration for demo products, variants, categories, images
 - Contracts: schemas per spec; slugs unique; basic sample data present
 - Verification: apply migrations; query counts > 0 for products/variants/categories/images
 
 ### [ ] Step: Catalog — Storage Layer
 - Implement `internal/storage/catalog` with prepared statements for list products (with pagination/category), get by slug, list categories
-- Add unit tests using a test database and transaction rollback
+- Add 1 storage wiring test (DB connect + simple query)
 - Contracts: functions expose pagination inputs/outputs; errors follow shared error shape
 - Verification: `go test ./internal/storage/catalog` passes
 
 ### [ ] Step: Catalog — HTTP Endpoints
 - Implement handlers in `internal/modules/catalog`: `GET /products`, `GET /products/:slug`, `GET /categories`; parse `page`/`limit`
 - Use `internal/platform/http` for JSON, errors, pagination meta
-- Add handler tests via `httptest` with a seeded test DB
+
 - Contracts: response shapes per spec, including pagination meta on list
 - Verification: curl endpoints return expected data from seed
 
@@ -99,27 +104,27 @@ Save to `{@artifacts_path}/plan.md`.
 ### [ ] Step: Cart — Storage + Business Logic
 - Implement `internal/storage/cart` for create/retrieve cart, add item, update qty, remove item, compute totals
 - Business rules: copy `unit_price_cents` from variant at add time; totals from snapshot
-- Add unit tests for cart operations and totals
+- Skip detailed unit tests in MVP (covered by Checkout business test)
 - Contracts: cart identity by UUID; totals consistent with items
 - Verification: `go test ./internal/storage/cart` passes
 
 ### [ ] Step: Cart — HTTP Endpoints
 - Handlers: `POST /cart` (issue/read `cart_id` cookie), `GET /cart`, `POST /cart/items`, `PATCH /cart/items/:id`, `DELETE /cart/items/:id`
 - Cookie: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age=30d` (Secure in prod)
-- Add handler tests covering cookie lifecycle and item CRUD
+
 - Contracts: JSON error shape on invalid input; cookie behavior per spec
 - Verification: curl flow creates cart, adds/updates/removes items, returns totals
 
 ### [ ] Step: Orders — Migrations
 - Write SQL for `orders` and `order_items`; unique `orders.number`; supporting indexes
-- Contracts: enforce uniqueness; referential integrity
+- Contracts: enforce uniqueness; referential integrity; allowed statuses: `pending_payment`, `paid`, `cancelled` (use CHECK constraint or enum)
 - Verification: migrations apply; uniqueness enforced
 
 ### [ ] Step: Checkout + Orders Implementation
-- Implement `internal/storage/orders`; generate order number; create order from cart; mark status
-- Implement `POST /checkout` handler: validate cart, compute totals, create order, integrate Stripe (test mode) behind an interface; mark paid on return flag
-- Add unit tests for order number generation and storage; handler happy-path test
-- Contracts: `POST /checkout` returns `{order_id, payment_status}`; no webhooks in MVP
+- Implement `internal/storage/orders`; generate order number; create order from cart; set initial status `pending_payment`
+- Implement `POST /checkout` handler: validate cart, compute totals, create order, integrate Stripe (test mode) behind an interface; return `checkout_url` to redirect; do not mark paid in MVP
+- Add 1 business test: checkout creates order with correct totals and initial status
+- Contracts: `POST /checkout` returns `{order_id, checkout_url, status:"pending_payment"}`; no webhooks in MVP
 - Verification: curl checkout on a cart returns order; DB shows created order/items
 
 ### [ ] Step: Web — Scaffold
@@ -141,8 +146,8 @@ Save to `{@artifacts_path}/plan.md`.
 
 ### [ ] Step: Admin — Basic Auth + Orders Views
 - Protect admin routes with Basic Auth using `ADMIN_USER`/`ADMIN_PASS`
-- Implement Orders list and Order detail (frontend pages bound to API)
-- Contracts: endpoints `GET /admin/orders`, `GET /admin/orders/:id`
+- Implement Orders list and Order detail (Next.js pages consuming Go API JSON)
+- Contracts: endpoints `GET /admin/orders`, `GET /admin/orders/:id` served by Go API as JSON; Next.js admin pages call these APIs
 - Verification: admin pages load with credentials; list and detail render
 
 ### [ ] Step: Final Verification & Polish
