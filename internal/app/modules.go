@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -13,11 +14,22 @@ type Module interface {
 
 var modulesRegistry = map[string]Module{}
 
+func normalizeName(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
 func RegisterModule(m Module) {
 	if m == nil {
 		return
 	}
-	modulesRegistry[m.Name()] = m
+	name := normalizeName(m.Name())
+	if name == "" {
+		panic("RegisterModule: empty module name")
+	}
+	if _, exists := modulesRegistry[name]; exists {
+		panic(fmt.Sprintf("RegisterModule: duplicate module name '%s'", name))
+	}
+	modulesRegistry[name] = m
 }
 
 func parseEnabledModules(envVal string) map[string]bool {
@@ -28,7 +40,7 @@ func parseEnabledModules(envVal string) map[string]bool {
 	parts := strings.Split(envVal, ",")
 	enabled := make(map[string]bool, len(parts))
 	for _, p := range parts {
-		n := strings.ToLower(strings.TrimSpace(p))
+		n := normalizeName(p)
 		if n == "" {
 			continue
 		}
@@ -41,7 +53,7 @@ func moduleEnabled(name string, enabled map[string]bool) bool {
 	if enabled == nil {
 		return true
 	}
-	name = strings.ToLower(name)
+	name = normalizeName(name)
 	if enabled["all"] || enabled["*"] {
 		return true
 	}
