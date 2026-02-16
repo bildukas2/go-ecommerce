@@ -161,7 +161,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: uses endpoints `GET/POST/PATCH/DELETE /cart*`, `POST /checkout`
 - Verification: complete end-to-end flow from PLP/PDP to success page
 
-### [ ] Step: Admin — Basic Auth + Orders Views
+### [x] Step: Admin — Basic Auth + Orders Views
+<!-- chat-id: 4330d6f6-72ef-4986-9427-af2cbbd03941 -->
 - Protect admin routes with Basic Auth using `ADMIN_USER`/`ADMIN_PASS`
 - Implement Orders list and Order detail (Next.js pages consuming Go API JSON)
 - Contracts: endpoints `GET /admin/orders`, `GET /admin/orders/:id` served by Go API as JSON; Next.js admin pages call these APIs

@@ -89,3 +89,40 @@ func (s *Store) CreateFromCart(ctx context.Context, c storcart.Cart) (Order, err
 	if err := tx.Commit(); err != nil { return Order{}, err }
 	return o, nil
 }
+
+func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, error) {
+	if limit <= 0 { limit = 20 }
+	if offset < 0 { offset = 0 }
+	rows, err := s.db.QueryContext(ctx, "SELECT id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var o Order
+		if err := rows.Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, o)
+	}
+	if err := rows.Err(); err != nil { return nil, err }
+	return items, nil
+}
+
+func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
+	var o Order
+	if err := s.db.QueryRowContext(ctx, "SELECT id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at FROM orders WHERE id = $1", id).Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		return Order{}, err
+	}
+	rows, err := s.db.QueryContext(ctx, "SELECT id, order_id, product_variant_id, unit_price_cents, currency, quantity, created_at, updated_at FROM order_items WHERE order_id = $1 ORDER BY created_at ASC", o.ID)
+	if err != nil { return Order{}, err }
+	defer rows.Close()
+	for rows.Next() {
+		var it OrderItem
+		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductVariantID, &it.UnitPriceCents, &it.Currency, &it.Quantity, &it.CreatedAt, &it.UpdatedAt); err != nil {
+			return Order{}, err
+		}
+		o.Items = append(o.Items, it)
+	}
+	if err := rows.Err(); err != nil { return Order{}, err }
+	return o, nil
+}

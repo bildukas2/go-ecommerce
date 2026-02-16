@@ -137,3 +137,68 @@ export async function checkout(): Promise<{ order_id: string; checkout_url: stri
   if (!res.ok) throw new Error(`Failed to checkout: ${res.status}`);
   return res.json();
 }
+
+// Admin API (server-side only)
+export type AdminOrderSummary = {
+  id: string;
+  number: string;
+  status: string;
+  currency: string;
+  total_cents: number;
+  created_at: string;
+};
+
+export type AdminOrderDetailItem = {
+  ID: string;
+  OrderID: string;
+  ProductVariantID: string;
+  UnitPriceCents: number;
+  Currency: string;
+  Quantity: number;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+};
+
+export type AdminOrderDetail = {
+  ID: string;
+  Number: string;
+  Status: string;
+  Currency: string;
+  SubtotalCents: number;
+  ShippingCents: number;
+  TaxCents: number;
+  TotalCents: number;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+  Items: AdminOrderDetailItem[];
+};
+
+function adminAuthHeader(): string {
+  const user = process.env.ADMIN_USER;
+  const pass = process.env.ADMIN_PASS;
+  if (!user || !pass) throw new Error("Missing ADMIN_USER/ADMIN_PASS on server");
+  const token = Buffer.from(`${user}:${pass}`).toString("base64");
+  return `Basic ${token}`;
+}
+
+export async function getAdminOrders(params: { page?: number; limit?: number } = {}): Promise<{ items: AdminOrderSummary[]; page: number; limit: number; }> {
+  const url = new URL(apiJoin("admin/orders"));
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
+  return res.json();
+}
+
+export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
+  const url = new URL(apiJoin(`admin/orders/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch order: ${res.status}`);
+  return res.json();
+}
