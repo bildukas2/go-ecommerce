@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import { addCartItem, checkout as apiCheckout, ensureCart, getCart, removeCartItem, updateCartItem, type Cart } from "@/lib/api";
+import { optimisticRemoveItem, optimisticUpdateQuantity } from "@/lib/cart-state";
 
 type CartState = {
   open: boolean;
   cart: Cart | null;
   loading: boolean;
   error: string | null;
+  mutatingItemIds: string[];
 };
 
 type CartContextType = CartState & {
@@ -23,7 +25,7 @@ type CartContextType = CartState & {
 const CartContext = React.createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<CartState>({ open: false, cart: null, loading: false, error: null });
+  const [state, setState] = React.useState<CartState>({ open: false, cart: null, loading: false, error: null, mutatingItemIds: [] });
 
   const refresh = React.useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -41,7 +43,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     refresh().catch(() => undefined);
   }, [refresh]);
 
-  const openDrawer = React.useCallback(() => setState((s) => ({ ...s, open: true })), []);
+  const openDrawer = React.useCallback(() => {
+    setState((s) => ({ ...s, open: true }));
+    refresh().catch(() => undefined);
+  }, [refresh]);
   const closeDrawer = React.useCallback(() => setState((s) => ({ ...s, open: false })), []);
 
   const add = React.useCallback(async (variantId: string, quantity = 1) => {
@@ -59,18 +64,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const update = React.useCallback(async (itemId: string, quantity: number) => {
     setState((s) => {
       if (!s.cart) return { ...s };
-      const optimistic: Cart = { ...s.cart, Items: s.cart.Items.map((it) => (it.ID === itemId ? { ...it, Quantity: quantity } : it)) };
-      const itemCount = optimistic.Items.reduce((n, it) => n + it.Quantity, 0);
-      const subtotal = optimistic.Items.reduce((n, it) => n + it.UnitPriceCents * it.Quantity, 0);
-      optimistic.Totals = { ...optimistic.Totals, ItemCount: itemCount, SubtotalCents: subtotal };
-      return { ...s, cart: optimistic };
+      const optimistic: Cart = optimisticUpdateQuantity(s.cart, itemId, quantity);
+      const mutatingItemIds = s.mutatingItemIds.includes(itemId) ? s.mutatingItemIds : [...s.mutatingItemIds, itemId];
+      return { ...s, cart: optimistic, error: null, mutatingItemIds };
     });
     try {
       const c = await updateCartItem(itemId, quantity);
-      setState((s) => ({ ...s, cart: c }));
+      setState((s) => ({ ...s, cart: c, error: null, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to update item";
-      setState((s) => ({ ...s, error: msg }));
+      setState((s) => ({ ...s, error: msg, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
       await refresh();
     }
   }, [refresh]);
@@ -78,18 +81,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const remove = React.useCallback(async (itemId: string) => {
     setState((s) => {
       if (!s.cart) return { ...s };
-      const optimistic: Cart = { ...s.cart, Items: s.cart.Items.filter((it) => it.ID !== itemId) } as Cart;
-      const itemCount = optimistic.Items.reduce((n, it) => n + it.Quantity, 0);
-      const subtotal = optimistic.Items.reduce((n, it) => n + it.UnitPriceCents * it.Quantity, 0);
-      optimistic.Totals = { ...optimistic.Totals, ItemCount: itemCount, SubtotalCents: subtotal };
-      return { ...s, cart: optimistic };
+      const optimistic: Cart = optimisticRemoveItem(s.cart, itemId);
+      const mutatingItemIds = s.mutatingItemIds.includes(itemId) ? s.mutatingItemIds : [...s.mutatingItemIds, itemId];
+      return { ...s, cart: optimistic, error: null, mutatingItemIds };
     });
     try {
       const c = await removeCartItem(itemId);
-      setState((s) => ({ ...s, cart: c }));
+      setState((s) => ({ ...s, cart: c, error: null, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to remove item";
-      setState((s) => ({ ...s, error: msg }));
+      setState((s) => ({ ...s, error: msg, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
       await refresh();
     }
   }, [refresh]);
