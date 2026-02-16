@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"goecommerce/internal/app"
+	platformdb "goecommerce/internal/platform/db"
+	platformredis "goecommerce/internal/platform/redis"
 )
 
 func main() {
@@ -19,7 +21,29 @@ func main() {
 	}
 	addr := ":" + port
 
-	router := app.NewRouter()
+	var deps app.Deps
+	ctx := context.Background()
+
+	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+		db, err := platformdb.Open(ctx, dsn)
+		if err != nil {
+			log.Printf("db connect error: %v", err)
+		} else {
+			deps.DB = db
+			defer db.Close()
+		}
+	}
+	if rurl := os.Getenv("REDIS_URL"); rurl != "" {
+		rc, err := platformredis.NewFromURL(ctx, rurl)
+		if err != nil {
+			log.Printf("redis connect error: %v", err)
+		} else {
+			deps.Redis = rc
+			defer rc.Close()
+		}
+	}
+
+	router := app.NewRouter(deps)
 
 	srv := &http.Server{
 		Addr:         addr,
@@ -40,9 +64,9 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
 	}
 	log.Printf("server stopped")

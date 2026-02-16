@@ -73,7 +73,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Ensure router registers routes only for enabled modules; default enables core modules
 - Verification: toggling `ENABLED_MODULES` excludes module routes; 404 for disabled module paths
 
-### [ ] Step: Database & Redis Platform + Migrations Baseline
+### [x] Step: Database & Redis Platform + Migrations Baseline
+<!-- chat-id: d9f5d89f-6f10-41df-bcf9-88ca40c8e23a -->
 - Create `internal/platform/db` (connection pool, max open/idle), `internal/platform/redis` (client init)
 - Add `migrations/`; document `goose` CLI usage only (no in-app runner yet); add empty baseline migration
 - Wire `ready` handler to check DB/Redis connectivity
