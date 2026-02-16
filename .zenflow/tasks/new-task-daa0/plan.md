@@ -67,7 +67,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: `GET /health` → `{status:"ok"}`, `GET /ready` → `{db:"down", redis:"down"}` before clients are wired
 - Verification: `go build ./...`; run API locally; curl `/health` and `/ready` return expected JSON
 
-### [ ] Step: Module Registry Skeleton
+### [x] Step: Module Registry Skeleton
+<!-- chat-id: 65bd86aa-1dcb-43ef-9154-b5cbb833d149 -->
 - Create `internal/app/modules.go` to register modules and parse `ENABLED_MODULES` env (comma-separated)
 - Ensure router registers routes only for enabled modules; default enables core modules
 - Verification: toggling `ENABLED_MODULES` excludes module routes; 404 for disabled module paths

@@ -14,5 +14,6 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
 		_ = platformhttp.JSON(w, http.StatusOK, map[string]string{"db": "down", "redis": "down"})
 	})
+	registerEnabledModules(mux)
 	return mux
 }
