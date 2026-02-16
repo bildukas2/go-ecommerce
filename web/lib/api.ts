@@ -148,6 +148,27 @@ export type AdminOrderSummary = {
   created_at: string;
 };
 
+export type DashboardMetrics = {
+  total_orders: number;
+  pending_payment: number;
+  paid: number;
+  cancelled: number;
+};
+
+export type DashboardRecentOrder = {
+  id: string;
+  number: string;
+  status: string;
+  total_cents: number;
+  currency: string;
+  created_at: string;
+};
+
+export type DashboardResponse = {
+  metrics: DashboardMetrics;
+  recent_orders: DashboardRecentOrder[];
+};
+
 export type AdminOrderDetailItem = {
   ID: string;
   OrderID: string;
@@ -190,6 +211,16 @@ export async function getAdminOrders(params: { page?: number; limit?: number } =
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
+  return res.json();
+}
+
+export async function getDashboard(): Promise<DashboardResponse> {
+  const url = new URL(apiJoin("admin/dashboard"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch dashboard: ${res.status}`);
   return res.json();
 }
 
