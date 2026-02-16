@@ -148,7 +148,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: scripts `npm run lint` and `npm run build` work
 - Verification: run lint/build successfully; dev server renders home page
 
-### [ ] Step: Storefront — Catalog Pages
+### [x] Step: Storefront — Catalog Pages
+<!-- chat-id: 43f7bfa7-653a-43d4-a9e5-94d7f48f1fc3 -->
 - Implement Home (JolyUI blocks), Product Listing with filters + skeletons, Product Detail with variants + add to cart
 - Bind to backend APIs; handle loading/error states; mobile-first responsiveness
 - Contracts: uses endpoints `GET /products`, `GET /products/:slug`, `POST /cart`
