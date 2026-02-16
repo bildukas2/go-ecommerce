@@ -76,5 +76,6 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
 	}
+	_ = app.CloseModules()
 	log.Printf("server stopped")
 }

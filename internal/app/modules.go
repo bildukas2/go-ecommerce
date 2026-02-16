@@ -72,3 +72,17 @@ func registerEnabledModules(mux *http.ServeMux) {
 		}
 	}
 }
+
+type closable interface{ Close() error }
+
+func CloseModules() error {
+	var first error
+	for _, m := range modulesRegistry {
+		if c, ok := any(m).(closable); ok && c != nil {
+			if err := c.Close(); err != nil && first == nil {
+				first = err
+			}
+		}
+	}
+	return first
+}

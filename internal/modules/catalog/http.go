@@ -24,6 +24,11 @@ func NewModule(deps app.Deps) app.Module {
 	return &module{store: s}
 }
 
+func (m *module) Close() error {
+	if m.store != nil { return m.store.Close() }
+	return nil
+}
+
 func (m *module) Name() string { return "catalog" }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
