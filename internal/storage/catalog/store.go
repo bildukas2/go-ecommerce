@@ -3,26 +3,42 @@ package catalog
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 )
 
 // Product represents a product row from the catalog.
 type Product struct {
-	ID          string
-	Slug        string
-	Title       string
-	Description string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string    `json:"id"`
+	Slug        string    `json:"slug"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 // Category represents a category row.
 type Category struct {
-	ID       string
-	Slug     string
-	Name     string
-	ParentID sql.NullString
+	ID       string         `json:"id"`
+	Slug     string         `json:"slug"`
+	Name     string         `json:"name"`
+	ParentID sql.NullString `json:"-"`
+}
+
+func (c Category) MarshalJSON() ([]byte, error) {
+	type Alias Category
+	var pid *string
+	if c.ParentID.Valid {
+		pid = &c.ParentID.String
+	}
+	return json.Marshal(&struct {
+		Alias
+		ParentID *string `json:"parentId"`
+	}{
+		Alias:    Alias(c),
+		ParentID: pid,
+	})
 }
 
 // Pagination parameters for list queries.

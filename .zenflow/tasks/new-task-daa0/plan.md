@@ -155,7 +155,8 @@ Save to `{@artifacts_path}/plan.md`.
 - Contracts: uses endpoints `GET /products`, `GET /products/:slug`, `POST /cart`
 - Verification: navigate pages; add-to-cart updates cart drawer state
 
-### [ ] Step: Storefront — Cart Drawer, Checkout, Success
+### [x] Step: Storefront — Cart Drawer, Checkout, Success
+<!-- chat-id: 018e14c5-bcba-411c-b7b2-74fa0ba00219 -->
 - Implement cart drawer with optimistic updates; Checkout page and Order Success page
 - Contracts: uses endpoints `GET/POST/PATCH/DELETE /cart*`, `POST /checkout`
 - Verification: complete end-to-end flow from PLP/PDP to success page
