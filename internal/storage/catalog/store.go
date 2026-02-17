@@ -38,24 +38,31 @@ type Image struct {
 
 // Category represents a category row.
 type Category struct {
-	ID       string         `json:"id"`
-	Slug     string         `json:"slug"`
-	Name     string         `json:"name"`
-	ParentID sql.NullString `json:"-"`
+	ID              string         `json:"id"`
+	Slug            string         `json:"slug"`
+	Name            string         `json:"name"`
+	ParentID        sql.NullString `json:"-"`
+	DefaultImageURL sql.NullString `json:"-"`
 }
 
 func (c Category) MarshalJSON() ([]byte, error) {
 	type Alias Category
 	var pid *string
+	var defaultImageURL *string
 	if c.ParentID.Valid {
 		pid = &c.ParentID.String
 	}
+	if c.DefaultImageURL.Valid {
+		defaultImageURL = &c.DefaultImageURL.String
+	}
 	return json.Marshal(&struct {
 		Alias
-		ParentID *string `json:"parentId"`
+		ParentID        *string `json:"parentId"`
+		DefaultImageURL *string `json:"defaultImageUrl"`
 	}{
-		Alias:    Alias(c),
-		ParentID: pid,
+		Alias:           Alias(c),
+		ParentID:        pid,
+		DefaultImageURL: defaultImageURL,
 	})
 }
 
@@ -159,7 +166,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtListCats, err := db.PrepareContext(ctx, `
-		SELECT id, slug, name, parent_id FROM categories ORDER BY name ASC`)
+		SELECT id, slug, name, parent_id, default_image_url FROM categories ORDER BY name ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +361,7 @@ func (s *Store) ListCategories(ctx context.Context) ([]Category, error) {
 	var out []Category
 	for rows.Next() {
 		var c Category
-		if err := rows.Scan(&c.ID, &c.Slug, &c.Name, &c.ParentID); err != nil {
+		if err := rows.Scan(&c.ID, &c.Slug, &c.Name, &c.ParentID, &c.DefaultImageURL); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

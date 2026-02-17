@@ -2,6 +2,8 @@ package catalog
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -117,4 +119,60 @@ func TestListProductsIncludesVariantsAndImages(t *testing.T) {
 	if !foundWithImages {
 		t.Error("expected at least one product in list to have images")
 	}
+}
+
+func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
+	t.Run("with values", func(t *testing.T) {
+		c := Category{
+			ID:              "cat-1",
+			Slug:            "apparel",
+			Name:            "Apparel",
+			ParentID:        sql.NullString{String: "parent-1", Valid: true},
+			DefaultImageURL: sql.NullString{String: "https://images.example.com/apparel.jpg", Valid: true},
+		}
+
+		raw, err := json.Marshal(c)
+		if err != nil {
+			t.Fatalf("marshal category: %v", err)
+		}
+
+		var out map[string]interface{}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatalf("unmarshal category json: %v", err)
+		}
+
+		if out["parentId"] != "parent-1" {
+			t.Fatalf("expected parentId parent-1, got %#v", out["parentId"])
+		}
+		if out["defaultImageUrl"] != "https://images.example.com/apparel.jpg" {
+			t.Fatalf("expected defaultImageUrl to be set, got %#v", out["defaultImageUrl"])
+		}
+	})
+
+	t.Run("without values", func(t *testing.T) {
+		c := Category{
+			ID:              "cat-1",
+			Slug:            "apparel",
+			Name:            "Apparel",
+			ParentID:        sql.NullString{Valid: false},
+			DefaultImageURL: sql.NullString{Valid: false},
+		}
+
+		raw, err := json.Marshal(c)
+		if err != nil {
+			t.Fatalf("marshal category: %v", err)
+		}
+
+		var out map[string]interface{}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatalf("unmarshal category json: %v", err)
+		}
+
+		if out["parentId"] != nil {
+			t.Fatalf("expected parentId null, got %#v", out["parentId"])
+		}
+		if out["defaultImageUrl"] != nil {
+			t.Fatalf("expected defaultImageUrl null, got %#v", out["defaultImageUrl"])
+		}
+	})
 }

@@ -54,9 +54,14 @@ export default async function ProductsPage({
               <li key={c.id}>
                 <Link
                   href={`/products?category=${encodeURIComponent(c.slug)}`}
-                  className={`block rounded-lg px-2 py-1 text-sm transition-colors ${category === c.slug ? "bg-primary/10 font-semibold text-foreground" : "text-neutral-600 hover:text-foreground dark:text-neutral-300"}`}
+                  className={`flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors ${category === c.slug ? "bg-primary/10 font-semibold text-foreground" : "text-neutral-600 hover:text-foreground dark:text-neutral-300"}`}
                 >
-                  {c.name}
+                  <img
+                    src={c.defaultImageUrl || "/images/noImage.png"}
+                    alt={c.name}
+                    className="h-6 w-6 rounded object-cover"
+                  />
+                  <span>{c.name}</span>
                 </Link>
               </li>
             ))}

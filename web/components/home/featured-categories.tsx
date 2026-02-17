@@ -22,6 +22,13 @@ export function FeaturedCategories({ categories }: FeaturedCategoriesProps) {
         {featured.map((category) => (
           <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group">
             <GlassCard className="p-5 transition-colors hover:bg-white/80 dark:hover:bg-slate-900/50">
+              <div className="mb-4 overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
+                <img
+                  src={category.defaultImageUrl || "/images/noImage.png"}
+                  alt={category.name}
+                  className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                />
+              </div>
               <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Category</p>
               <h3 className="mt-2 text-lg font-medium text-neutral-900 dark:text-neutral-100">{category.name}</h3>
               <p className="mt-3 text-sm text-neutral-600 transition-transform group-hover:translate-x-1 dark:text-neutral-400">

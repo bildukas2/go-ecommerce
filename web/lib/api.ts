@@ -40,6 +40,7 @@ export type Category = {
   slug: string;
   name: string;
   parentId?: string | null;
+  defaultImageUrl?: string | null;
 };
 
 export type ProductListResponse = {
@@ -58,6 +59,12 @@ function asRecord(value: unknown): UnknownRecord {
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function asNullableString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 function asNumber(value: unknown): number {
@@ -126,6 +133,22 @@ function normalizeProduct(raw: unknown): Product {
   };
 }
 
+function normalizeCategory(raw: unknown): Category | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const slug = asString(obj.slug);
+  const name = asString(obj.name);
+  if (!id || !slug || !name) return null;
+
+  return {
+    id,
+    slug,
+    name,
+    parentId: asNullableString(obj.parentId ?? obj.parent_id),
+    defaultImageUrl: asNullableString(obj.defaultImageUrl ?? obj.default_image_url),
+  };
+}
+
 export async function getProducts(params: { page?: number; limit?: number; category?: string } = {}): Promise<ProductListResponse> {
   const url = new URL(apiJoin("products"));
   if (params.page) url.searchParams.set("page", String(params.page));
@@ -158,7 +181,12 @@ export async function getCategories(): Promise<{ items: Category[] }> {
     return { items: [] };
   }
   if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`);
-  return res.json();
+  const payload = await res.json() as unknown;
+  const obj = asRecord(payload);
+  const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
+  return {
+    items: itemsRaw.map(normalizeCategory).filter((category): category is Category => category !== null),
+  };
 }
 
 export type CartItem = {
