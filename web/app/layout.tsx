@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { CartButton, CartDrawer } from "@/components/cart-drawer";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           <header className="border-b border-neutral-200 dark:border-neutral-800">
@@ -34,6 +35,7 @@ export default function RootLayout({
               <Link href="/" className="text-sm font-semibold">go-ecommerce</Link>
               <nav className="flex items-center gap-3">
                 <Link href="/products" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">Products</Link>
+                <ThemeToggle />
                 <CartButton />
               </nav>
             </div>
