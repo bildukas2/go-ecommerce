@@ -122,14 +122,28 @@ export function AddToCartButton({ variants }: AddToCartButtonProps) {
   return (
     <div className="space-y-6">
       {/* Dynamic Price Display */}
-      {selectedVariant && (
-        <div className="rounded-2xl border border-surface-border bg-background/40 p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Price</h2>
-          <p className="mt-1 text-3xl font-semibold">
-            {formatMoney(selectedVariant.priceCents, selectedVariant.currency)}
-          </p>
-        </div>
-      )}
+      <div className="rounded-2xl border border-surface-border bg-background/40 p-4">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Price</h2>
+        <p className="mt-1 text-3xl font-semibold">
+          {(() => {
+            if (selectedVariant) {
+              return formatMoney(selectedVariant.priceCents, selectedVariant.currency);
+            }
+            if (variants.length > 0) {
+              const prices = variants.map((v) => v.priceCents);
+              const minPrice = Math.min(...prices);
+              const maxPrice = Math.max(...prices);
+              const currency = variants[0].currency;
+
+              if (minPrice === maxPrice) {
+                return formatMoney(minPrice, currency);
+              }
+              return `${formatMoney(minPrice, currency)} - ${formatMoney(maxPrice, currency)}`;
+            }
+            return "N/A";
+          })()}
+        </p>
+      </div>
 
       {/* Attribute Selectors */}
       <div className="space-y-4">

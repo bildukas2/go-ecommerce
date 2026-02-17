@@ -65,6 +65,9 @@ func TestGetProductBySlugIncludesVariantsAndImages(t *testing.T) {
 	if product.Images[0].URL == "" {
 		t.Fatalf("expected image url")
 	}
+	if len(product.Variants[0].Attributes) == 0 {
+		t.Fatalf("expected attributes for seeded product")
+	}
 }
 
 func TestListProductsIncludesVariantsAndImages(t *testing.T) {
