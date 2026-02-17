@@ -12,6 +12,11 @@
   --hero-badge-text: #7a7df4;
   --hero-badge-icon: #ff8a4c;
   --hero-badge-arrow: #6b7280;
+  /* TODO(admin-theme): allow admins to configure transparent image fallback background colors. */
+  --image-fallback-bg: #f3f4f6;
+  --image-fallback-pattern: rgba(148, 163, 184, 0.14);
+  --image-fallback-glow-a: rgba(99, 102, 241, 0.05);
+  --image-fallback-glow-b: rgba(29, 78, 216, 0.04);
 }
 
 @theme inline {
@@ -35,6 +40,10 @@
   --hero-badge-text: #8da2ff;
   --hero-badge-icon: #ff9f6a;
   --hero-badge-arrow: #d1d5db;
+  --image-fallback-bg: #111827;
+  --image-fallback-pattern: rgba(148, 163, 184, 0.1);
+  --image-fallback-glow-a: rgba(59, 130, 246, 0.28);
+  --image-fallback-glow-b: rgba(79, 70, 229, 0.24);
 }
 
 body {
@@ -105,12 +114,12 @@ body {
 }
 
 .image-default-bg {
-  background-color: #f3f4f6;
+  background-color: var(--image-fallback-bg);
   background-image:
-    linear-gradient(45deg, rgba(148, 163, 184, 0.14) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(148, 163, 184, 0.14) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.14) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.14) 75%);
+    linear-gradient(45deg, var(--image-fallback-pattern) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--image-fallback-pattern) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--image-fallback-pattern) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--image-fallback-pattern) 75%);
   background-position:
     0 0,
     0 8px,
@@ -120,12 +129,28 @@ body {
 }
 
 .dark .image-default-bg {
-  background-color: #111827;
   background-image:
-    linear-gradient(45deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.11) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.11) 75%);
+    radial-gradient(115% 95% at 22% 18%, var(--image-fallback-glow-a), transparent 58%),
+    radial-gradient(120% 100% at 80% 86%, var(--image-fallback-glow-b), transparent 62%),
+    linear-gradient(45deg, var(--image-fallback-pattern) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--image-fallback-pattern) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--image-fallback-pattern) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--image-fallback-pattern) 75%);
+  background-position:
+    center,
+    center,
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size:
+    100% 100%,
+    100% 100%,
+    16px 16px,
+    16px 16px,
+    16px 16px,
+    16px 16px;
+  background-repeat: no-repeat, no-repeat, repeat, repeat, repeat, repeat;
 }
 
 @media (prefers-reduced-motion: reduce) {
