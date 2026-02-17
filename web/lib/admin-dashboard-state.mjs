@@ -40,6 +40,15 @@ export function resolveDashboardErrorMessage(error) {
   return "Failed to load dashboard metrics. Please retry.";
 }
 
+export function shouldUseMockDashboard(envValue) {
+  if (typeof envValue !== "string") return true;
+  const normalized = envValue.trim().toLowerCase();
+  if (normalized === "false" || normalized === "0" || normalized === "off") {
+    return false;
+  }
+  return true;
+}
+
 function toNonNegativeInt(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;

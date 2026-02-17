@@ -4,6 +4,7 @@ import {
   emptyDashboard,
   normalizeDashboardData,
   resolveDashboardErrorMessage,
+  shouldUseMockDashboard,
 } from "./admin-dashboard-state.mjs";
 
 test("emptyDashboard returns zeroed metrics and no recent orders", () => {
@@ -68,4 +69,14 @@ test("resolveDashboardErrorMessage handles unauthorized and generic failures", (
     resolveDashboardErrorMessage(new Error("Failed to fetch dashboard: 500")),
     "Failed to load dashboard metrics. Please retry."
   );
+});
+
+test("shouldUseMockDashboard defaults to true and supports explicit off values", () => {
+  assert.equal(shouldUseMockDashboard(undefined), true);
+  assert.equal(shouldUseMockDashboard(""), true);
+  assert.equal(shouldUseMockDashboard("true"), true);
+  assert.equal(shouldUseMockDashboard(" 1 "), true);
+  assert.equal(shouldUseMockDashboard("false"), false);
+  assert.equal(shouldUseMockDashboard("0"), false);
+  assert.equal(shouldUseMockDashboard("off"), false);
 });
