@@ -1,14 +1,12 @@
 import { AddToCartButton } from "@/components/add-to-cart";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getProduct } from "@/lib/api";
-import { formatMoney } from "@/lib/money";
 import Image from "next/image";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProduct(slug);
   const primaryImage = product.images?.[0];
-  const firstAvailableVariant = product.variants.find((variant) => variant.stock > 0) ?? product.variants[0];
   const inStockCount = product.variants.filter((variant) => variant.stock > 0).length;
 
   return (
@@ -59,17 +57,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
             <h1 className="mb-1 text-3xl font-semibold leading-tight">{product.title}</h1>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">{product.description}</p>
-          </div>
-
-          <div className="rounded-2xl border border-surface-border bg-background/40 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Price</h2>
-            {firstAvailableVariant ? (
-              <p className="mt-1 text-3xl font-semibold">
-                {formatMoney(firstAvailableVariant.priceCents, firstAvailableVariant.currency)}
-              </p>
-            ) : (
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">No active price</p>
-            )}
           </div>
 
           <div className="pt-2">
