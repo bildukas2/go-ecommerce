@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ArrowUpRight, Flame } from "lucide-react";
 
 export function HomeHero() {
   return (
     <section className="hero-aurora mx-auto max-w-6xl px-6 pb-12 pt-14 md:pb-16 md:pt-20">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-center">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#101014] px-3 py-1 text-xs font-medium text-[#7c8cff] dark:border-[#2e2e36] dark:bg-[#0f1014] dark:text-[#7f90ff]">
-            <span aria-hidden="true">🔥</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e6e7eb] bg-white/95 px-3 py-1 text-xs font-medium text-[#818cf8] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-[#2e2e36] dark:bg-[#0f1014] dark:text-[#7f90ff]">
+            <Flame size={11} className="text-[#ff8a4c]" aria-hidden="true" />
             Built for fast, modern commerce
-            <span className="text-[10px] opacity-70" aria-hidden="true">↗</span>
+            <ArrowUpRight size={10} className="opacity-70" aria-hidden="true" />
           </span>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
             Style your home with pieces that ship fast.
