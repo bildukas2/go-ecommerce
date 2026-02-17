@@ -100,12 +100,21 @@ export function CartDrawer() {
                     return (
                       <li key={it.ID}>
                         <GlassCard className="p-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium">Variant {it.ProductVariantID.slice(0, 8)}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-surface-border bg-black/5 dark:bg-white/5">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={it.ImageURL || "/images/noImage.png"}
+                                alt={it.ProductTitle || "Product image"}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium">{it.ProductTitle || `Variant ${it.ProductVariantID.slice(0, 8)}`}</div>
                               <div className="text-xs text-neutral-600 dark:text-neutral-400">{formatCents(it.UnitPriceCents, it.Currency)} each</div>
-                              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                                Line total: {formatCents(lineTotal, it.Currency)}
+                              <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                                {formatCents(lineTotal, it.Currency)}
                               </div>
                             </div>
 
