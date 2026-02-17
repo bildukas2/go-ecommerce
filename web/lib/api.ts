@@ -168,6 +168,8 @@ export type CartItem = {
   UnitPriceCents: number;
   Currency: string;
   Quantity: number;
+  ProductTitle: string;
+  ImageURL: string;
   CreatedAt?: string;
   UpdatedAt?: string;
 };
