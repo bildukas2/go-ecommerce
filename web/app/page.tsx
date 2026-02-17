@@ -11,7 +11,7 @@ export default async function Home() {
   ]);
 
   return (
-    <main className="hero-aurora min-h-screen bg-gradient-to-b from-transparent via-transparent to-transparent">
+    <main className="min-h-screen">
       <HomeHero />
       <FeaturedCategories categories={categoriesResponse.items} />
       <FeaturedProducts products={productsResponse.items} />
