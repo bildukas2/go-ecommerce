@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getCategories, getProducts } from "@/lib/api";
 import { GlassCard } from "@/components/ui/glass-card";
+import { ProductCard } from "@/components/storefront/product-card";
+import { formatMoney } from "@/lib/money";
 
 export default async function ProductsPage({
   searchParams,
@@ -20,6 +22,19 @@ export default async function ProductsPage({
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const productCards = items.map((product) => {
+    const firstInStockVariant = product.variants.find((variant) => variant.stock > 0);
+    const priceVariant = firstInStockVariant ?? product.variants[0] ?? null;
+
+    return {
+      id: product.id,
+      slug: product.slug,
+      title: product.title,
+      description: product.description,
+      imageUrl: product.images[0]?.url ?? null,
+      priceLabel: priceVariant ? formatMoney(priceVariant.priceCents, priceVariant.currency) : null,
+    };
+  });
 
   return (
     <div className="hero-aurora mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-[240px_1fr]">
@@ -60,18 +75,19 @@ export default async function ProductsPage({
           </div>
         </div>
 
-        {items.length > 0 ? (
+        {productCards.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((p) => (
-              <Link key={p.id} href={`/products/${encodeURIComponent(p.slug)}`} className="group">
-                <GlassCard className="h-full p-4">
-                  <div className="mb-3 aspect-square w-full rounded-xl bg-gradient-to-br from-neutral-100 to-white transition-opacity group-hover:opacity-95 dark:from-neutral-900 dark:to-neutral-950" />
-                  <div className="space-y-1">
-                    <h3 className="line-clamp-2 text-sm font-medium leading-tight">{p.title}</h3>
-                    <p className="line-clamp-2 text-xs text-neutral-600 dark:text-neutral-400">{p.description}</p>
-                  </div>
-                </GlassCard>
-              </Link>
+            {productCards.map((product) => (
+              <ProductCard
+                key={product.id}
+                slug={product.slug}
+                title={product.title}
+                subtitle={product.description}
+                imageUrl={product.imageUrl}
+                priceLabel={product.priceLabel}
+                badge={null}
+                onQuickAdd={null}
+              />
             ))}
           </div>
         ) : (
