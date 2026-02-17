@@ -33,6 +33,7 @@ export type ProductImage = {
   url: string;
   alt: string;
   sort: number;
+  isDefault: boolean;
 };
 
 export type Category = {
@@ -76,6 +77,16 @@ function asNumber(value: unknown): number {
   return 0;
 }
 
+function asBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1";
+  }
+  return false;
+}
+
 function normalizeAttributes(value: unknown): ProductVariant["attributes"] {
   const input = asRecord(value);
   const out: ProductVariant["attributes"] = {};
@@ -113,6 +124,7 @@ function normalizeImage(raw: unknown): ProductImage | null {
     url: asString(obj.url),
     alt: asString(obj.alt),
     sort: asNumber(obj.sort),
+    isDefault: asBoolean(obj.isDefault ?? obj.is_default),
   };
 }
 

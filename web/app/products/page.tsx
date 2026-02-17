@@ -3,6 +3,7 @@ import { getCategories, getProducts } from "@/lib/api";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ProductCard } from "@/components/storefront/product-card";
 import { formatMoney } from "@/lib/money";
+import { selectProductGridImage } from "@/lib/product-images";
 
 export default async function ProductsPage({
   searchParams,
@@ -31,7 +32,7 @@ export default async function ProductsPage({
       slug: product.slug,
       title: product.title,
       description: product.description,
-      imageUrl: product.images[0]?.url ?? null,
+      imageUrl: selectProductGridImage(product.images),
       priceLabel: priceVariant ? formatMoney(priceVariant.priceCents, priceVariant.currency) : null,
     };
   });

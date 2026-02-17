@@ -30,10 +30,11 @@ type Variant struct {
 }
 
 type Image struct {
-	ID   string `json:"id"`
-	URL  string `json:"url"`
-	Alt  string `json:"alt"`
-	Sort int    `json:"sort"`
+	ID        string `json:"id"`
+	URL       string `json:"url"`
+	Alt       string `json:"alt"`
+	Sort      int    `json:"sort"`
+	IsDefault bool   `json:"isDefault"`
 }
 
 // Category represents a category row.
@@ -157,7 +158,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtListImages, err := db.PrepareContext(ctx, `
-		SELECT id, url, alt, sort
+		SELECT id, url, alt, sort, is_default
 		FROM images
 		WHERE product_id = $1
 		ORDER BY sort ASC, id ASC`)
@@ -341,7 +342,7 @@ func (s *Store) listProductImages(ctx context.Context, productID string) ([]Imag
 	images := make([]Image, 0)
 	for rows.Next() {
 		var im Image
-		if err := rows.Scan(&im.ID, &im.URL, &im.Alt, &im.Sort); err != nil {
+		if err := rows.Scan(&im.ID, &im.URL, &im.Alt, &im.Sort, &im.IsDefault); err != nil {
 			return nil, err
 		}
 		images = append(images, im)

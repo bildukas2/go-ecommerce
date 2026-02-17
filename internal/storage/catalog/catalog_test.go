@@ -176,3 +176,53 @@ func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
 		}
 	})
 }
+
+func TestImageMarshalJSONIncludesIsDefault(t *testing.T) {
+	t.Run("true", func(t *testing.T) {
+		img := Image{
+			ID:        "img-1",
+			URL:       "https://images.example.com/default.jpg",
+			Alt:       "Default image",
+			Sort:      1,
+			IsDefault: true,
+		}
+
+		raw, err := json.Marshal(img)
+		if err != nil {
+			t.Fatalf("marshal image: %v", err)
+		}
+
+		var out map[string]interface{}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatalf("unmarshal image json: %v", err)
+		}
+
+		if out["isDefault"] != true {
+			t.Fatalf("expected isDefault true, got %#v", out["isDefault"])
+		}
+	})
+
+	t.Run("false", func(t *testing.T) {
+		img := Image{
+			ID:        "img-2",
+			URL:       "https://images.example.com/other.jpg",
+			Alt:       "Other image",
+			Sort:      2,
+			IsDefault: false,
+		}
+
+		raw, err := json.Marshal(img)
+		if err != nil {
+			t.Fatalf("marshal image: %v", err)
+		}
+
+		var out map[string]interface{}
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatalf("unmarshal image json: %v", err)
+		}
+
+		if out["isDefault"] != false {
+			t.Fatalf("expected isDefault false, got %#v", out["isDefault"])
+		}
+	})
+}
