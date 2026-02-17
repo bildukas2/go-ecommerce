@@ -43,6 +43,7 @@ body {
   position: absolute;
   inset: -40px;
   z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(600px 320px at 15% 20%, var(--glow-primary), transparent 60%),
     radial-gradient(520px 300px at 85% 10%, var(--glow-secondary), transparent 60%),

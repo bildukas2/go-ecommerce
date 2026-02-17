@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          <header className="border-b border-neutral-200 dark:border-neutral-800">
+          <header className="relative z-40 border-b border-neutral-200 dark:border-neutral-800">
             <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
               <Link href="/" className="text-sm font-semibold">go-ecommerce</Link>
               <nav className="flex items-center gap-3">
