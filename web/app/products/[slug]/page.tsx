@@ -10,6 +10,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const primaryImage = product.images?.[0];
   const firstAvailableVariant = product.variants.find((variant) => variant.stock > 0) ?? product.variants[0];
   const inStockCount = product.variants.filter((variant) => variant.stock > 0).length;
+  const variantPrices = product.variants.map((variant) => variant.priceCents);
+  const minPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : null;
+  const maxPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : null;
+  const selectedAttributes = firstAvailableVariant ? Object.entries(firstAvailableVariant.attributes) : [];
 
   return (
     <div className="hero-aurora mx-auto max-w-6xl px-6 py-10">
@@ -64,11 +68,42 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className="rounded-2xl border border-surface-border bg-background/40 p-4">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Price</h2>
             {firstAvailableVariant ? (
-              <p className="mt-1 text-3xl font-semibold">
-                {formatMoney(firstAvailableVariant.priceCents, firstAvailableVariant.currency)}
-              </p>
+              <>
+                <p className="mt-1 text-3xl font-semibold">
+                  {formatMoney(firstAvailableVariant.priceCents, firstAvailableVariant.currency)}
+                </p>
+                {minPrice !== null && maxPrice !== null && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Range: {formatMoney(minPrice, firstAvailableVariant.currency)}
+                    {" - "}
+                    {formatMoney(maxPrice, firstAvailableVariant.currency)}
+                  </p>
+                )}
+              </>
             ) : (
               <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">No active price</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-surface-border bg-background/40 p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Variant details</h2>
+            {firstAvailableVariant ? (
+              <div className="mt-2 space-y-2 text-sm">
+                <p>
+                  <span className="text-neutral-500">SKU:</span> {firstAvailableVariant.sku || "N/A"}
+                </p>
+                <p>
+                  <span className="text-neutral-500">Stock:</span> {Math.max(0, firstAvailableVariant.stock)}
+                </p>
+                <p>
+                  <span className="text-neutral-500">Attributes:</span>{" "}
+                  {selectedAttributes.length > 0
+                    ? selectedAttributes.map(([key, value]) => `${key}: ${String(value)}`).join(" / ")
+                    : "N/A"}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">No variant metadata</p>
             )}
           </div>
 

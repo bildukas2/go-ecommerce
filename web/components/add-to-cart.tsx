@@ -131,7 +131,19 @@ export function AddToCartButton({ variants }: AddToCartButtonProps) {
       )}
 
       {selectedVariant && (
-        <p className="text-xs text-neutral-500">Stock: {Math.max(0, selectedVariant.stock)}</p>
+        <div className="space-y-1 text-xs text-neutral-500">
+          <p>SKU: {selectedVariant.sku || "N/A"}</p>
+          <p>Price: {formatMoney(selectedVariant.priceCents, selectedVariant.currency)}</p>
+          <p>Stock: {Math.max(0, selectedVariant.stock)}</p>
+          <p>
+            Attributes:{" "}
+            {Object.entries(selectedVariant.attributes || {}).length > 0
+              ? Object.entries(selectedVariant.attributes || {})
+                  .map(([key, value]) => `${key}: ${String(value)}`)
+                  .join(" / ")
+              : "N/A"}
+          </p>
+        </div>
       )}
       {message && <p className="text-sm text-neutral-600 dark:text-neutral-400">{message}</p>}
     </div>

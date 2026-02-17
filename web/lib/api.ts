@@ -49,11 +49,80 @@ export type ProductListResponse = {
   limit: number;
 };
 
-function normalizeProduct(raw: Product): Product {
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord {
+  if (typeof value !== "object" || value === null) return {};
+  return value as UnknownRecord;
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function normalizeAttributes(value: unknown): ProductVariant["attributes"] {
+  const input = asRecord(value);
+  const out: ProductVariant["attributes"] = {};
+  for (const [key, raw] of Object.entries(input)) {
+    if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean" || raw === null) {
+      out[key] = raw;
+    } else {
+      out[key] = String(raw);
+    }
+  }
+  return out;
+}
+
+function normalizeVariant(raw: unknown): ProductVariant | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
   return {
-    ...raw,
-    images: Array.isArray(raw.images) ? raw.images : [],
-    variants: Array.isArray(raw.variants) ? raw.variants : [],
+    id,
+    sku: asString(obj.sku),
+    priceCents: asNumber(obj.priceCents ?? obj.price_cents),
+    currency: asString(obj.currency),
+    stock: asNumber(obj.stock),
+    attributes: normalizeAttributes(obj.attributes ?? obj.attributes_json),
+  };
+}
+
+function normalizeImage(raw: unknown): ProductImage | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+  return {
+    id,
+    url: asString(obj.url),
+    alt: asString(obj.alt),
+    sort: asNumber(obj.sort),
+  };
+}
+
+function normalizeProduct(raw: unknown): Product {
+  const obj = asRecord(raw);
+  const variantsRaw = Array.isArray(obj.variants) ? obj.variants : [];
+  const imagesRaw = Array.isArray(obj.images) ? obj.images : [];
+
+  return {
+    id: asString(obj.id),
+    slug: asString(obj.slug),
+    title: asString(obj.title),
+    description: asString(obj.description),
+    images: imagesRaw.map(normalizeImage).filter((img): img is ProductImage => img !== null),
+    variants: variantsRaw.map(normalizeVariant).filter((variant): variant is ProductVariant => variant !== null),
+    createdAt: asString(obj.createdAt ?? obj.created_at) || undefined,
+    updatedAt: asString(obj.updatedAt ?? obj.updated_at) || undefined,
   };
 }
 
@@ -65,10 +134,12 @@ export async function getProducts(params: { page?: number; limit?: number; categ
 
   const res = await fetch(url.toString(), { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`);
-  const payload = await res.json() as ProductListResponse;
+  const payload = await res.json() as Partial<ProductListResponse>;
   return {
-    ...payload,
     items: Array.isArray(payload.items) ? payload.items.map(normalizeProduct) : [],
+    total: asNumber(payload.total),
+    page: asNumber(payload.page) || 1,
+    limit: asNumber(payload.limit) || 20,
   };
 }
 
@@ -76,7 +147,7 @@ export async function getProduct(slug: string): Promise<Product> {
   const url = new URL(apiJoin(`products/${encodeURIComponent(slug)}`));
   const res = await fetch(url.toString(), { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`Failed to fetch product: ${res.status}`);
-  const payload = await res.json() as Product;
+  const payload = await res.json() as unknown;
   return normalizeProduct(payload);
 }
 
