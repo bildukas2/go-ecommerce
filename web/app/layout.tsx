@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
           <header className="relative z-40 border-b border-neutral-200 dark:border-neutral-800">
             <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
