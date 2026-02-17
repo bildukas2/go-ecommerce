@@ -8,7 +8,7 @@ export function HomeHero() {
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#101014] px-3 py-1 text-xs font-medium text-[#7c8cff] dark:border-[#2e2e36] dark:bg-[#0f1014] dark:text-[#7f90ff]">
             <span aria-hidden="true">🔥</span>
-            HeroUI v3.0.0 (Beta)
+            Built for fast, modern commerce
             <span className="text-[10px] opacity-70" aria-hidden="true">↗</span>
           </span>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
