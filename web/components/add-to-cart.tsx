@@ -10,6 +10,9 @@ import { formatMoney } from "@/lib/money";
 
 type AddToCartButtonProps = {
   variants: ProductVariant[];
+  selectedVariantID?: string;
+  onSelectedVariantIDChange?: (variantID: string) => void;
+  showSelectionMeta?: boolean;
 };
 
 function variantLabel(variant: ProductVariant): string {
@@ -20,32 +23,53 @@ function variantLabel(variant: ProductVariant): string {
   return `${primary} - ${formatMoney(variant.priceCents, variant.currency)}`;
 }
 
-export function AddToCartButton({ variants }: AddToCartButtonProps) {
-  const [selectedVariantID, setSelectedVariantID] = React.useState<string>("");
+export function AddToCartButton({
+  variants,
+  selectedVariantID,
+  onSelectedVariantIDChange,
+  showSelectionMeta = true,
+}: AddToCartButtonProps) {
+  const [localSelectedVariantID, setLocalSelectedVariantID] = React.useState<string>("");
   const [status, setStatus] = React.useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = React.useState<string>("");
   const { add } = useCart();
+  const currentSelectedVariantID = selectedVariantID ?? localSelectedVariantID;
+  const setSelectedVariantID = (variantID: string) => {
+    if (onSelectedVariantIDChange) {
+      onSelectedVariantIDChange(variantID);
+      return;
+    }
+    setLocalSelectedVariantID(variantID);
+  };
 
   React.useEffect(() => {
     if (variants.length === 0) {
-      setSelectedVariantID("");
+      if (onSelectedVariantIDChange) {
+        onSelectedVariantIDChange("");
+      } else {
+        setLocalSelectedVariantID("");
+      }
       return;
     }
     const firstAvailable = variants.find((variant) => variant.stock > 0) ?? variants[0];
-    setSelectedVariantID(firstAvailable.id);
-  }, [variants]);
+    if (onSelectedVariantIDChange) {
+      onSelectedVariantIDChange(firstAvailable.id);
+    } else {
+      setLocalSelectedVariantID(firstAvailable.id);
+    }
+  }, [onSelectedVariantIDChange, variants]);
 
-  const selectedVariant = variants.find((variant) => variant.id === selectedVariantID) ?? null;
+  const selectedVariant = variants.find((variant) => variant.id === currentSelectedVariantID) ?? null;
   const hasPurchasableVariant = variants.some((variant) => variant.stock > 0);
   const disableControls = variants.length === 0 || !hasPurchasableVariant;
   const canAdd = !!selectedVariant && selectedVariant.stock > 0;
 
   async function onClick() {
-    if (!selectedVariantID) return;
+    if (!currentSelectedVariantID) return;
     setStatus("loading");
     setMessage("");
     try {
-      await add(selectedVariantID, 1);
+      await add(currentSelectedVariantID, 1);
       setStatus("done");
       setMessage("Added to cart.");
     } catch {
@@ -95,7 +119,7 @@ export function AddToCartButton({ variants }: AddToCartButtonProps) {
       </label>
       <select
         id="variant"
-        value={selectedVariantID}
+        value={currentSelectedVariantID}
         onChange={(event) => setSelectedVariantID(event.target.value)}
         disabled={disableControls}
         className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-70"
@@ -130,7 +154,7 @@ export function AddToCartButton({ variants }: AddToCartButtonProps) {
         </div>
       )}
 
-      {selectedVariant && (
+      {showSelectionMeta && selectedVariant && (
         <div className="space-y-1 text-xs text-neutral-500">
           <p>SKU: {selectedVariant.sku || "N/A"}</p>
           <p>Price: {formatMoney(selectedVariant.priceCents, selectedVariant.currency)}</p>
