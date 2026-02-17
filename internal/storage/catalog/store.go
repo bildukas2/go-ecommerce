@@ -243,6 +243,19 @@ func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (Produc
 		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return ProductListResult{}, err
 		}
+
+		variants, err := s.listProductVariants(ctx, p.ID)
+		if err != nil {
+			return ProductListResult{}, err
+		}
+		p.Variants = variants
+
+		images, err := s.listProductImages(ctx, p.ID)
+		if err != nil {
+			return ProductListResult{}, err
+		}
+		p.Images = images
+
 		items = append(items, p)
 	}
 	if err := rows.Err(); err != nil {
@@ -261,57 +274,75 @@ func (s *Store) GetProductBySlug(ctx context.Context, slug string) (Product, err
 		return Product{}, err
 	}
 
-	variantRows, err := s.stmtListProductVariants.QueryContext(ctx, p.ID)
+	variants, err := s.listProductVariants(ctx, p.ID)
 	if err != nil {
 		return Product{}, err
 	}
-	defer variantRows.Close()
+	p.Variants = variants
 
-	p.Variants = make([]Variant, 0)
-	for variantRows.Next() {
+	images, err := s.listProductImages(ctx, p.ID)
+	if err != nil {
+		return Product{}, err
+	}
+	p.Images = images
+
+	return p, nil
+}
+
+func (s *Store) listProductVariants(ctx context.Context, productID string) ([]Variant, error) {
+	rows, err := s.stmtListProductVariants.QueryContext(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	variants := make([]Variant, 0)
+	for rows.Next() {
 		var (
 			v             Variant
 			attributesRaw []byte
 		)
-		if err := variantRows.Scan(
+		if err := rows.Scan(
 			&v.ID, &v.SKU, &v.PriceCents, &v.Currency, &v.Stock, &attributesRaw,
 		); err != nil {
-			return Product{}, err
+			return nil, err
 		}
 		if len(attributesRaw) > 0 {
 			var attrs map[string]interface{}
 			if err := json.Unmarshal(attributesRaw, &attrs); err != nil {
-				return Product{}, err
+				return nil, err
 			}
 			v.Attributes = attrs
 		} else {
 			v.Attributes = map[string]interface{}{}
 		}
-		p.Variants = append(p.Variants, v)
+		variants = append(variants, v)
 	}
-	if err := variantRows.Err(); err != nil {
-		return Product{}, err
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
+	return variants, nil
+}
 
-	imageRows, err := s.stmtListProductImages.QueryContext(ctx, p.ID)
+func (s *Store) listProductImages(ctx context.Context, productID string) ([]Image, error) {
+	rows, err := s.stmtListProductImages.QueryContext(ctx, productID)
 	if err != nil {
-		return Product{}, err
+		return nil, err
 	}
-	defer imageRows.Close()
+	defer rows.Close()
 
-	p.Images = make([]Image, 0)
-	for imageRows.Next() {
+	images := make([]Image, 0)
+	for rows.Next() {
 		var im Image
-		if err := imageRows.Scan(&im.ID, &im.URL, &im.Alt, &im.Sort); err != nil {
-			return Product{}, err
+		if err := rows.Scan(&im.ID, &im.URL, &im.Alt, &im.Sort); err != nil {
+			return nil, err
 		}
-		p.Images = append(p.Images, im)
+		images = append(images, im)
 	}
-	if err := imageRows.Err(); err != nil {
-		return Product{}, err
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
-
-	return p, nil
+	return images, nil
 }
 
 func (s *Store) ListCategories(ctx context.Context) ([]Category, error) {
