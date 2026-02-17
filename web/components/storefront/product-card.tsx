@@ -36,17 +36,13 @@ export function ProductCard({
                 </Chip>
               ) : null}
 
-              {imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageUrl}
-                  alt={title}
-                  className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-sm opacity-70">No image</div>
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl || "/images/noImage.png"}
+                alt={title}
+                className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                loading="lazy"
+              />
 
               <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 hover:opacity-100">
                 <div className="absolute -inset-10 bg-[radial-gradient(circle_at_30%_20%,rgba(0,114,245,.25),transparent_55%)]" />
