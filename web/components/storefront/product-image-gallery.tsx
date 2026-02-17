@@ -49,13 +49,15 @@ export function ProductImageGallery({ images, productTitle }: ProductImageGaller
 
   return (
     <div className="space-y-3">
-      <Image
-        src={mainImage.url}
-        alt={mainImage.alt || productTitle}
-        width={800}
-        height={800}
-        className="image-default-bg aspect-square w-full rounded-2xl border border-white/10 object-cover"
-      />
+      <div className="image-default-bg overflow-hidden rounded-2xl border border-white/10">
+        <Image
+          src={mainImage.url}
+          alt={mainImage.alt || productTitle}
+          width={800}
+          height={800}
+          className="aspect-square w-full object-cover"
+        />
+      </div>
 
       {hasThumbnails && (
         <div className="flex items-center gap-2">
