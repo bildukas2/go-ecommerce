@@ -7,10 +7,10 @@ export function HomeHero() {
     <section className="hero-aurora mx-auto max-w-6xl px-6 pb-12 pt-14 md:pb-16 md:pt-20">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-center">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8e9ee] bg-white px-3 py-1 text-xs font-medium text-[#7a7df4] shadow-[0_1px_2px_rgba(15,23,42,0.05)] dark:border-[#2b2d38] dark:bg-[#0b0d13] dark:text-[#8da2ff]">
-            <Flame size={11} className="text-[#ff8a4c] dark:text-[#ff9f6a]" aria-hidden="true" />
+          <span className="hero-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
+            <Flame size={11} className="hero-badge-flame" aria-hidden="true" />
             Built for fast, modern commerce
-            <ArrowUpRight size={10} className="text-neutral-500 opacity-70 dark:text-neutral-300" aria-hidden="true" />
+            <ArrowUpRight size={10} className="hero-badge-arrow opacity-70" aria-hidden="true" />
           </span>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
             Style your home with pieces that ship fast.

@@ -7,6 +7,11 @@
   --surface-border: rgba(17, 24, 28, 0.08);
   --glow-primary: rgba(99, 102, 241, 0.07);
   --glow-secondary: rgba(168, 85, 247, 0.06);
+  --hero-badge-bg: #ffffff;
+  --hero-badge-border: #e8e9ee;
+  --hero-badge-text: #7a7df4;
+  --hero-badge-icon: #ff8a4c;
+  --hero-badge-arrow: #6b7280;
 }
 
 @theme inline {
@@ -25,6 +30,11 @@
   --surface-border: rgba(255, 255, 255, 0.12);
   --glow-primary: rgba(99, 102, 241, 0.24);
   --glow-secondary: rgba(168, 85, 247, 0.2);
+  --hero-badge-bg: #0b0d13;
+  --hero-badge-border: #2b2d38;
+  --hero-badge-text: #8da2ff;
+  --hero-badge-icon: #ff9f6a;
+  --hero-badge-arrow: #d1d5db;
 }
 
 body {
@@ -63,6 +73,21 @@ body {
 
 .dark .glass {
   backdrop-filter: blur(14px);
+}
+
+.hero-badge {
+  background: var(--hero-badge-bg);
+  border: 1px solid var(--hero-badge-border);
+  color: var(--hero-badge-text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.hero-badge-flame {
+  color: var(--hero-badge-icon);
+}
+
+.hero-badge-arrow {
+  color: var(--hero-badge-arrow);
 }
 
 .glass-lift {
