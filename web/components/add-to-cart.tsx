@@ -10,9 +10,17 @@ import { formatMoney } from "@/lib/money";
 
 type AddToCartButtonProps = {
   variants: ProductVariant[];
+  selectedVariantID?: string;
+  onSelectedVariantIDChange?: (id: string) => void;
+  showSelectionMeta?: boolean;
 };
 
-export function AddToCartButton({ variants }: AddToCartButtonProps) {
+export function AddToCartButton({ 
+  variants, 
+  selectedVariantID, 
+  onSelectedVariantIDChange,
+  showSelectionMeta = true 
+}: AddToCartButtonProps) {
   const [selectedAttributes, setSelectedAttributes] = React.useState<Record<string, string>>({});
   const [status, setStatus] = React.useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = React.useState<string>("");
@@ -35,18 +43,6 @@ export function AddToCartButton({ variants }: AddToCartButtonProps) {
     return { keys, values };
   }, [variants]);
 
-  // Initial selection
-  React.useEffect(() => {
-    if (variants.length > 0 && Object.keys(selectedAttributes).length === 0) {
-      const firstAvailable = variants.find((variant) => variant.stock > 0) ?? variants[0];
-      const initialAttrs: Record<string, string> = {};
-      Object.entries(firstAvailable.attributes || {}).forEach(([k, v]) => {
-        initialAttrs[k] = String(v);
-      });
-      setSelectedAttributes(initialAttrs);
-    }
-  }, [variants, selectedAttributes]);
-
   // Find the variant that matches all selected attributes
   const selectedVariant = React.useMemo(() => {
     if (Object.keys(selectedAttributes).length === 0) return null;
@@ -58,6 +54,46 @@ export function AddToCartButton({ variants }: AddToCartButtonProps) {
       }) ?? null
     );
   }, [variants, selectedAttributes]);
+
+  // Sync internal selectedAttributes with external selectedVariantID if provided
+  React.useEffect(() => {
+    if (selectedVariantID) {
+      const variant = variants.find(v => v.id === selectedVariantID);
+      if (variant) {
+        const nextAttrs: Record<string, string> = {};
+        Object.entries(variant.attributes || {}).forEach(([k, v]) => {
+          nextAttrs[k] = String(v);
+        });
+        // Only update if different to avoid loops
+        const currentKeys = Object.keys(selectedAttributes);
+        const nextKeys = Object.keys(nextAttrs);
+        const changed = currentKeys.length !== nextKeys.length || currentKeys.some(k => selectedAttributes[k] !== nextAttrs[k]);
+        
+        if (changed) {
+          setSelectedAttributes(nextAttrs);
+        }
+      }
+    }
+  }, [selectedVariantID, variants]);
+
+  // Notify parent of variant change
+  React.useEffect(() => {
+    if (selectedVariant && onSelectedVariantIDChange && selectedVariant.id !== selectedVariantID) {
+      onSelectedVariantIDChange(selectedVariant.id);
+    }
+  }, [selectedVariant, onSelectedVariantIDChange, selectedVariantID]);
+
+  // Initial selection if no external ID
+  React.useEffect(() => {
+    if (!selectedVariantID && variants.length > 0 && Object.keys(selectedAttributes).length === 0) {
+      const firstAvailable = variants.find((variant) => variant.stock > 0) ?? variants[0];
+      const initialAttrs: Record<string, string> = {};
+      Object.entries(firstAvailable.attributes || {}).forEach(([k, v]) => {
+        initialAttrs[k] = String(v);
+      });
+      setSelectedAttributes(initialAttrs);
+    }
+  }, [variants, selectedAttributes, selectedVariantID]);
 
   const hasPurchasableVariant = variants.some((variant) => variant.stock > 0);
   const disableControls = variants.length === 0 || !hasPurchasableVariant;
