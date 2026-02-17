@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7faff;
+  --foreground: #0b1220;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-border: rgba(15, 23, 42, 0.1);
+  --glow-primary: rgba(0, 114, 245, 0.22);
+  --glow-secondary: rgba(34, 211, 238, 0.18);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #060812;
+  --foreground: #eaf0ff;
+  --surface: rgba(15, 23, 42, 0.35);
+  --surface-border: rgba(148, 163, 184, 0.2);
+  --glow-primary: rgba(0, 114, 245, 0.3);
+  --glow-secondary: rgba(34, 211, 238, 0.22);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.hero-aurora {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-aurora::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  z-index: -1;
+  background:
+    radial-gradient(600px 320px at 15% 20%, var(--glow-primary), transparent 60%),
+    radial-gradient(520px 300px at 85% 10%, var(--glow-secondary), transparent 60%),
+    radial-gradient(540px 320px at 55% 80%, var(--glow-primary), transparent 64%);
+  filter: blur(14px);
+  opacity: 1;
+}
+
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(14px);
+}
+
+.dark .glass {
+  backdrop-filter: blur(16px);
+}
+
+.glass-lift {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.glass-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.14);
+  border-color: color-mix(in srgb, var(--surface-border) 70%, #0072f5 30%);
+}
+
+.dark .glass-lift:hover {
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-lift {
+    transition: none;
+  }
+
+  .glass-lift:hover {
+    transform: none;
+  }
 }
