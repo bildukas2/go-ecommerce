@@ -54,7 +54,7 @@ export function ProductImageGallery({ images, productTitle }: ProductImageGaller
         alt={mainImage.alt || productTitle}
         width={800}
         height={800}
-        className="aspect-square w-full rounded-2xl border border-white/10 bg-neutral-100 object-cover dark:bg-neutral-900"
+        className="image-default-bg aspect-square w-full rounded-2xl border border-white/10 object-cover"
       />
 
       {hasThumbnails && (
@@ -81,7 +81,7 @@ export function ProductImageGallery({ images, productTitle }: ProductImageGaller
                   key={image.id}
                   type="button"
                   onClick={() => selectImage(absoluteIndex)}
-                  className={`overflow-hidden rounded-xl border bg-background/40 transition ${
+                  className={`image-default-bg overflow-hidden rounded-xl border transition ${
                     isActive ? "border-primary ring-1 ring-primary/60" : "border-white/10 hover:border-white/25"
                   }`}
                   aria-label={`Show image ${absoluteIndex + 1}`}

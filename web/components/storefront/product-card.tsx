@@ -29,7 +29,7 @@ export function ProductCard({
       <Card className="glass glass-lift h-full rounded-2xl">
         <CardBody className="p-3">
           <Link href={`/products/${encodeURIComponent(slug)}`} className="block">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-surface-border bg-black/5 dark:bg-white/5">
+            <div className="image-default-bg relative aspect-[4/3] overflow-hidden rounded-2xl border border-surface-border">
               {badge ? (
                 <Chip size="sm" className="glass absolute left-3 top-3 z-10" variant="flat" color="primary">
                   {badge}

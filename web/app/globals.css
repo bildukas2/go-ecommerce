@@ -104,6 +104,30 @@ body {
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.4);
 }
 
+.image-default-bg {
+  background-color: #f3f4f6;
+  background-image:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.14) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.14) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.14) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.14) 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+.dark .image-default-bg {
+  background-color: #111827;
+  background-image:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.11) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.11) 75%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .glass-lift {
     transition: none;
