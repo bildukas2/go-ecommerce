@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 
 export function HomeHero() {
   return (
-    <section className="mx-auto max-w-6xl px-6 pt-14 pb-12 md:pt-20 md:pb-16">
+    <section className="mx-auto max-w-6xl px-6 pb-12 pt-14 md:pb-16 md:pt-20">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-center">
         <div>
-          <span className="inline-flex rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+          <span className="glass inline-flex rounded-full px-3 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-300">
             Built for fast, modern commerce
           </span>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-neutral-950 md:text-5xl dark:text-neutral-100">
@@ -25,11 +25,13 @@ export function HomeHero() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-gradient-to-br from-neutral-100 via-white to-neutral-200 p-6 dark:border-neutral-800 dark:from-neutral-900 dark:via-neutral-950 dark:to-neutral-900">
-          <div className="aspect-[16/9] rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-black/5 dark:bg-neutral-900/70 dark:ring-white/10">
+        <div className="glass relative overflow-hidden rounded-3xl p-6">
+          <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,var(--glow-secondary)_0%,transparent_65%)]" />
+          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,var(--glow-primary)_0%,transparent_70%)]" />
+          <div className="relative aspect-[16/9] rounded-2xl border border-surface-border bg-white/70 p-6 ring-1 ring-black/5 dark:bg-neutral-900/70 dark:ring-white/10">
             <div className="flex h-full flex-col justify-between">
               <div>
-                <p className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Today’s spotlight</p>
+                <p className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Today&apos;s spotlight</p>
                 <h2 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Weekend Living Room Refresh</h2>
               </div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">

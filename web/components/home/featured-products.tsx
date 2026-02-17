@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Product } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/glass-card";
 
 type FeaturedProductsProps = {
   products: Product[];
@@ -17,20 +18,18 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
       </div>
 
       {products.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-neutral-300 p-8 text-center text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">
+        <GlassCard className="rounded-2xl border-dashed p-8 text-center text-neutral-600 dark:text-neutral-300">
           No featured products available yet.
-        </div>
+        </GlassCard>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {products.map((product) => (
-            <Link
-              key={product.id}
-              href={`/products/${encodeURIComponent(product.slug)}`}
-              className="group rounded-2xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
-            >
-              <div className="aspect-[4/3] rounded-xl bg-neutral-100 transition-opacity group-hover:opacity-90 dark:bg-neutral-900" />
-              <h3 className="mt-4 line-clamp-2 text-base font-medium text-neutral-900 dark:text-neutral-100">{product.title}</h3>
-              <p className="mt-2 line-clamp-2 text-sm text-neutral-600 dark:text-neutral-400">{product.description}</p>
+            <Link key={product.id} href={`/products/${encodeURIComponent(product.slug)}`} className="group">
+              <GlassCard className="h-full p-4">
+                <div className="aspect-[4/3] rounded-xl bg-gradient-to-br from-neutral-100 via-white to-neutral-100 transition-opacity group-hover:opacity-90 dark:from-neutral-900 dark:via-neutral-950 dark:to-neutral-900" />
+                <h3 className="mt-4 line-clamp-2 text-base font-medium text-neutral-900 dark:text-neutral-100">{product.title}</h3>
+                <p className="mt-2 line-clamp-2 text-sm text-neutral-600 dark:text-neutral-400">{product.description}</p>
+              </GlassCard>
             </Link>
           ))}
         </div>

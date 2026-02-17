@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Category } from "@/lib/api";
+import { GlassCard } from "@/components/ui/glass-card";
 
 type FeaturedCategoriesProps = {
   categories: Category[];
@@ -19,16 +20,14 @@ export function FeaturedCategories({ categories }: FeaturedCategoriesProps) {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {featured.map((category) => (
-          <Link
-            key={category.id}
-            href={`/products?category=${encodeURIComponent(category.slug)}`}
-            className="group rounded-2xl border border-neutral-200 bg-white p-5 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
-          >
-            <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Category</p>
-            <h3 className="mt-2 text-lg font-medium text-neutral-900 dark:text-neutral-100">{category.name}</h3>
-            <p className="mt-3 text-sm text-neutral-600 transition-transform group-hover:translate-x-1 dark:text-neutral-400">
-              Explore products →
-            </p>
+          <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group">
+            <GlassCard className="p-5 transition-colors hover:bg-white/80 dark:hover:bg-slate-900/50">
+              <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Category</p>
+              <h3 className="mt-2 text-lg font-medium text-neutral-900 dark:text-neutral-100">{category.name}</h3>
+              <p className="mt-3 text-sm text-neutral-600 transition-transform group-hover:translate-x-1 dark:text-neutral-400">
+                Explore products -&gt;
+              </p>
+            </GlassCard>
           </Link>
         ))}
       </div>
