@@ -22,6 +22,8 @@ type CartItem struct {
 	UnitPriceCents   int
 	Currency         string
 	Quantity         int
+	ProductTitle     string
+	ImageURL         string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -64,9 +66,22 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtListCartItems, err := db.PrepareContext(ctx, `
-		SELECT id, cart_id, product_variant_id, unit_price_cents, currency, quantity, created_at, updated_at
-		FROM cart_items WHERE cart_id = $1
-		ORDER BY created_at ASC`)
+		SELECT 
+			ci.id, ci.cart_id, ci.product_variant_id, ci.unit_price_cents, ci.currency, ci.quantity, 
+			p.title,
+			COALESCE(img.url, '/images/noImage.png'),
+			ci.created_at, ci.updated_at
+		FROM cart_items ci
+		JOIN product_variants pv ON ci.product_variant_id = pv.id
+		JOIN products p ON pv.product_id = p.id
+		LEFT JOIN LATERAL (
+			SELECT url FROM images 
+			WHERE product_id = p.id 
+			ORDER BY sort ASC 
+			LIMIT 1
+		) img ON true
+		WHERE ci.cart_id = $1
+		ORDER BY ci.created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +174,7 @@ func (s *Store) GetCart(ctx context.Context, cartID string) (Cart, error) {
 	var itemCount int
 	for rows.Next() {
 		var it CartItem
-		if err := rows.Scan(&it.ID, &it.CartID, &it.ProductVariantID, &it.UnitPriceCents, &it.Currency, &it.Quantity, &it.CreatedAt, &it.UpdatedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.CartID, &it.ProductVariantID, &it.UnitPriceCents, &it.Currency, &it.Quantity, &it.ProductTitle, &it.ImageURL, &it.CreatedAt, &it.UpdatedAt); err != nil {
 			return Cart{}, err
 		}
 		items = append(items, it)
