@@ -65,4 +65,56 @@ func TestGetProductBySlugIncludesVariantsAndImages(t *testing.T) {
 	if product.Images[0].URL == "" {
 		t.Fatalf("expected image url")
 	}
+	if len(product.Variants[0].Attributes) == 0 {
+		t.Fatalf("expected attributes for seeded product")
+	}
+}
+
+func TestListProductsIncludesVariantsAndImages(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("new store error: %v", err)
+	}
+	defer store.Close()
+
+	res, err := store.ListProducts(ctx, ListProductsParams{
+		Pagination: Pagination{Page: 1, Limit: 10},
+	})
+	if err != nil {
+		t.Fatalf("list products error: %v", err)
+	}
+
+	if len(res.Items) == 0 {
+		t.Skip("no products found in database; cannot verify variants/images")
+	}
+
+	foundWithVariants := false
+	foundWithImages := false
+
+	for _, p := range res.Items {
+		if len(p.Variants) > 0 {
+			foundWithVariants = true
+		}
+		if len(p.Images) > 0 {
+			foundWithImages = true
+		}
+	}
+
+	if !foundWithVariants {
+		t.Error("expected at least one product in list to have variants")
+	}
+	if !foundWithImages {
+		t.Error("expected at least one product in list to have images")
+	}
 }
