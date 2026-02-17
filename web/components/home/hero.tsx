@@ -6,8 +6,10 @@ export function HomeHero() {
     <section className="hero-aurora mx-auto max-w-6xl px-6 pb-12 pt-14 md:pb-16 md:pt-20">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-center">
         <div>
-          <span className="glass inline-flex rounded-full px-3 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-300">
-            Built for fast, modern commerce
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#101014] px-3 py-1 text-xs font-medium text-[#7c8cff] dark:border-[#2e2e36] dark:bg-[#0f1014] dark:text-[#7f90ff]">
+            <span aria-hidden="true">🔥</span>
+            HeroUI v3.0.0 (Beta)
+            <span className="text-[10px] opacity-70" aria-hidden="true">↗</span>
           </span>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
             Style your home with pieces that ship fast.
@@ -16,10 +18,17 @@ export function HomeHero() {
             Discover curated essentials, bestselling favorites, and new arrivals in one seamless storefront.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild>
+            <Button
+              asChild
+              className="rounded-full border-0 bg-[#0072f5] px-5 text-white hover:bg-[#0065db] dark:bg-[#0072f5] dark:text-white dark:hover:bg-[#0b7bff]"
+            >
               <Link href="/products">Shop featured products</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-full border border-neutral-300 bg-neutral-100 text-neutral-800 hover:bg-neutral-200 dark:border-[#2e3038] dark:bg-[#16181f] dark:text-neutral-200 dark:hover:bg-[#1d2028]"
+            >
               <Link href="/products">Browse all products</Link>
             </Button>
           </div>
