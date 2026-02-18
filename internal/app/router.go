@@ -24,6 +24,12 @@ type Deps struct {
 
 func NewRouter(deps Deps) http.Handler {
 	mux := http.NewServeMux()
+	uploadsDir := strings.TrimSpace(os.Getenv("UPLOADS_DIR"))
+	if uploadsDir == "" {
+		uploadsDir = "./tmp/uploads"
+	}
+	_ = os.MkdirAll(uploadsDir, 0o755)
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		_ = platformhttp.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
