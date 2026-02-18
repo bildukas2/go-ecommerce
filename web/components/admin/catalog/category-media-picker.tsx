@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type { AdminMediaAsset } from "@/lib/api";
 
 type CategoryMediaPickerProps = {
@@ -8,6 +11,15 @@ type CategoryMediaPickerProps = {
   importAction: (formData: FormData) => Promise<void>;
 };
 
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const idx = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const scaled = value / 1024 ** idx;
+  const digits = scaled >= 10 || idx === 0 ? 0 : 1;
+  return `${scaled.toFixed(digits)} ${units[idx]}`;
+}
+
 export function CategoryMediaPicker({
   mediaAssets,
   mediaLoadError,
@@ -15,6 +27,30 @@ export function CategoryMediaPicker({
   uploadAction,
   importAction,
 }: CategoryMediaPickerProps) {
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedURL, setSelectedURL] = useState(defaultImageURL);
+
+  const selectedAsset = useMemo(
+    () => mediaAssets.find((asset) => asset.url === selectedURL) ?? null,
+    [mediaAssets, selectedURL],
+  );
+
+  const filteredAssets = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return mediaAssets;
+    return mediaAssets.filter((asset) => {
+      const title = asset.alt || asset.id;
+      return (
+        title.toLowerCase().includes(query) ||
+        asset.mime_type.toLowerCase().includes(query) ||
+        asset.url.toLowerCase().includes(query)
+      );
+    });
+  }, [mediaAssets, search]);
+
+  const selectedLabel = selectedAsset?.alt || selectedAsset?.id.slice(0, 8) || "No media selected";
+
   return (
     <div className="space-y-3 rounded-xl border border-surface-border bg-foreground/[0.02] p-3">
       <label className="space-y-1 text-sm">
@@ -28,38 +64,120 @@ export function CategoryMediaPicker({
         />
       </label>
 
-      <label className="space-y-1 text-sm">
+      <input type="hidden" name="media_selected_url" value={selectedURL} />
+      <div className="space-y-2 text-sm">
         <span>Select from media library</span>
-        <div className="rounded-xl border border-surface-border bg-background p-2">
-          <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-sm">
-            <input type="radio" name="media_selected_url" value="" defaultChecked={!defaultImageURL} />
-            <span>Keep manual URL</span>
-          </label>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-surface-border bg-background p-2">
+          <button
+            type="button"
+            onClick={() => setIsPickerOpen(true)}
+            className="rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
+          >
+            Open media library
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedURL("")}
+            className="rounded-lg border border-surface-border bg-foreground/[0.02] px-3 py-2 text-sm"
+          >
+            Use manual URL
+          </button>
+          <span className="text-xs text-foreground/65">
+            {selectedAsset ? `Selected: ${selectedLabel}` : "No media selected"}
+          </span>
+        </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            {mediaAssets.map((asset) => {
-              const label = asset.alt ? `${asset.alt} (${asset.mime_type})` : `${asset.mime_type} - ${asset.id.slice(0, 8)}`;
-              return (
-                <label key={asset.id} className="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="media_selected_url"
-                    value={asset.url}
-                    defaultChecked={asset.url === defaultImageURL}
-                    className="peer sr-only"
-                  />
-                  <div className="overflow-hidden rounded-lg border border-surface-border transition peer-checked:border-blue-500 peer-checked:ring-2 peer-checked:ring-blue-500/30">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={asset.url} alt={asset.alt || "Media asset preview"} className="h-24 w-full bg-foreground/[0.03] object-cover" loading="lazy" />
-                    <p className="truncate px-2 py-1 text-xs text-foreground/75">{label}</p>
-                  </div>
-                </label>
-              );
-            })}
+        {selectedAsset && (
+          <div className="overflow-hidden rounded-xl border border-surface-border bg-background">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={selectedAsset.url} alt={selectedAsset.alt || "Selected media preview"} className="h-28 w-full object-cover" loading="lazy" />
+            <div className="grid gap-0.5 px-3 py-2 text-xs text-foreground/70">
+              <p className="truncate font-medium text-foreground">{selectedLabel}</p>
+              <p>{selectedAsset.mime_type}</p>
+              <p>{formatBytes(selectedAsset.size_bytes)}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
+              <div>
+                <h3 className="text-base font-semibold">Media library</h3>
+                <p className="text-xs text-foreground/65">Select an image and click &quot;Use selected image&quot;.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPickerOpen(false)}
+                className="rounded-lg border border-surface-border px-3 py-1.5 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="border-b border-surface-border px-4 py-3">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by title, URL, or mime type"
+                className="w-full rounded-xl border border-surface-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {filteredAssets.length === 0 ? (
+                <p className="rounded-xl border border-surface-border bg-foreground/[0.02] p-4 text-sm text-foreground/70">
+                  No media found for this search.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredAssets.map((asset) => {
+                    const isSelected = selectedURL === asset.url;
+                    const title = asset.alt || `Asset ${asset.id.slice(0, 8)}`;
+                    return (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        onClick={() => setSelectedURL(asset.url)}
+                        className={`overflow-hidden rounded-xl border text-left transition ${
+                          isSelected
+                            ? "border-blue-500 ring-2 ring-blue-500/25"
+                            : "border-surface-border hover:border-blue-400/60"
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={asset.url} alt={asset.alt || "Media asset preview"} className="h-36 w-full bg-foreground/[0.03] object-cover" loading="lazy" />
+                        <div className="space-y-0.5 px-3 py-2">
+                          <p className="truncate text-sm font-medium">{title}</p>
+                          <p className="truncate text-xs text-foreground/70">{asset.mime_type}</p>
+                          <p className="text-xs text-foreground/70">{formatBytes(asset.size_bytes)}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-surface-border px-4 py-3">
+              <p className="truncate text-xs text-foreground/65">
+                {selectedAsset ? `Selected: ${selectedLabel}` : "No image selected"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsPickerOpen(false)}
+                className="rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
+              >
+                Use selected image
+              </button>
+            </div>
           </div>
         </div>
-        <p className="text-xs text-foreground/65">Pick an image card to apply it, then submit create/save.</p>
-      </label>
+      )}
+
+      <p className="text-xs text-foreground/65">Choose image in popup, then submit create/save.</p>
 
       {mediaLoadError && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
