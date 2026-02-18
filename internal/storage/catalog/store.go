@@ -10,23 +10,26 @@ import (
 
 // Product represents a product row from the catalog.
 type Product struct {
-	ID          string    `json:"id"`
-	Slug        string    `json:"slug"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Variants    []Variant `json:"variants"`
-	Images      []Image   `json:"images"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID             string    `json:"id"`
+	Slug           string    `json:"slug"`
+	Title          string    `json:"title"`
+	Description    string    `json:"description"`
+	SEOTitle       *string   `json:"seoTitle"`
+	SEODescription *string   `json:"seoDescription"`
+	Variants       []Variant `json:"variants"`
+	Images         []Image   `json:"images"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 type Variant struct {
-	ID         string                 `json:"id"`
-	SKU        string                 `json:"sku"`
-	PriceCents int                    `json:"priceCents"`
-	Currency   string                 `json:"currency"`
-	Stock      int                    `json:"stock"`
-	Attributes map[string]interface{} `json:"attributes"`
+	ID                  string                 `json:"id"`
+	SKU                 string                 `json:"sku"`
+	PriceCents          int                    `json:"priceCents"`
+	CompareAtPriceCents *int                   `json:"compareAtPriceCents"`
+	Currency            string                 `json:"currency"`
+	Stock               int                    `json:"stock"`
+	Attributes          map[string]interface{} `json:"attributes"`
 }
 
 type Image struct {
@@ -42,28 +45,43 @@ type Category struct {
 	ID              string         `json:"id"`
 	Slug            string         `json:"slug"`
 	Name            string         `json:"name"`
+	Description     string         `json:"description"`
 	ParentID        sql.NullString `json:"-"`
 	DefaultImageURL sql.NullString `json:"-"`
+	SEOTitle        sql.NullString `json:"-"`
+	SEODescription  sql.NullString `json:"-"`
 }
 
 func (c Category) MarshalJSON() ([]byte, error) {
 	type Alias Category
 	var pid *string
 	var defaultImageURL *string
+	var seoTitle *string
+	var seoDescription *string
 	if c.ParentID.Valid {
 		pid = &c.ParentID.String
 	}
 	if c.DefaultImageURL.Valid {
 		defaultImageURL = &c.DefaultImageURL.String
 	}
+	if c.SEOTitle.Valid {
+		seoTitle = &c.SEOTitle.String
+	}
+	if c.SEODescription.Valid {
+		seoDescription = &c.SEODescription.String
+	}
 	return json.Marshal(&struct {
 		Alias
 		ParentID        *string `json:"parentId"`
 		DefaultImageURL *string `json:"defaultImageUrl"`
+		SEOTitle        *string `json:"seoTitle"`
+		SEODescription  *string `json:"seoDescription"`
 	}{
 		Alias:           Alias(c),
 		ParentID:        pid,
 		DefaultImageURL: defaultImageURL,
+		SEOTitle:        seoTitle,
+		SEODescription:  seoDescription,
 	})
 }
 
@@ -106,7 +124,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 	// Prepare statements
 	stmtList, err := db.PrepareContext(ctx, `
-		SELECT p.id, p.slug, p.title, p.description, p.created_at, p.updated_at
+		SELECT p.id, p.slug, p.title, p.description, p.seo_title, p.seo_description, p.created_at, p.updated_at
 		FROM products p
 		ORDER BY p.title ASC
 		LIMIT $1 OFFSET $2`)
@@ -115,7 +133,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtListByCat, err := db.PrepareContext(ctx, `
-		SELECT p.id, p.slug, p.title, p.description, p.created_at, p.updated_at
+		SELECT p.id, p.slug, p.title, p.description, p.seo_title, p.seo_description, p.created_at, p.updated_at
 		FROM products p
 		JOIN product_categories pc ON pc.product_id = p.id
 		JOIN categories c ON c.id = pc.category_id
@@ -142,14 +160,14 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtGetBySlug, err := db.PrepareContext(ctx, `
-		SELECT id, slug, title, description, created_at, updated_at
+		SELECT id, slug, title, description, seo_title, seo_description, created_at, updated_at
 		FROM products WHERE slug = $1`)
 	if err != nil {
 		return nil, err
 	}
 
 	stmtListVariants, err := db.PrepareContext(ctx, `
-		SELECT id, sku, price_cents, currency, stock, attributes_json
+		SELECT id, sku, price_cents, compare_at_price_cents, currency, stock, attributes_json
 		FROM product_variants
 		WHERE product_id = $1
 		ORDER BY sku ASC`)
@@ -167,7 +185,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtListCats, err := db.PrepareContext(ctx, `
-		SELECT id, slug, name, parent_id, default_image_url FROM categories ORDER BY name ASC`)
+		SELECT id, slug, name, description, parent_id, default_image_url, seo_title, seo_description FROM categories ORDER BY name ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -248,8 +266,16 @@ func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (Produc
 	items := make([]Product, 0, limit)
 	for rows.Next() {
 		var p Product
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		var seoTitle sql.NullString
+		var seoDescription sql.NullString
+		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return ProductListResult{}, err
+		}
+		if seoTitle.Valid {
+			p.SEOTitle = &seoTitle.String
+		}
+		if seoDescription.Valid {
+			p.SEODescription = &seoDescription.String
 		}
 
 		variants, err := s.listProductVariants(ctx, p.ID)
@@ -275,11 +301,19 @@ func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (Produc
 
 func (s *Store) GetProductBySlug(ctx context.Context, slug string) (Product, error) {
 	var p Product
+	var seoTitle sql.NullString
+	var seoDescription sql.NullString
 	err := s.stmtGetProductBySlug.QueryRowContext(ctx, slug).Scan(
-		&p.ID, &p.Slug, &p.Title, &p.Description, &p.CreatedAt, &p.UpdatedAt,
+		&p.ID, &p.Slug, &p.Title, &p.Description, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return Product{}, err
+	}
+	if seoTitle.Valid {
+		p.SEOTitle = &seoTitle.String
+	}
+	if seoDescription.Valid {
+		p.SEODescription = &seoDescription.String
 	}
 
 	variants, err := s.listProductVariants(ctx, p.ID)
@@ -308,12 +342,17 @@ func (s *Store) listProductVariants(ctx context.Context, productID string) ([]Va
 	for rows.Next() {
 		var (
 			v             Variant
+			compareAtRaw  sql.NullInt64
 			attributesRaw []byte
 		)
 		if err := rows.Scan(
-			&v.ID, &v.SKU, &v.PriceCents, &v.Currency, &v.Stock, &attributesRaw,
+			&v.ID, &v.SKU, &v.PriceCents, &compareAtRaw, &v.Currency, &v.Stock, &attributesRaw,
 		); err != nil {
 			return nil, err
+		}
+		if compareAtRaw.Valid {
+			compareAt := int(compareAtRaw.Int64)
+			v.CompareAtPriceCents = &compareAt
 		}
 		if len(attributesRaw) > 0 {
 			var attrs map[string]interface{}
@@ -362,7 +401,7 @@ func (s *Store) ListCategories(ctx context.Context) ([]Category, error) {
 	var out []Category
 	for rows.Next() {
 		var c Category
-		if err := rows.Scan(&c.ID, &c.Slug, &c.Name, &c.ParentID, &c.DefaultImageURL); err != nil {
+		if err := rows.Scan(&c.ID, &c.Slug, &c.Name, &c.Description, &c.ParentID, &c.DefaultImageURL, &c.SEOTitle, &c.SEODescription); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

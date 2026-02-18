@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	platformdb "goecommerce/internal/platform/db"
 )
@@ -127,8 +129,11 @@ func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
 			ID:              "cat-1",
 			Slug:            "apparel",
 			Name:            "Apparel",
+			Description:     "Apparel category",
 			ParentID:        sql.NullString{String: "parent-1", Valid: true},
 			DefaultImageURL: sql.NullString{String: "https://images.example.com/apparel.jpg", Valid: true},
+			SEOTitle:        sql.NullString{String: "Apparel SEO", Valid: true},
+			SEODescription:  sql.NullString{String: "Shop all apparel", Valid: true},
 		}
 
 		raw, err := json.Marshal(c)
@@ -147,6 +152,15 @@ func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
 		if out["defaultImageUrl"] != "https://images.example.com/apparel.jpg" {
 			t.Fatalf("expected defaultImageUrl to be set, got %#v", out["defaultImageUrl"])
 		}
+		if out["description"] != "Apparel category" {
+			t.Fatalf("expected description to be set, got %#v", out["description"])
+		}
+		if out["seoTitle"] != "Apparel SEO" {
+			t.Fatalf("expected seoTitle to be set, got %#v", out["seoTitle"])
+		}
+		if out["seoDescription"] != "Shop all apparel" {
+			t.Fatalf("expected seoDescription to be set, got %#v", out["seoDescription"])
+		}
 	})
 
 	t.Run("without values", func(t *testing.T) {
@@ -154,8 +168,11 @@ func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
 			ID:              "cat-1",
 			Slug:            "apparel",
 			Name:            "Apparel",
+			Description:     "",
 			ParentID:        sql.NullString{Valid: false},
 			DefaultImageURL: sql.NullString{Valid: false},
+			SEOTitle:        sql.NullString{Valid: false},
+			SEODescription:  sql.NullString{Valid: false},
 		}
 
 		raw, err := json.Marshal(c)
@@ -174,7 +191,69 @@ func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
 		if out["defaultImageUrl"] != nil {
 			t.Fatalf("expected defaultImageUrl null, got %#v", out["defaultImageUrl"])
 		}
+		if out["seoTitle"] != nil {
+			t.Fatalf("expected seoTitle null, got %#v", out["seoTitle"])
+		}
+		if out["seoDescription"] != nil {
+			t.Fatalf("expected seoDescription null, got %#v", out["seoDescription"])
+		}
 	})
+}
+
+func TestProductAndVariantMarshalJSONIncludesSEOAndCompareAt(t *testing.T) {
+	seoTitle := "Basic Tee SEO"
+	seoDescription := "Soft cotton tee"
+	compareAt := 2000
+
+	product := Product{
+		ID:             "prod-1",
+		Slug:           "basic-tee",
+		Title:          "Basic Tee",
+		Description:    "Everyday tee",
+		SEOTitle:       &seoTitle,
+		SEODescription: &seoDescription,
+		Variants: []Variant{
+			{
+				ID:                  "var-1",
+				SKU:                 "TEE-S",
+				PriceCents:          1500,
+				CompareAtPriceCents: &compareAt,
+				Currency:            "EUR",
+				Stock:               10,
+				Attributes:          map[string]interface{}{"size": "S"},
+			},
+		},
+		Images: []Image{{ID: "img-1", URL: "https://images.example.com/tee.jpg", Alt: "tee", Sort: 1, IsDefault: true}},
+	}
+
+	raw, err := json.Marshal(product)
+	if err != nil {
+		t.Fatalf("marshal product: %v", err)
+	}
+
+	var out map[string]interface{}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("unmarshal product json: %v", err)
+	}
+
+	if out["seoTitle"] != seoTitle {
+		t.Fatalf("expected seoTitle %q, got %#v", seoTitle, out["seoTitle"])
+	}
+	if out["seoDescription"] != seoDescription {
+		t.Fatalf("expected seoDescription %q, got %#v", seoDescription, out["seoDescription"])
+	}
+
+	variantsRaw, ok := out["variants"].([]interface{})
+	if !ok || len(variantsRaw) != 1 {
+		t.Fatalf("expected one variant in output, got %#v", out["variants"])
+	}
+	variantOut, ok := variantsRaw[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected variant object, got %#v", variantsRaw[0])
+	}
+	if variantOut["compareAtPriceCents"] != float64(compareAt) {
+		t.Fatalf("expected compareAtPriceCents %d, got %#v", compareAt, variantOut["compareAtPriceCents"])
+	}
 }
 
 func TestImageMarshalJSONIncludesIsDefault(t *testing.T) {
@@ -225,4 +304,51 @@ func TestImageMarshalJSONIncludesIsDefault(t *testing.T) {
 			t.Fatalf("expected isDefault false, got %#v", out["isDefault"])
 		}
 	})
+}
+
+func TestProductVariantCompareAtPriceConstraint(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin tx error: %v", err)
+	}
+	defer tx.Rollback()
+
+	suffix := time.Now().UnixNano()
+	productSlug := fmt.Sprintf("discount-test-%d", suffix)
+	skuOK := fmt.Sprintf("SKU-OK-%d", suffix)
+	skuBad := fmt.Sprintf("SKU-BAD-%d", suffix)
+
+	var productID string
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO products (slug, title, description)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, productSlug, "Discount Test Product", "tmp").Scan(&productID); err != nil {
+		t.Fatalf("insert product: %v", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO product_variants (product_id, sku, price_cents, compare_at_price_cents, currency, stock, attributes_json)
+		VALUES ($1, $2, 1000, 1200, 'EUR', 1, '{}'::jsonb)
+	`, productID, skuOK); err != nil {
+		t.Fatalf("expected valid compare_at insert to succeed: %v", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO product_variants (product_id, sku, price_cents, compare_at_price_cents, currency, stock, attributes_json)
+		VALUES ($1, $2, 1000, 900, 'EUR', 1, '{}'::jsonb)
+	`, productID, skuBad); err == nil {
+		t.Fatalf("expected compare_at < price insert to fail")
+	}
 }
