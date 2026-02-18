@@ -428,6 +428,127 @@ async function adminCatalogRequest<T>({ path, method, body }: AdminCatalogReques
   return res.json() as Promise<T>;
 }
 
+export type AdminMediaAsset = {
+  id: string;
+  url: string;
+  storage_path: string;
+  mime_type: string;
+  size_bytes: number;
+  alt: string;
+  source_type: string;
+  source_url?: string | null;
+  created_at: string;
+};
+
+export type AdminMediaListResponse = {
+  items: AdminMediaAsset[];
+  limit: number;
+  offset: number;
+};
+
+function normalizeAdminMediaAsset(raw: unknown): AdminMediaAsset | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const url = asString(obj.url);
+  if (!id || !url) return null;
+  return {
+    id,
+    url,
+    storage_path: asString(obj.storage_path),
+    mime_type: asString(obj.mime_type),
+    size_bytes: asNumber(obj.size_bytes),
+    alt: asString(obj.alt),
+    source_type: asString(obj.source_type),
+    source_url: asNullableString(obj.source_url),
+    created_at: asString(obj.created_at),
+  };
+}
+
+export async function getAdminMedia(params: { limit?: number; offset?: number } = {}): Promise<AdminMediaListResponse> {
+  const url = new URL(apiJoin("admin/media"));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+  if (params.offset) url.searchParams.set("offset", String(params.offset));
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch media: ${res.status}`);
+
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAdminMediaAsset).filter((item): item is AdminMediaAsset => item !== null),
+    limit: asNumber(payload.limit) || 50,
+    offset: asNumber(payload.offset) || 0,
+  };
+}
+
+export async function uploadAdminMedia(file: File, alt: string): Promise<AdminMediaAsset> {
+  if (!file || file.size <= 0) {
+    throw new Error("Image file is required");
+  }
+
+  const form = new FormData();
+  form.set("file", file);
+  const normalizedAlt = alt.trim();
+  if (normalizedAlt) {
+    form.set("alt", normalizedAlt);
+  }
+
+  const url = new URL(apiJoin("admin/media/upload"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+    body: form,
+  });
+  if (!res.ok) {
+    let detail = `Media upload failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+
+  const normalized = normalizeAdminMediaAsset(await res.json());
+  if (!normalized) throw new Error("Media upload failed: invalid media response");
+  return normalized;
+}
+
+export async function importAdminMediaURL(input: { url: string; alt?: string; consent_confirmed: boolean }): Promise<AdminMediaAsset> {
+  const payload = {
+    url: input.url.trim(),
+    alt: input.alt?.trim() || undefined,
+    consent_confirmed: input.consent_confirmed,
+  };
+
+  const res = await fetch(apiJoin("admin/media/import-url"), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    let detail = `Media import failed: ${res.status}`;
+    try {
+      const out = asRecord(await res.json());
+      const errorMessage = asString(out.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+
+  const normalized = normalizeAdminMediaAsset(await res.json());
+  if (!normalized) throw new Error("Media import failed: invalid media response");
+  return normalized;
+}
+
 export type AdminCategoryMutationInput = {
   slug: string;
   name: string;

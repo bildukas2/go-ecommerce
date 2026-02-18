@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAdminCategory, getCategories, updateAdminCategory } from "@/lib/api";
+import {
+  createAdminCategory,
+  getAdminMedia,
+  getCategories,
+  importAdminMediaURL,
+  updateAdminCategory,
+  uploadAdminMedia,
+} from "@/lib/api";
+import { CategoryMediaPicker } from "@/components/admin/catalog/category-media-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +24,12 @@ function cleanOptional(value: FormDataEntryValue | null): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim();
   return normalized ? normalized : null;
+}
+
+function resolveCategoryImageURL(formData: FormData): string | null {
+  const selected = cleanOptional(formData.get("media_selected_url"));
+  if (selected) return selected;
+  return cleanOptional(formData.get("default_image_url"));
 }
 
 function messageHref(basePath: string, key: "notice" | "error", message: string): string {
@@ -39,7 +53,9 @@ function errorMessage(error: unknown): string {
 
 export default async function AdminCategoriesPage({ searchParams }: PageProps) {
   let categories: Awaited<ReturnType<typeof getCategories>>["items"] = [];
+  let mediaAssets: Awaited<ReturnType<typeof getAdminMedia>>["items"] = [];
   let fetchError: string | null = null;
+  let mediaLoadError: string | null = null;
 
   const notice = firstQueryValue(searchParams?.notice);
   const actionError = firstQueryValue(searchParams?.error);
@@ -54,7 +70,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
         name: String(formData.get("name") ?? "").trim(),
         description: String(formData.get("description") ?? "").trim(),
         parent_id: cleanOptional(formData.get("parent_id")),
-        default_image_url: cleanOptional(formData.get("default_image_url")),
+        default_image_url: resolveCategoryImageURL(formData),
         seo_title: cleanOptional(formData.get("seo_title")),
         seo_description: cleanOptional(formData.get("seo_description")),
       });
@@ -80,7 +96,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
         name: String(formData.get("name") ?? "").trim(),
         description: String(formData.get("description") ?? "").trim(),
         parent_id: cleanOptional(formData.get("parent_id")),
-        default_image_url: cleanOptional(formData.get("default_image_url")),
+        default_image_url: resolveCategoryImageURL(formData),
         seo_title: cleanOptional(formData.get("seo_title")),
         seo_description: cleanOptional(formData.get("seo_description")),
       });
@@ -91,11 +107,65 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
     }
   };
 
+  const uploadMediaAction = async (formData: FormData) => {
+    "use server";
+
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const file = formData.get("media_upload_file");
+    if (!(file instanceof File) || file.size <= 0) {
+      redirect(messageHref(returnTo, "error", "Choose an image file to upload"));
+    }
+
+    try {
+      await uploadAdminMedia(file, String(formData.get("media_upload_alt") ?? ""));
+      revalidatePath("/admin/catalog/categories");
+      redirect(messageHref(returnTo, "notice", "Image uploaded to media library"));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+
+  const importMediaAction = async (formData: FormData) => {
+    "use server";
+
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const importURL = String(formData.get("media_import_url") ?? "").trim();
+    const consentConfirmed = String(formData.get("media_import_consent") ?? "").trim().toLowerCase() === "yes";
+    if (!importURL) {
+      redirect(messageHref(returnTo, "error", "Import URL is required"));
+    }
+    if (!consentConfirmed) {
+      redirect(messageHref(returnTo, "error", "Consent is required before URL import"));
+    }
+
+    try {
+      await importAdminMediaURL({
+        url: importURL,
+        alt: String(formData.get("media_import_alt") ?? ""),
+        consent_confirmed: true,
+      });
+      revalidatePath("/admin/catalog/categories");
+      redirect(messageHref(returnTo, "notice", "Image imported to media library"));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+
   try {
-    const response = await getCategories();
-    categories = response.items;
+    const [categoriesResponse, mediaResponse] = await Promise.all([
+      getCategories(),
+      getAdminMedia({ limit: 100, offset: 0 }),
+    ]);
+    categories = categoriesResponse.items;
+    mediaAssets = mediaResponse.items;
   } catch {
-    fetchError = "Failed to load categories. Please retry.";
+    try {
+      const response = await getCategories();
+      categories = response.items;
+      mediaLoadError = "Media library unavailable. You can still use manual image URL.";
+    } catch {
+      fetchError = "Failed to load categories. Please retry.";
+    }
   }
 
   return (
@@ -137,10 +207,16 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
             <span>Parent category ID (optional)</span>
             <input name="parent_id" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
           </label>
-          <label className="space-y-1 text-sm">
-            <span>Image URL (http/https)</span>
-            <input name="default_image_url" type="url" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
+          <div className="space-y-1 text-sm md:col-span-2">
+            <span>Category image</span>
+            <CategoryMediaPicker
+              mediaAssets={mediaAssets}
+              mediaLoadError={mediaLoadError}
+              defaultImageURL=""
+              uploadAction={uploadMediaAction}
+              importAction={importMediaAction}
+            />
+          </div>
           <label className="space-y-1 text-sm">
             <span>SEO title</span>
             <input name="seo_title" maxLength={120} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
@@ -207,10 +283,16 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
                     <span>Parent category ID (optional)</span>
                     <input defaultValue={category.parentId ?? ""} name="parent_id" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2" />
                   </label>
-                  <label className="space-y-1">
-                    <span>Image URL (http/https)</span>
-                    <input defaultValue={category.defaultImageUrl ?? ""} name="default_image_url" type="url" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2" />
-                  </label>
+                  <div className="space-y-1">
+                    <span>Category image</span>
+                    <CategoryMediaPicker
+                      mediaAssets={mediaAssets}
+                      mediaLoadError={mediaLoadError}
+                      defaultImageURL={category.defaultImageUrl ?? ""}
+                      uploadAction={uploadMediaAction}
+                      importAction={importMediaAction}
+                    />
+                  </div>
                   <label className="space-y-1">
                     <span>SEO title</span>
                     <input defaultValue={category.seoTitle ?? ""} name="seo_title" maxLength={120} className="w-full rounded-lg border border-surface-border bg-background px-3 py-2" />
