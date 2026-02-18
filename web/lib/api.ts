@@ -19,6 +19,7 @@ export type Product = {
   seoDescription?: string | null;
   variants: ProductVariant[];
   images: ProductImage[];
+  customOptions?: AdminCustomOption[];
   createdAt?: string;
   updatedAt?: string;
 };
@@ -39,6 +40,36 @@ export type ProductImage = {
   alt: string;
   sort: number;
   isDefault: boolean;
+};
+
+export type AdminCustomOptionValue = {
+  id: string;
+  option_id: string;
+  title: string;
+  sku?: string | null;
+  sort_order: number;
+  price_type: "fixed" | "percent";
+  price_value: number;
+  is_default: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdminCustomOption = {
+  id: string;
+  store_id?: string | null;
+  code: string;
+  title: string;
+  type_group: "text" | "file" | "select" | "date";
+  type: "field" | "area" | "file" | "dropdown" | "radio" | "checkbox" | "multiple" | "date" | "datetime" | "time";
+  required: boolean;
+  sort_order: number;
+  price_type?: "fixed" | "percent" | null;
+  price_value?: number | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  values: AdminCustomOptionValue[];
 };
 
 export type Category = {
@@ -154,10 +185,77 @@ function normalizeImage(raw: unknown): ProductImage | null {
   };
 }
 
+function normalizeCustomOptionValue(raw: unknown): AdminCustomOptionValue | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
+  const priceType = asString(obj.price_type).toLowerCase();
+  if (priceType !== "fixed" && priceType !== "percent") return null;
+
+  return {
+    id,
+    option_id: asString(obj.option_id),
+    title: asString(obj.title),
+    sku: asNullableString(obj.sku),
+    sort_order: asNumber(obj.sort_order),
+    price_type: priceType,
+    price_value: asNumber(obj.price_value),
+    is_default: asBoolean(obj.is_default),
+    created_at: asString(obj.created_at) || undefined,
+    updated_at: asString(obj.updated_at) || undefined,
+  };
+}
+
+function normalizeCustomOption(raw: unknown): AdminCustomOption | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
+  const typeGroup = asString(obj.type_group).toLowerCase();
+  if (!["text", "file", "select", "date"].includes(typeGroup)) return null;
+
+  const optionType = asString(obj.type).toLowerCase();
+  if (!["field", "area", "file", "dropdown", "radio", "checkbox", "multiple", "date", "datetime", "time"].includes(optionType)) {
+    return null;
+  }
+
+  const rawPriceType = asNullableString(obj.price_type);
+  let priceType: AdminCustomOption["price_type"] = null;
+  if (rawPriceType) {
+    const normalized = rawPriceType.toLowerCase();
+    if (normalized !== "fixed" && normalized !== "percent") return null;
+    priceType = normalized;
+  }
+
+  const valuesRaw = Array.isArray(obj.values) ? obj.values : [];
+  return {
+    id,
+    store_id: asNullableString(obj.store_id),
+    code: asString(obj.code),
+    title: asString(obj.title),
+    type_group: typeGroup as AdminCustomOption["type_group"],
+    type: optionType as AdminCustomOption["type"],
+    required: asBoolean(obj.required),
+    sort_order: asNumber(obj.sort_order),
+    price_type: priceType,
+    price_value:
+      obj.price_value === null || obj.price_value === undefined
+        ? null
+        : asNumber(obj.price_value),
+    is_active: asBoolean(obj.is_active),
+    created_at: asString(obj.created_at) || undefined,
+    updated_at: asString(obj.updated_at) || undefined,
+    values: valuesRaw.map(normalizeCustomOptionValue).filter((item): item is AdminCustomOptionValue => item !== null),
+  };
+}
+
 function normalizeProduct(raw: unknown): Product {
   const obj = asRecord(raw);
   const variantsRaw = Array.isArray(obj.variants) ? obj.variants : [];
   const imagesRaw = Array.isArray(obj.images) ? obj.images : [];
+  const customOptionsMaybe = obj.customOptions ?? obj.custom_options;
+  const customOptionsRaw: unknown[] = Array.isArray(customOptionsMaybe) ? customOptionsMaybe : [];
 
   return {
     id: asString(obj.id),
@@ -170,6 +268,9 @@ function normalizeProduct(raw: unknown): Product {
     seoDescription: asNullableString(obj.seoDescription ?? obj.seo_description),
     images: imagesRaw.map(normalizeImage).filter((img): img is ProductImage => img !== null),
     variants: variantsRaw.map(normalizeVariant).filter((variant): variant is ProductVariant => variant !== null),
+    customOptions: customOptionsRaw
+      .map(normalizeCustomOption)
+      .filter((option): option is AdminCustomOption => option !== null),
     createdAt: asString(obj.createdAt ?? obj.created_at) || undefined,
     updatedAt: asString(obj.updatedAt ?? obj.updated_at) || undefined,
   };
@@ -609,6 +710,29 @@ export type AdminProductMutationInput = {
   seo_description?: string | null;
 };
 
+export type AdminCustomOptionValueMutationInput = {
+  title: string;
+  sku?: string | null;
+  sort_order?: number | null;
+  price_type: "fixed" | "percent";
+  price_value: number;
+  is_default?: boolean;
+};
+
+export type AdminCustomOptionMutationInput = {
+  store_id?: string | null;
+  code: string;
+  title: string;
+  type_group: "text" | "file" | "select" | "date";
+  type: "field" | "area" | "file" | "dropdown" | "radio" | "checkbox" | "multiple" | "date" | "datetime" | "time";
+  required?: boolean;
+  sort_order?: number | null;
+  price_type?: "fixed" | "percent" | null;
+  price_value?: number | null;
+  is_active?: boolean;
+  values?: AdminCustomOptionValueMutationInput[];
+};
+
 export type AdminCreateVariantInput = {
   sku: string;
   price_cents: number;
@@ -680,6 +804,79 @@ export async function createAdminProduct(input: AdminProductMutationInput): Prom
     body: input,
   });
   return normalizeProduct(out);
+}
+
+export async function getAdminCustomOptions(params: { q?: string; type_group?: string } = {}): Promise<{ items: AdminCustomOption[] }> {
+  const url = new URL(apiJoin("admin/custom-options"));
+  const query = params.q?.trim();
+  const typeGroup = params.type_group?.trim().toLowerCase();
+  if (query) url.searchParams.set("q", query);
+  if (typeGroup) url.searchParams.set("type_group", typeGroup);
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch custom options: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeCustomOption).filter((item): item is AdminCustomOption => item !== null),
+  };
+}
+
+export async function getAdminCustomOption(id: string): Promise<AdminCustomOption> {
+  const url = new URL(apiJoin(`admin/custom-options/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch custom option: ${res.status}`);
+  const normalized = normalizeCustomOption(await res.json());
+  if (!normalized) throw new Error("Failed to fetch custom option: invalid response");
+  return normalized;
+}
+
+export async function createAdminCustomOption(input: AdminCustomOptionMutationInput): Promise<AdminCustomOption> {
+  const out = await adminCatalogRequest<unknown>({
+    path: "admin/custom-options",
+    method: "POST",
+    body: input,
+  });
+  const normalized = normalizeCustomOption(out);
+  if (!normalized) throw new Error("Admin custom option request failed: invalid response");
+  return normalized;
+}
+
+export async function updateAdminCustomOption(id: string, input: AdminCustomOptionMutationInput): Promise<AdminCustomOption> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/custom-options/${encodeURIComponent(id)}`,
+    method: "PUT",
+    body: input,
+  });
+  const normalized = normalizeCustomOption(out);
+  if (!normalized) throw new Error("Admin custom option request failed: invalid response");
+  return normalized;
+}
+
+export async function deleteAdminCustomOption(id: string): Promise<{ id: string }> {
+  const url = new URL(apiJoin(`admin/custom-options/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `Admin custom option request failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+  const payload = asRecord(await res.json());
+  return { id: asString(payload.id) };
 }
 
 export async function updateAdminProduct(id: string, input: AdminProductMutationInput): Promise<Product> {

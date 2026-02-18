@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, FolderTree, LayoutDashboard, Menu, Search, ShoppingCart, X } from "lucide-react";
+import { ChevronDown, FolderTree, LayoutDashboard, Menu, Search, ShoppingCart, SlidersHorizontal, X } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
 const catalogItems: NavItem[] = [
   { href: "/admin/catalog/categories", label: "Categories", icon: <FolderTree size={16} /> },
   { href: "/admin/catalog/products", label: "Products", icon: <ShoppingCart size={16} /> },
+  { href: "/admin/catalog/custom-options", label: "Customizable Options", icon: <SlidersHorizontal size={16} /> },
 ];
 
 function isActivePath(pathname: string, href: string): boolean {
