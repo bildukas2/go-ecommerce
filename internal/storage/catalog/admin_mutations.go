@@ -46,6 +46,21 @@ type ProductDiscountInput struct {
 	DiscountPercent    *float64
 }
 
+const defaultFallbackCategorySlug = "uncategorized"
+
+type AdminCategory struct {
+	Category
+	ProductCount int64 `json:"product_count"`
+}
+
+type DeleteCategoryResult struct {
+	DeletedCategoryID   string `json:"deleted_category_id"`
+	DeletedCategorySlug string `json:"deleted_category_slug"`
+	AffectedProducts    int64  `json:"affected_products"`
+	ReassignedProducts  int64  `json:"reassigned_products"`
+	FallbackCategory    string `json:"fallback_category"`
+}
+
 func (s *Store) CreateCategory(ctx context.Context, in CategoryUpsertInput) (Category, error) {
 	var c Category
 	row := s.db.QueryRowContext(ctx, `
@@ -103,6 +118,131 @@ func (s *Store) UpdateCategory(ctx context.Context, id string, in CategoryUpsert
 		return Category{}, err
 	}
 	return c, nil
+}
+
+func (s *Store) ListAdminCategories(ctx context.Context) ([]AdminCategory, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT c.id, c.slug, c.name, c.description, c.parent_id, c.default_image_url, c.seo_title, c.seo_description,
+		       COUNT(DISTINCT pc.product_id) AS product_count
+		FROM categories c
+		LEFT JOIN product_categories pc ON pc.category_id = c.id
+		GROUP BY c.id, c.slug, c.name, c.description, c.parent_id, c.default_image_url, c.seo_title, c.seo_description
+		ORDER BY c.name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]AdminCategory, 0, 32)
+	for rows.Next() {
+		var item AdminCategory
+		if err := rows.Scan(
+			&item.ID,
+			&item.Slug,
+			&item.Name,
+			&item.Description,
+			&item.ParentID,
+			&item.DefaultImageURL,
+			&item.SEOTitle,
+			&item.SEODescription,
+			&item.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *Store) DeleteCategory(ctx context.Context, id string) (DeleteCategoryResult, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return DeleteCategoryResult{}, err
+	}
+	defer tx.Rollback()
+
+	var result DeleteCategoryResult
+	if err := tx.QueryRowContext(ctx, `
+		SELECT id, slug
+		FROM categories
+		WHERE id = $1::uuid
+	`, id).Scan(&result.DeletedCategoryID, &result.DeletedCategorySlug); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return DeleteCategoryResult{}, ErrNotFound
+		}
+		return DeleteCategoryResult{}, err
+	}
+	if result.DeletedCategorySlug == defaultFallbackCategorySlug {
+		return DeleteCategoryResult{}, ErrConflict
+	}
+
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(DISTINCT product_id)
+		FROM product_categories
+		WHERE category_id = $1::uuid
+	`, id).Scan(&result.AffectedProducts); err != nil {
+		return DeleteCategoryResult{}, err
+	}
+
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(DISTINCT pc.product_id)
+		FROM product_categories pc
+		WHERE pc.category_id = $1::uuid
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM product_categories other
+			WHERE other.product_id = pc.product_id
+			  AND other.category_id <> $1::uuid
+		  )
+	`, id).Scan(&result.ReassignedProducts); err != nil {
+		return DeleteCategoryResult{}, err
+	}
+
+	if result.ReassignedProducts > 0 {
+		var fallbackID string
+		if err := tx.QueryRowContext(ctx, `
+			INSERT INTO categories (slug, name, description)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (slug) DO UPDATE SET name = categories.name
+			RETURNING id
+		`, defaultFallbackCategorySlug, "Uncategorized", "Auto-managed fallback category").Scan(&fallbackID); err != nil {
+			return DeleteCategoryResult{}, err
+		}
+		result.FallbackCategory = defaultFallbackCategorySlug
+
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO product_categories (product_id, category_id)
+			SELECT DISTINCT pc.product_id, $2::uuid
+			FROM product_categories pc
+			WHERE pc.category_id = $1::uuid
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM product_categories other
+				WHERE other.product_id = pc.product_id
+				  AND other.category_id <> $1::uuid
+			  )
+			ON CONFLICT DO NOTHING
+		`, id, fallbackID); err != nil {
+			return DeleteCategoryResult{}, err
+		}
+	}
+
+	res, err := tx.ExecContext(ctx, `DELETE FROM categories WHERE id = $1::uuid`, id)
+	if err != nil {
+		return DeleteCategoryResult{}, err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return DeleteCategoryResult{}, ErrNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return DeleteCategoryResult{}, err
+	}
+	return result, nil
 }
 
 func (s *Store) CreateProduct(ctx context.Context, in ProductUpsertInput) (Product, error) {

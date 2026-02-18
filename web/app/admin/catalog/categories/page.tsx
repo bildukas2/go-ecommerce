@@ -3,8 +3,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createAdminCategory,
+  deleteAdminCategory,
   getAdminMedia,
-  getCategories,
+  getAdminCategories,
   importAdminMediaURL,
   updateAdminCategory,
   uploadAdminMedia,
@@ -52,7 +53,7 @@ function errorMessage(error: unknown): string {
 }
 
 export default async function AdminCategoriesPage({ searchParams }: PageProps) {
-  let categories: Awaited<ReturnType<typeof getCategories>>["items"] = [];
+  let categories: Awaited<ReturnType<typeof getAdminCategories>>["items"] = [];
   let mediaAssets: Awaited<ReturnType<typeof getAdminMedia>>["items"] = [];
   let fetchError: string | null = null;
   let mediaLoadError: string | null = null;
@@ -151,16 +152,48 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
     }
   };
 
+  const deleteCategoryAction = async (formData: FormData) => {
+    "use server";
+
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const categoryID = String(formData.get("category_id") ?? "").trim();
+    const expectedSlug = String(formData.get("category_slug") ?? "").trim();
+    const affectedProducts = Number(String(formData.get("affected_products") ?? "0"));
+    const confirmDelete = String(formData.get("confirm_delete") ?? "").trim().toLowerCase() === "yes";
+
+    if (!categoryID) {
+      redirect(messageHref(returnTo, "error", "Missing category id"));
+    }
+    if (!confirmDelete) {
+      redirect(messageHref(returnTo, "error", "Confirm category deletion before continuing"));
+    }
+
+    try {
+      const result = await deleteAdminCategory(categoryID);
+      revalidatePath("/admin/catalog/categories");
+      const fallbackNotice = result.reassigned_products > 0
+        ? `; ${result.reassigned_products} moved to ${result.fallback_category || "fallback category"}`
+        : "";
+      redirect(messageHref(
+        returnTo,
+        "notice",
+        `Category deleted (${result.deleted_category_slug || expectedSlug}, affected ${result.affected_products || affectedProducts}${fallbackNotice})`,
+      ));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+
   try {
     const [categoriesResponse, mediaResponse] = await Promise.all([
-      getCategories(),
+      getAdminCategories(),
       getAdminMedia({ limit: 100, offset: 0 }),
     ]);
     categories = categoriesResponse.items;
     mediaAssets = mediaResponse.items;
   } catch {
     try {
-      const response = await getCategories();
+      const response = await getAdminCategories();
       categories = response.items;
       mediaLoadError = "Media library unavailable. You can still use manual image URL.";
     } catch {
@@ -314,6 +347,27 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
                     className="rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
                   >
                     Save changes
+                  </button>
+                </form>
+
+                <form action={deleteCategoryAction} className="mt-3 space-y-2 rounded-lg border border-red-300/40 bg-red-500/[0.05] p-3">
+                  <input type="hidden" name="return_to" value="/admin/catalog/categories" />
+                  <input type="hidden" name="category_id" value={category.id} />
+                  <input type="hidden" name="category_slug" value={category.slug} />
+                  <input type="hidden" name="affected_products" value={category.product_count} />
+                  <p className="text-xs text-red-700 dark:text-red-300">
+                    Delete this category? It currently affects {category.product_count} product{category.product_count === 1 ? "" : "s"}.
+                    Products that would have no categories left are reassigned to <span className="font-medium">uncategorized</span>.
+                  </p>
+                  <label className="flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
+                    <input name="confirm_delete" type="checkbox" value="yes" className="mt-0.5 h-4 w-4 rounded border-red-400/50" />
+                    <span>I understand this action and want to delete this category.</span>
+                  </label>
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg border border-red-500/45 bg-red-500/14 px-3 py-2 font-medium text-red-700 transition-colors hover:bg-red-500/20 dark:text-red-300"
+                  >
+                    Delete category
                   </button>
                 </form>
               </details>

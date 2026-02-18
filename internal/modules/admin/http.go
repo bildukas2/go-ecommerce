@@ -250,7 +250,9 @@ type ordersStore interface {
 
 type catalogStore interface {
 	CreateCategory(ctx context.Context, in storcat.CategoryUpsertInput) (storcat.Category, error)
+	ListAdminCategories(ctx context.Context) ([]storcat.AdminCategory, error)
 	UpdateCategory(ctx context.Context, id string, in storcat.CategoryUpsertInput) (storcat.Category, error)
+	DeleteCategory(ctx context.Context, id string) (storcat.DeleteCategoryResult, error)
 	CreateProduct(ctx context.Context, in storcat.ProductUpsertInput) (storcat.Product, error)
 	UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error)
 	ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error
@@ -305,12 +307,29 @@ type bulkDiscountRequest struct {
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 func (m *module) handleCatalogCategories(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || r.URL.Path != "/admin/catalog/categories" {
+	if r.URL.Path != "/admin/catalog/categories" {
 		http.NotFound(w, r)
 		return
 	}
 	if m.catalog == nil {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		items, err := m.catalog.ListAdminCategories(r.Context())
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "list categories error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+			"items": items,
+		})
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		http.NotFound(w, r)
 		return
 	}
 
@@ -334,7 +353,7 @@ func (m *module) handleCatalogCategories(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *module) handleCatalogCategoryDetail(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPatch || !strings.HasPrefix(r.URL.Path, "/admin/catalog/categories/") {
+	if !strings.HasPrefix(r.URL.Path, "/admin/catalog/categories/") {
 		http.NotFound(w, r)
 		return
 	}
@@ -344,6 +363,21 @@ func (m *module) handleCatalogCategoryDetail(w http.ResponseWriter, r *http.Requ
 	}
 	id := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/admin/catalog/categories/"))
 	if id == "" || strings.Contains(id, "/") {
+		http.NotFound(w, r)
+		return
+	}
+
+	if r.Method == http.MethodDelete {
+		result, err := m.catalog.DeleteCategory(r.Context(), id)
+		if err != nil {
+			writeCatalogStoreError(w, err, "delete category error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, result)
+		return
+	}
+
+	if r.Method != http.MethodPatch {
 		http.NotFound(w, r)
 		return
 	}

@@ -50,6 +50,18 @@ export type Category = {
   seoDescription?: string | null;
 };
 
+export type AdminCategory = Category & {
+  product_count: number;
+};
+
+export type AdminDeleteCategoryResult = {
+  deleted_category_id: string;
+  deleted_category_slug: string;
+  affected_products: number;
+  reassigned_products: number;
+  fallback_category: string;
+};
+
 export type ProductListResponse = {
   items: Product[];
   total: number;
@@ -178,6 +190,16 @@ function normalizeCategory(raw: unknown): Category | null {
   };
 }
 
+function normalizeAdminCategory(raw: unknown): AdminCategory | null {
+  const base = normalizeCategory(raw);
+  if (!base) return null;
+  const obj = asRecord(raw);
+  return {
+    ...base,
+    product_count: asNumber(obj.product_count),
+  };
+}
+
 export async function getProducts(params: { page?: number; limit?: number; category?: string } = {}): Promise<ProductListResponse> {
   const url = new URL(apiJoin("products"));
   if (params.page) url.searchParams.set("page", String(params.page));
@@ -215,6 +237,20 @@ export async function getCategories(): Promise<{ items: Category[] }> {
   const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
   return {
     items: itemsRaw.map(normalizeCategory).filter((category): category is Category => category !== null),
+  };
+}
+
+export async function getAdminCategories(): Promise<{ items: AdminCategory[] }> {
+  const url = new URL(apiJoin("admin/catalog/categories"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch admin categories: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAdminCategory).filter((item): item is AdminCategory => item !== null),
   };
 }
 
@@ -596,6 +632,32 @@ export async function updateAdminCategory(id: string, input: AdminCategoryMutati
   const normalized = normalizeCategory(out);
   if (!normalized) throw new Error("Admin catalog request failed: invalid category response");
   return normalized;
+}
+
+export async function deleteAdminCategory(id: string): Promise<AdminDeleteCategoryResult> {
+  const url = new URL(apiJoin(`admin/catalog/categories/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `Admin catalog request failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+  const payload = asRecord(await res.json());
+  return {
+    deleted_category_id: asString(payload.deleted_category_id),
+    deleted_category_slug: asString(payload.deleted_category_slug),
+    affected_products: asNumber(payload.affected_products),
+    reassigned_products: asNumber(payload.reassigned_products),
+    fallback_category: asString(payload.fallback_category),
+  };
 }
 
 export async function createAdminProduct(input: AdminProductMutationInput): Promise<Product> {

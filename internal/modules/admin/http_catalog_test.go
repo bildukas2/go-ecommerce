@@ -14,7 +14,9 @@ import (
 
 type fakeCatalogStore struct {
 	createCategoryFn        func(context.Context, storcat.CategoryUpsertInput) (storcat.Category, error)
+	listAdminCategoriesFn   func(context.Context) ([]storcat.AdminCategory, error)
 	updateCategoryFn        func(context.Context, string, storcat.CategoryUpsertInput) (storcat.Category, error)
+	deleteCategoryFn        func(context.Context, string) (storcat.DeleteCategoryResult, error)
 	createProductFn         func(context.Context, storcat.ProductUpsertInput) (storcat.Product, error)
 	updateProductFn         func(context.Context, string, storcat.ProductUpsertInput) (storcat.Product, error)
 	replaceProductCatsFn    func(context.Context, string, []string) error
@@ -34,6 +36,18 @@ func (f *fakeCatalogStore) UpdateCategory(ctx context.Context, id string, in sto
 		return storcat.Category{}, nil
 	}
 	return f.updateCategoryFn(ctx, id, in)
+}
+func (f *fakeCatalogStore) ListAdminCategories(ctx context.Context) ([]storcat.AdminCategory, error) {
+	if f.listAdminCategoriesFn == nil {
+		return []storcat.AdminCategory{}, nil
+	}
+	return f.listAdminCategoriesFn(ctx)
+}
+func (f *fakeCatalogStore) DeleteCategory(ctx context.Context, id string) (storcat.DeleteCategoryResult, error) {
+	if f.deleteCategoryFn == nil {
+		return storcat.DeleteCategoryResult{}, nil
+	}
+	return f.deleteCategoryFn(ctx, id)
 }
 func (f *fakeCatalogStore) CreateProduct(ctx context.Context, in storcat.ProductUpsertInput) (storcat.Product, error) {
 	if f.createProductFn == nil {
@@ -135,6 +149,61 @@ func TestCatalogBulkAssignCategoriesMapsNotFound(t *testing.T) {
 		"category_ids": []string{"cat-1"},
 	}
 	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/catalog/products/categories/bulk-assign", body)
+	if res.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, res.Code)
+	}
+}
+
+func TestCatalogDeleteCategorySuccess(t *testing.T) {
+	store := &fakeCatalogStore{
+		deleteCategoryFn: func(_ context.Context, id string) (storcat.DeleteCategoryResult, error) {
+			if id != "cat-1" {
+				t.Fatalf("unexpected id: %s", id)
+			}
+			return storcat.DeleteCategoryResult{
+				DeletedCategoryID:   "cat-1",
+				DeletedCategorySlug: "apparel",
+				AffectedProducts:    5,
+				ReassignedProducts:  2,
+				FallbackCategory:    "uncategorized",
+			}, nil
+		},
+	}
+	m := &module{catalog: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/catalog/categories/cat-1", nil)
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("admin:pass")))
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload["affected_products"] != float64(5) {
+		t.Fatalf("unexpected response payload: %#v", payload)
+	}
+}
+
+func TestCatalogDeleteCategoryMapsNotFound(t *testing.T) {
+	store := &fakeCatalogStore{
+		deleteCategoryFn: func(_ context.Context, _ string) (storcat.DeleteCategoryResult, error) {
+			return storcat.DeleteCategoryResult{}, storcat.ErrNotFound
+		},
+	}
+	m := &module{catalog: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/catalog/categories/cat-1", nil)
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("admin:pass")))
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
 	if res.Code != http.StatusNotFound {
 		t.Fatalf("expected status %d, got %d", http.StatusNotFound, res.Code)
 	}
