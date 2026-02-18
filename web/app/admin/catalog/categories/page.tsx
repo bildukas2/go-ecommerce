@@ -188,50 +188,58 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
 
       <section className="glass rounded-2xl border p-4 md:p-5">
-        <h2 className="text-lg font-semibold">Create category</h2>
-        <form action={createCategoryAction} className="mt-4 grid gap-3 md:grid-cols-2">
-          <input type="hidden" name="return_to" value="/admin/catalog/categories" />
-          <label className="space-y-1 text-sm">
-            <span>Name</span>
-            <input name="name" required className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Slug</span>
-            <input name="slug" required placeholder="home-accessories" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm md:col-span-2">
-            <span>Description</span>
-            <textarea name="description" rows={3} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Parent category ID (optional)</span>
-            <input name="parent_id" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <div className="space-y-1 text-sm md:col-span-2">
-            <span>Category image</span>
-            <CategoryMediaPicker
-              mediaAssets={mediaAssets}
-              mediaLoadError={mediaLoadError}
-              defaultImageURL=""
-              uploadAction={uploadMediaAction}
-              importAction={importMediaAction}
-            />
-          </div>
-          <label className="space-y-1 text-sm">
-            <span>SEO title</span>
-            <input name="seo_title" maxLength={120} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>SEO description</span>
-            <input name="seo_description" maxLength={320} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <button
-            type="submit"
-            className="md:col-span-2 rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
-          >
-            Create category
-          </button>
-        </form>
+        <details open className="group">
+          <summary className="cursor-pointer list-none text-lg font-semibold">
+            <div className="flex items-center justify-between gap-3">
+              <span>Create category</span>
+              <span className="text-xs text-foreground/65 group-open:hidden">Open</span>
+              <span className="hidden text-xs text-foreground/65 group-open:inline">Hide</span>
+            </div>
+          </summary>
+          <form action={createCategoryAction} className="mt-4 grid gap-3 md:grid-cols-2">
+            <input type="hidden" name="return_to" value="/admin/catalog/categories" />
+            <label className="space-y-1 text-sm">
+              <span>Name</span>
+              <input name="name" required className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span>Slug</span>
+              <input name="slug" required placeholder="home-accessories" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+            </label>
+            <label className="space-y-1 text-sm md:col-span-2">
+              <span>Description</span>
+              <textarea name="description" rows={3} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span>Parent category ID (optional)</span>
+              <input name="parent_id" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+            </label>
+            <div className="space-y-1 text-sm md:col-span-2">
+              <span>Category image</span>
+              <CategoryMediaPicker
+                mediaAssets={mediaAssets}
+                mediaLoadError={mediaLoadError}
+                defaultImageURL=""
+                uploadAction={uploadMediaAction}
+                importAction={importMediaAction}
+              />
+            </div>
+            <label className="space-y-1 text-sm">
+              <span>SEO title</span>
+              <input name="seo_title" maxLength={120} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span>SEO description</span>
+              <input name="seo_description" maxLength={320} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+            </label>
+            <button
+              type="submit"
+              className="md:col-span-2 rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
+            >
+              Create category
+            </button>
+          </form>
+        </details>
       </section>
 
       {!fetchError && categories.length === 0 && (
