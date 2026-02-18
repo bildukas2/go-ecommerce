@@ -254,6 +254,7 @@ type catalogStore interface {
 	UpdateCategory(ctx context.Context, id string, in storcat.CategoryUpsertInput) (storcat.Category, error)
 	DeleteCategory(ctx context.Context, id string) (storcat.DeleteCategoryResult, error)
 	CreateProduct(ctx context.Context, in storcat.ProductUpsertInput) (storcat.Product, error)
+	CreateProductVariant(ctx context.Context, productID string, in storcat.ProductVariantCreateInput) (storcat.Variant, error)
 	UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error)
 	ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error
 	BulkAssignProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
@@ -277,11 +278,20 @@ type upsertCategoryRequest struct {
 }
 
 type upsertProductRequest struct {
-	Slug           string  `json:"slug"`
-	Title          string  `json:"title"`
-	Description    string  `json:"description"`
-	SEOTitle       *string `json:"seo_title"`
-	SEODescription *string `json:"seo_description"`
+	Slug           string   `json:"slug"`
+	Title          string   `json:"title"`
+	Description    string   `json:"description"`
+	Status         *string  `json:"status"`
+	Tags           []string `json:"tags"`
+	SEOTitle       *string  `json:"seo_title"`
+	SEODescription *string  `json:"seo_description"`
+}
+
+type createVariantRequest struct {
+	SKU        string  `json:"sku"`
+	PriceCents int     `json:"price_cents"`
+	Currency   *string `json:"currency"`
+	Stock      int     `json:"stock"`
 }
 
 type replaceProductCategoriesRequest struct {
@@ -577,6 +587,27 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 			return
 		}
 		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"product_id": id, "category_ids": categoryIDs})
+	case "variants":
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		var req createVariantRequest
+		if err := decodeRequest(r, &req); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		in, err := validateVariantCreateRequest(req)
+		if err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		item, err := m.catalog.CreateProductVariant(r.Context(), id, in)
+		if err != nil {
+			writeCatalogStoreError(w, err, "create variant error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusCreated, item)
 	case "discount":
 		if r.Method != http.MethodPost {
 			http.NotFound(w, r)
@@ -669,6 +700,17 @@ func validateProductRequest(req upsertProductRequest) (storcat.ProductUpsertInpu
 	if title == "" {
 		return storcat.ProductUpsertInput{}, errors.New("title is required")
 	}
+	status := "published"
+	if req.Status != nil {
+		status = strings.TrimSpace(strings.ToLower(*req.Status))
+		if status == "" {
+			status = "published"
+		}
+	}
+	if status != "published" && status != "inactive" {
+		return storcat.ProductUpsertInput{}, errors.New("status must be one of: published, inactive")
+	}
+	tags := cleanNonEmptyStrings(req.Tags)
 	seoTitle, seoDescription, err := validateSEO(req.SEOTitle, req.SEODescription)
 	if err != nil {
 		return storcat.ProductUpsertInput{}, err
@@ -677,8 +719,36 @@ func validateProductRequest(req upsertProductRequest) (storcat.ProductUpsertInpu
 		Slug:           slug,
 		Title:          title,
 		Description:    strings.TrimSpace(req.Description),
+		Status:         status,
+		Tags:           tags,
 		SEOTitle:       seoTitle,
 		SEODescription: seoDescription,
+	}, nil
+}
+
+func validateVariantCreateRequest(req createVariantRequest) (storcat.ProductVariantCreateInput, error) {
+	sku := strings.TrimSpace(req.SKU)
+	if sku == "" {
+		return storcat.ProductVariantCreateInput{}, errors.New("sku is required")
+	}
+	if req.PriceCents < 0 {
+		return storcat.ProductVariantCreateInput{}, errors.New("price_cents must be >= 0")
+	}
+	if req.Stock < 0 {
+		return storcat.ProductVariantCreateInput{}, errors.New("stock must be >= 0")
+	}
+	currency := "USD"
+	if req.Currency != nil {
+		normalized := strings.TrimSpace(strings.ToUpper(*req.Currency))
+		if normalized != "" {
+			currency = normalized
+		}
+	}
+	return storcat.ProductVariantCreateInput{
+		SKU:        sku,
+		PriceCents: req.PriceCents,
+		Currency:   currency,
+		Stock:      req.Stock,
 	}, nil
 }
 

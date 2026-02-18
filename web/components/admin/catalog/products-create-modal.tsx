@@ -7,9 +7,10 @@ type ActionFn = (formData: FormData) => void | Promise<void>;
 type Props = {
   createAction: ActionFn;
   returnTo: string;
+  categories: Array<{ id: string; name: string }>;
 };
 
-export function ProductsCreateModal({ createAction, returnTo }: Props) {
+export function ProductsCreateModal({ createAction, returnTo, categories }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -46,9 +47,50 @@ export function ProductsCreateModal({ createAction, returnTo }: Props) {
                 <span>Slug</span>
                 <input name="slug" required placeholder="everyday-hoodie" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
               </label>
+              <label className="space-y-1 text-sm">
+                <span>SKU</span>
+                <input name="sku" required placeholder="SOFA-10058" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Stock</span>
+                <input name="stock" type="number" min="0" defaultValue="0" required className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Base price</span>
+                <input name="base_price" type="number" min="0" step="0.01" required placeholder="199.99" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Status</span>
+                <select name="status" defaultValue="published" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2">
+                  <option value="published">Published</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span>Categories (multi-select)</span>
+                <select multiple name="category_ids" className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2">
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="space-y-1 text-sm md:col-span-2">
                 <span>Description</span>
                 <textarea name="description" rows={3} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Discount type (optional)</span>
+                <select name="discount_type" defaultValue="none" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2">
+                  <option value="none">No Discount</option>
+                  <option value="flat">Flat Discount</option>
+                  <option value="percent">Percentage Discount</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Discount value (optional)</span>
+                <input name="discount_value" type="number" min="0" step="0.01" placeholder="10 or 15.5" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
               </label>
               <label className="space-y-1 text-sm">
                 <span>SEO title</span>
@@ -57,6 +99,10 @@ export function ProductsCreateModal({ createAction, returnTo }: Props) {
               <label className="space-y-1 text-sm">
                 <span>SEO description</span>
                 <input name="seo_description" maxLength={320} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span>Tags (comma-separated)</span>
+                <input name="tags" placeholder="furniture, living room, featured" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
               </label>
               <button
                 type="submit"

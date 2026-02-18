@@ -14,6 +14,8 @@ type Product struct {
 	Slug           string    `json:"slug"`
 	Title          string    `json:"title"`
 	Description    string    `json:"description"`
+	Status         string    `json:"status"`
+	Tags           []string  `json:"tags"`
 	SEOTitle       *string   `json:"seoTitle"`
 	SEODescription *string   `json:"seoDescription"`
 	Variants       []Variant `json:"variants"`
@@ -124,7 +126,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 	// Prepare statements
 	stmtList, err := db.PrepareContext(ctx, `
-		SELECT p.id, p.slug, p.title, p.description, p.seo_title, p.seo_description, p.created_at, p.updated_at
+		SELECT p.id, p.slug, p.title, p.description, p.status, COALESCE(to_json(p.tags), '[]'::json), p.seo_title, p.seo_description, p.created_at, p.updated_at
 		FROM products p
 		ORDER BY p.title ASC
 		LIMIT $1 OFFSET $2`)
@@ -133,7 +135,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtListByCat, err := db.PrepareContext(ctx, `
-		SELECT p.id, p.slug, p.title, p.description, p.seo_title, p.seo_description, p.created_at, p.updated_at
+		SELECT p.id, p.slug, p.title, p.description, p.status, COALESCE(to_json(p.tags), '[]'::json), p.seo_title, p.seo_description, p.created_at, p.updated_at
 		FROM products p
 		JOIN product_categories pc ON pc.product_id = p.id
 		JOIN categories c ON c.id = pc.category_id
@@ -160,7 +162,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtGetBySlug, err := db.PrepareContext(ctx, `
-		SELECT id, slug, title, description, seo_title, seo_description, created_at, updated_at
+		SELECT id, slug, title, description, status, COALESCE(to_json(tags), '[]'::json), seo_title, seo_description, created_at, updated_at
 		FROM products WHERE slug = $1`)
 	if err != nil {
 		return nil, err
@@ -268,8 +270,16 @@ func (s *Store) ListProducts(ctx context.Context, in ListProductsParams) (Produc
 		var p Product
 		var seoTitle sql.NullString
 		var seoDescription sql.NullString
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		var tagsRaw []byte
+		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.Status, &tagsRaw, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return ProductListResult{}, err
+		}
+		if len(tagsRaw) > 0 {
+			if err := json.Unmarshal(tagsRaw, &p.Tags); err != nil {
+				return ProductListResult{}, err
+			}
+		} else {
+			p.Tags = []string{}
 		}
 		if seoTitle.Valid {
 			p.SEOTitle = &seoTitle.String
@@ -303,11 +313,19 @@ func (s *Store) GetProductBySlug(ctx context.Context, slug string) (Product, err
 	var p Product
 	var seoTitle sql.NullString
 	var seoDescription sql.NullString
+	var tagsRaw []byte
 	err := s.stmtGetProductBySlug.QueryRowContext(ctx, slug).Scan(
-		&p.ID, &p.Slug, &p.Title, &p.Description, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt,
+		&p.ID, &p.Slug, &p.Title, &p.Description, &p.Status, &tagsRaw, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return Product{}, err
+	}
+	if len(tagsRaw) > 0 {
+		if err := json.Unmarshal(tagsRaw, &p.Tags); err != nil {
+			return Product{}, err
+		}
+	} else {
+		p.Tags = []string{}
 	}
 	if seoTitle.Valid {
 		p.SEOTitle = &seoTitle.String

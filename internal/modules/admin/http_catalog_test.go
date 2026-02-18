@@ -18,6 +18,7 @@ type fakeCatalogStore struct {
 	updateCategoryFn        func(context.Context, string, storcat.CategoryUpsertInput) (storcat.Category, error)
 	deleteCategoryFn        func(context.Context, string) (storcat.DeleteCategoryResult, error)
 	createProductFn         func(context.Context, storcat.ProductUpsertInput) (storcat.Product, error)
+	createProductVariantFn  func(context.Context, string, storcat.ProductVariantCreateInput) (storcat.Variant, error)
 	updateProductFn         func(context.Context, string, storcat.ProductUpsertInput) (storcat.Product, error)
 	replaceProductCatsFn    func(context.Context, string, []string) error
 	bulkAssignProductCatsFn func(context.Context, []string, []string) (int64, error)
@@ -54,6 +55,12 @@ func (f *fakeCatalogStore) CreateProduct(ctx context.Context, in storcat.Product
 		return storcat.Product{}, nil
 	}
 	return f.createProductFn(ctx, in)
+}
+func (f *fakeCatalogStore) CreateProductVariant(ctx context.Context, productID string, in storcat.ProductVariantCreateInput) (storcat.Variant, error) {
+	if f.createProductVariantFn == nil {
+		return storcat.Variant{}, nil
+	}
+	return f.createProductVariantFn(ctx, productID, in)
 }
 func (f *fakeCatalogStore) UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error) {
 	if f.updateProductFn == nil {
@@ -253,6 +260,34 @@ func TestCatalogProductDiscountSuccess(t *testing.T) {
 	}
 	if payload["updated_variants"] != float64(3) {
 		t.Fatalf("unexpected response payload: %#v", payload)
+	}
+}
+
+func TestCatalogCreateProductVariantSuccess(t *testing.T) {
+	store := &fakeCatalogStore{
+		createProductVariantFn: func(_ context.Context, productID string, in storcat.ProductVariantCreateInput) (storcat.Variant, error) {
+			if productID != "prod-1" {
+				t.Fatalf("unexpected product id: %s", productID)
+			}
+			if in.SKU != "SKU-1" || in.PriceCents != 1999 || in.Stock != 10 {
+				t.Fatalf("unexpected input: %#v", in)
+			}
+			return storcat.Variant{ID: "var-1", SKU: in.SKU, PriceCents: in.PriceCents, Currency: in.Currency, Stock: in.Stock}, nil
+		},
+	}
+	m := &module{catalog: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	body := map[string]any{
+		"sku":         "SKU-1",
+		"price_cents": 1999,
+		"stock":       10,
+		"currency":    "USD",
+	}
+	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/catalog/products/prod-1/variants", body)
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, res.Code)
 	}
 }
 

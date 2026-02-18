@@ -6,6 +6,7 @@ import {
   bulkApplyAdminProductDiscount,
   bulkAssignAdminProductCategories,
   bulkRemoveAdminProductCategories,
+  createAdminProductVariant,
   createAdminProduct,
   getCategories,
   getProducts,
@@ -103,6 +104,30 @@ function parseDiscountPayload(formData: FormData): { mode: "price"; discount_pri
   return { mode: "percent", discount_percent: value };
 }
 
+function parseMoneyToCents(raw: string, field: string): number {
+  const normalized = raw.trim();
+  if (!normalized) {
+    throw new Error(`${field} is required`);
+  }
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${field} must be a valid non-negative number`);
+  }
+  return Math.round(parsed * 100);
+}
+
+function parseTags(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const tag = part.trim();
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    out.push(tag);
+  }
+  return out;
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Request failed";
@@ -163,13 +188,49 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
     "use server";
     const returnTo = safeReturnTo(formData.get("return_to"));
     try {
-      await createAdminProduct({
+      const created = await createAdminProduct({
         slug: String(formData.get("slug") ?? "").trim(),
         title: String(formData.get("title") ?? "").trim(),
         description: String(formData.get("description") ?? "").trim(),
+        status: String(formData.get("status") ?? "published").trim().toLowerCase(),
+        tags: parseTags(String(formData.get("tags") ?? "")),
         seo_title: cleanOptional(formData.get("seo_title")),
         seo_description: cleanOptional(formData.get("seo_description")),
       });
+      const stock = Number.parseInt(String(formData.get("stock") ?? ""), 10);
+      if (!Number.isFinite(stock) || stock < 0) {
+        throw new Error("stock must be a valid non-negative integer");
+      }
+      const basePriceCents = parseMoneyToCents(String(formData.get("base_price") ?? ""), "base_price");
+      await createAdminProductVariant(created.id, {
+        sku: String(formData.get("sku") ?? "").trim(),
+        price_cents: basePriceCents,
+        stock,
+        currency: "USD",
+      });
+
+      const categoryIDs = cleanIDs(formData.getAll("category_ids"));
+      if (categoryIDs.length > 0) {
+        await bulkAssignAdminProductCategories({ product_ids: [created.id], category_ids: categoryIDs });
+      }
+
+      const discountType = String(formData.get("discount_type") ?? "none").trim().toLowerCase();
+      const discountRaw = String(formData.get("discount_value") ?? "").trim();
+      if (discountType !== "none" && discountRaw) {
+        if (discountType === "percent") {
+          const percent = Number.parseFloat(discountRaw);
+          if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) {
+            throw new Error("discount percent must be between 0 and 100");
+          }
+          await applyAdminProductDiscount(created.id, { mode: "percent", discount_percent: percent });
+        } else if (discountType === "flat") {
+          const flatCents = parseMoneyToCents(discountRaw, "discount_value");
+          if (flatCents <= 0 || flatCents >= basePriceCents) {
+            throw new Error("flat discount must be greater than 0 and less than base price");
+          }
+          await applyAdminProductDiscount(created.id, { mode: "price", discount_price_cents: basePriceCents - flatCents });
+        }
+      }
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Product created"));
     } catch (error) {
@@ -189,6 +250,8 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         slug: String(formData.get("slug") ?? "").trim(),
         title: String(formData.get("title") ?? "").trim(),
         description: String(formData.get("description") ?? "").trim(),
+        status: String(formData.get("status") ?? "published").trim().toLowerCase(),
+        tags: parseTags(String(formData.get("tags") ?? "")),
         seo_title: cleanOptional(formData.get("seo_title")),
         seo_description: cleanOptional(formData.get("seo_description")),
       });
@@ -330,7 +393,11 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           <p className="text-sm text-foreground/70">Create, edit, assign categories, and apply discounts with single or bulk workflows.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ProductsCreateModal createAction={createProductAction} returnTo={currentHref} />
+          <ProductsCreateModal
+            createAction={createProductAction}
+            returnTo={currentHref}
+            categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+          />
           <Link
             href="/admin/catalog/categories"
             className="rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
@@ -471,6 +538,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                   <th className="px-3 py-2 font-medium">Slug</th>
                   <th className="px-3 py-2 font-medium">Price</th>
                   <th className="px-3 py-2 font-medium">Stock</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
                   <th className="px-3 py-2 font-medium">Created</th>
                   <th className="px-3 py-2 font-medium text-right">Actions</th>
                 </tr>
@@ -504,6 +572,15 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                           {view.stockTotal}
                         </span>
                       </td>
+                      <td className="px-3 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          product.status === "inactive"
+                            ? "bg-slate-500/20 text-slate-700 dark:text-slate-300"
+                            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                        }`}>
+                          {product.status || "published"}
+                        </span>
+                      </td>
                       <td className="px-3 py-3 text-foreground/75">{view.createdLabel}</td>
                       <td className="px-3 py-3 text-right">
                         <details className="inline-block rounded-lg border border-surface-border bg-background/70 p-2 text-left">
@@ -512,6 +589,8 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                             <form action={updateProductAction} className="space-y-2 rounded-lg border border-surface-border p-3">
                               <input type="hidden" name="return_to" value={currentHref} />
                               <input type="hidden" name="product_id" value={product.id} />
+                              <input type="hidden" name="status" value={product.status || "published"} />
+                              <input type="hidden" name="tags" value={(product.tags || []).join(", ")} />
                               <p className="text-sm font-medium">Edit product</p>
                               <input defaultValue={product.title} name="title" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
                               <input defaultValue={product.slug} name="slug" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />

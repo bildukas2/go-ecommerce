@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -29,8 +30,17 @@ type ProductUpsertInput struct {
 	Slug           string
 	Title          string
 	Description    string
+	Status         string
+	Tags           []string
 	SEOTitle       *string
 	SEODescription *string
+}
+
+type ProductVariantCreateInput struct {
+	SKU        string
+	PriceCents int
+	Currency   string
+	Stock      int
 }
 
 type DiscountMode string
@@ -246,27 +256,43 @@ func (s *Store) DeleteCategory(ctx context.Context, id string) (DeleteCategoryRe
 }
 
 func (s *Store) CreateProduct(ctx context.Context, in ProductUpsertInput) (Product, error) {
+	if in.Status == "" {
+		in.Status = "published"
+	}
+	if in.Tags == nil {
+		in.Tags = []string{}
+	}
 	var (
 		p              Product
 		seoTitle       sql.NullString
 		seoDescription sql.NullString
 	)
 	row := s.db.QueryRowContext(ctx, `
-		INSERT INTO products (slug, title, description, seo_title, seo_description)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, slug, title, description, seo_title, seo_description, created_at, updated_at
+		INSERT INTO products (slug, title, description, status, tags, seo_title, seo_description)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, slug, title, description, status, COALESCE(to_json(tags), '[]'::json), seo_title, seo_description, created_at, updated_at
 	`,
 		in.Slug,
 		in.Title,
 		in.Description,
+		in.Status,
+		in.Tags,
 		toNullString(in.SEOTitle),
 		toNullString(in.SEODescription),
 	)
-	if err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
+	var tagsRaw []byte
+	if err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.Status, &tagsRaw, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		if isUniqueViolation(err) {
 			return Product{}, ErrConflict
 		}
 		return Product{}, err
+	}
+	if len(tagsRaw) > 0 {
+		if err := json.Unmarshal(tagsRaw, &p.Tags); err != nil {
+			return Product{}, err
+		}
+	} else {
+		p.Tags = []string{}
 	}
 	if seoTitle.Valid {
 		p.SEOTitle = &seoTitle.String
@@ -280,6 +306,12 @@ func (s *Store) CreateProduct(ctx context.Context, in ProductUpsertInput) (Produ
 }
 
 func (s *Store) UpdateProduct(ctx context.Context, id string, in ProductUpsertInput) (Product, error) {
+	if in.Status == "" {
+		in.Status = "published"
+	}
+	if in.Tags == nil {
+		in.Tags = []string{}
+	}
 	var (
 		p              Product
 		seoTitle       sql.NullString
@@ -290,20 +322,25 @@ func (s *Store) UpdateProduct(ctx context.Context, id string, in ProductUpsertIn
 		SET slug = $2,
 			title = $3,
 			description = $4,
-			seo_title = $5,
-			seo_description = $6,
+			status = $5,
+			tags = $6,
+			seo_title = $7,
+			seo_description = $8,
 			updated_at = now()
 		WHERE id = $1
-		RETURNING id, slug, title, description, seo_title, seo_description, created_at, updated_at
+		RETURNING id, slug, title, description, status, COALESCE(to_json(tags), '[]'::json), seo_title, seo_description, created_at, updated_at
 	`,
 		id,
 		in.Slug,
 		in.Title,
 		in.Description,
+		in.Status,
+		in.Tags,
 		toNullString(in.SEOTitle),
 		toNullString(in.SEODescription),
 	)
-	if err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
+	var tagsRaw []byte
+	if err := row.Scan(&p.ID, &p.Slug, &p.Title, &p.Description, &p.Status, &tagsRaw, &seoTitle, &seoDescription, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Product{}, ErrNotFound
 		}
@@ -311,6 +348,13 @@ func (s *Store) UpdateProduct(ctx context.Context, id string, in ProductUpsertIn
 			return Product{}, ErrConflict
 		}
 		return Product{}, err
+	}
+	if len(tagsRaw) > 0 {
+		if err := json.Unmarshal(tagsRaw, &p.Tags); err != nil {
+			return Product{}, err
+		}
+	} else {
+		p.Tags = []string{}
 	}
 	if seoTitle.Valid {
 		p.SEOTitle = &seoTitle.String
@@ -321,6 +365,39 @@ func (s *Store) UpdateProduct(ctx context.Context, id string, in ProductUpsertIn
 	p.Variants = []Variant{}
 	p.Images = []Image{}
 	return p, nil
+}
+
+func (s *Store) CreateProductVariant(ctx context.Context, productID string, in ProductVariantCreateInput) (Variant, error) {
+	var exists int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM products WHERE id = $1::uuid`, productID).Scan(&exists); err != nil {
+		return Variant{}, err
+	}
+	if exists != 1 {
+		return Variant{}, ErrNotFound
+	}
+
+	var (
+		variant       Variant
+		compareAtNull sql.NullInt64
+		attrsRaw      []byte
+	)
+	row := s.db.QueryRowContext(ctx, `
+		INSERT INTO product_variants (product_id, sku, price_cents, currency, stock, attributes_json)
+		VALUES ($1::uuid, $2, $3, $4, $5, '{}'::jsonb)
+		RETURNING id, sku, price_cents, compare_at_price_cents, currency, stock, attributes_json
+	`, productID, in.SKU, in.PriceCents, in.Currency, in.Stock)
+	if err := row.Scan(&variant.ID, &variant.SKU, &variant.PriceCents, &compareAtNull, &variant.Currency, &variant.Stock, &attrsRaw); err != nil {
+		if isUniqueViolation(err) {
+			return Variant{}, ErrConflict
+		}
+		return Variant{}, err
+	}
+	if compareAtNull.Valid {
+		value := int(compareAtNull.Int64)
+		variant.CompareAtPriceCents = &value
+	}
+	variant.Attributes = map[string]interface{}{}
+	return variant, nil
 }
 
 func (s *Store) ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error {

@@ -13,6 +13,8 @@ export type Product = {
   slug: string;
   title: string;
   description: string;
+  status: string;
+  tags: string[];
   seoTitle?: string | null;
   seoDescription?: string | null;
   variants: ProductVariant[];
@@ -162,6 +164,8 @@ function normalizeProduct(raw: unknown): Product {
     slug: asString(obj.slug),
     title: asString(obj.title),
     description: asString(obj.description),
+    status: asString(obj.status) || "published",
+    tags: Array.isArray(obj.tags) ? obj.tags.filter((t): t is string => typeof t === "string") : [],
     seoTitle: asNullableString(obj.seoTitle ?? obj.seo_title),
     seoDescription: asNullableString(obj.seoDescription ?? obj.seo_description),
     images: imagesRaw.map(normalizeImage).filter((img): img is ProductImage => img !== null),
@@ -599,8 +603,17 @@ export type AdminProductMutationInput = {
   slug: string;
   title: string;
   description?: string;
+  status?: string;
+  tags?: string[];
   seo_title?: string | null;
   seo_description?: string | null;
+};
+
+export type AdminCreateVariantInput = {
+  sku: string;
+  price_cents: number;
+  stock: number;
+  currency?: string;
 };
 
 type AdminCategoryIDsInput = {
@@ -676,6 +689,17 @@ export async function updateAdminProduct(id: string, input: AdminProductMutation
     body: input,
   });
   return normalizeProduct(out);
+}
+
+export async function createAdminProductVariant(productID: string, input: AdminCreateVariantInput): Promise<ProductVariant> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/catalog/products/${encodeURIComponent(productID)}/variants`,
+    method: "POST",
+    body: input,
+  });
+  const normalized = normalizeVariant(out);
+  if (!normalized) throw new Error("Admin catalog request failed: invalid variant response");
+  return normalized;
 }
 
 export async function setAdminProductCategories(productID: string, categoryIDs: string[]): Promise<void> {
