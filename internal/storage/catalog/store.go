@@ -10,18 +10,19 @@ import (
 
 // Product represents a product row from the catalog.
 type Product struct {
-	ID             string    `json:"id"`
-	Slug           string    `json:"slug"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	Status         string    `json:"status"`
-	Tags           []string  `json:"tags"`
-	SEOTitle       *string   `json:"seoTitle"`
-	SEODescription *string   `json:"seoDescription"`
-	Variants       []Variant `json:"variants"`
-	Images         []Image   `json:"images"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID             string                `json:"id"`
+	Slug           string                `json:"slug"`
+	Title          string                `json:"title"`
+	Description    string                `json:"description"`
+	Status         string                `json:"status"`
+	Tags           []string              `json:"tags"`
+	SEOTitle       *string               `json:"seoTitle"`
+	SEODescription *string               `json:"seoDescription"`
+	Variants       []Variant             `json:"variants"`
+	Images         []Image               `json:"images"`
+	CustomOptions  []ProductCustomOption `json:"customOptions"`
+	CreatedAt      time.Time             `json:"createdAt"`
+	UpdatedAt      time.Time             `json:"updatedAt"`
 }
 
 type Variant struct {
@@ -346,7 +347,49 @@ func (s *Store) GetProductBySlug(ctx context.Context, slug string) (Product, err
 	}
 	p.Images = images
 
+	customOptions, err := s.listActiveCustomOptionsForProduct(ctx, p.ID)
+	if err != nil {
+		return Product{}, err
+	}
+	p.CustomOptions = customOptions
+
 	return p, nil
+}
+
+func (s *Store) listActiveCustomOptionsForProduct(ctx context.Context, productID string) ([]ProductCustomOption, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT o.id, o.store_id, o.code, o.title, o.type_group, o.type, o.required, o.sort_order, o.price_type, o.price_value, o.is_active, o.created_at, o.updated_at
+		FROM product_custom_option_assignments a
+		JOIN product_custom_options o ON o.id = a.option_id
+		WHERE a.product_id = $1::uuid
+		  AND o.is_active = true
+		ORDER BY a.sort_order ASC, o.sort_order ASC, o.id ASC
+	`, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]ProductCustomOption, 0, 8)
+	for rows.Next() {
+		option, err := scanCustomOption(rows)
+		if err != nil {
+			return nil, err
+		}
+		option.Values = []ProductCustomOptionValue{}
+		if option.TypeGroup == CustomOptionTypeGroupSelect {
+			values, err := listCustomOptionValues(ctx, s.db, option.ID)
+			if err != nil {
+				return nil, err
+			}
+			option.Values = values
+		}
+		out = append(out, option)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (s *Store) listProductVariants(ctx context.Context, productID string) ([]Variant, error) {

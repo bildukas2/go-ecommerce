@@ -74,6 +74,162 @@ func TestGetProductBySlugIncludesVariantsAndImages(t *testing.T) {
 	}
 }
 
+func TestGetProductBySlugIncludesActiveAssignedCustomOptions(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	suffix := time.Now().UnixNano()
+	slug := fmt.Sprintf("custom-options-slug-%d", suffix)
+
+	var productID string
+	if err := store.db.QueryRowContext(ctx, `
+		INSERT INTO products (slug, title, description, status, tags)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`, slug, "Custom Option Product", "test", "published", []string{}).Scan(&productID); err != nil {
+		t.Fatalf("insert product: %v", err)
+	}
+
+	textPrice := 1.0
+	selectValuePriceA := 5.0
+	selectValuePriceB := 2.5
+	selectValueSortA := 10
+	selectValueSortB := 1
+
+	optionFirst, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+		Code:       uniqueCode("detail-order-first"),
+		Title:      "Gift Note",
+		TypeGroup:  CustomOptionTypeGroupText,
+		Type:       "field",
+		Required:   true,
+		SortOrder:  intPtr(1),
+		PriceType:  stringPtr(CustomOptionPriceTypeFixed),
+		PriceValue: &textPrice,
+		IsActive:   boolPtr(true),
+	})
+	if err != nil {
+		t.Fatalf("create first option: %v", err)
+	}
+
+	optionSecond, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+		Code:      uniqueCode("detail-order-second"),
+		Title:     "Gift Wrap",
+		TypeGroup: CustomOptionTypeGroupSelect,
+		Type:      "dropdown",
+		Required:  false,
+		SortOrder: intPtr(8),
+		IsActive:  boolPtr(true),
+		Values: []CustomOptionValueUpsertInput{
+			{
+				Title:      "Premium Wrap",
+				SortOrder:  &selectValueSortA,
+				PriceType:  CustomOptionPriceTypeFixed,
+				PriceValue: &selectValuePriceA,
+			},
+			{
+				Title:      "Standard Wrap",
+				SortOrder:  &selectValueSortB,
+				PriceType:  CustomOptionPriceTypePercent,
+				PriceValue: &selectValuePriceB,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create second option: %v", err)
+	}
+
+	inactivePrice := 0.0
+	inactiveOption, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+		Code:       uniqueCode("detail-inactive"),
+		Title:      "Hidden Option",
+		TypeGroup:  CustomOptionTypeGroupText,
+		Type:       "area",
+		PriceType:  stringPtr(CustomOptionPriceTypeFixed),
+		PriceValue: &inactivePrice,
+		IsActive:   boolPtr(false),
+	})
+	if err != nil {
+		t.Fatalf("create inactive option: %v", err)
+	}
+
+	optionThird, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+		Code:       uniqueCode("detail-order-third"),
+		Title:      "Delivery Slot",
+		TypeGroup:  CustomOptionTypeGroupDate,
+		Type:       "date",
+		SortOrder:  intPtr(3),
+		PriceType:  stringPtr(CustomOptionPriceTypePercent),
+		PriceValue: &textPrice,
+		IsActive:   boolPtr(true),
+	})
+	if err != nil {
+		t.Fatalf("create third option: %v", err)
+	}
+
+	defer func() {
+		deleteProductByID(t, store.db, productID)
+		deleteOptionByID(t, store.db, optionFirst.ID)
+		deleteOptionByID(t, store.db, optionSecond.ID)
+		deleteOptionByID(t, store.db, inactiveOption.ID)
+		deleteOptionByID(t, store.db, optionThird.ID)
+	}()
+
+	assignSortLow := 0
+	assignSortShared := 1
+	assignSortInactive := -1
+	if _, err := store.AttachProductCustomOption(ctx, productID, optionSecond.ID, &assignSortShared); err != nil {
+		t.Fatalf("attach second option: %v", err)
+	}
+	if _, err := store.AttachProductCustomOption(ctx, productID, optionFirst.ID, &assignSortShared); err != nil {
+		t.Fatalf("attach first option: %v", err)
+	}
+	if _, err := store.AttachProductCustomOption(ctx, productID, optionThird.ID, &assignSortLow); err != nil {
+		t.Fatalf("attach third option: %v", err)
+	}
+	if _, err := store.AttachProductCustomOption(ctx, productID, inactiveOption.ID, &assignSortInactive); err != nil {
+		t.Fatalf("attach inactive option: %v", err)
+	}
+
+	product, err := store.GetProductBySlug(ctx, slug)
+	if err != nil {
+		t.Fatalf("get product by slug: %v", err)
+	}
+
+	if len(product.CustomOptions) != 3 {
+		t.Fatalf("expected 3 active assigned options, got %d", len(product.CustomOptions))
+	}
+	if product.CustomOptions[0].ID != optionThird.ID {
+		t.Fatalf("expected first option %s, got %s", optionThird.ID, product.CustomOptions[0].ID)
+	}
+	if product.CustomOptions[1].ID != optionFirst.ID {
+		t.Fatalf("expected second option %s, got %s", optionFirst.ID, product.CustomOptions[1].ID)
+	}
+	if product.CustomOptions[2].ID != optionSecond.ID {
+		t.Fatalf("expected third option %s, got %s", optionSecond.ID, product.CustomOptions[2].ID)
+	}
+
+	for _, option := range product.CustomOptions {
+		if !option.IsActive {
+			t.Fatalf("expected inactive options to be filtered out")
+		}
+	}
+
+	selectOption := product.CustomOptions[2]
+	if selectOption.TypeGroup != CustomOptionTypeGroupSelect {
+		t.Fatalf("expected select option in third position, got %s", selectOption.TypeGroup)
+	}
+	if len(selectOption.Values) != 2 {
+		t.Fatalf("expected 2 select values, got %d", len(selectOption.Values))
+	}
+	if selectOption.Values[0].Title != "Standard Wrap" {
+		t.Fatalf("expected sorted select value order, got first title %q", selectOption.Values[0].Title)
+	}
+	if selectOption.Values[1].Title != "Premium Wrap" {
+		t.Fatalf("expected sorted select value order, got second title %q", selectOption.Values[1].Title)
+	}
+}
+
 func TestListProductsIncludesVariantsAndImages(t *testing.T) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -121,6 +277,10 @@ func TestListProductsIncludesVariantsAndImages(t *testing.T) {
 	if !foundWithImages {
 		t.Error("expected at least one product in list to have images")
 	}
+}
+
+func intPtr(v int) *int {
+	return &v
 }
 
 func TestCategoryMarshalJSONIncludesDefaultImageURL(t *testing.T) {
