@@ -30,19 +30,35 @@ export function CategoryMediaPicker({
 
       <label className="space-y-1 text-sm">
         <span>Select from media library</span>
-        <select
-          name="media_selected_url"
-          defaultValue=""
-          className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
-        >
-          <option value="">Keep manual URL</option>
-          {mediaAssets.map((asset) => (
-            <option key={asset.id} value={asset.url}>
-              {asset.alt ? `${asset.alt} (${asset.mime_type})` : `${asset.mime_type} - ${asset.id.slice(0, 8)}`}
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-foreground/65">Choose an asset here, then submit create/save to apply it.</p>
+        <div className="rounded-xl border border-surface-border bg-background p-2">
+          <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-sm">
+            <input type="radio" name="media_selected_url" value="" defaultChecked={!defaultImageURL} />
+            <span>Keep manual URL</span>
+          </label>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {mediaAssets.map((asset) => {
+              const label = asset.alt ? `${asset.alt} (${asset.mime_type})` : `${asset.mime_type} - ${asset.id.slice(0, 8)}`;
+              return (
+                <label key={asset.id} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="media_selected_url"
+                    value={asset.url}
+                    defaultChecked={asset.url === defaultImageURL}
+                    className="peer sr-only"
+                  />
+                  <div className="overflow-hidden rounded-lg border border-surface-border transition peer-checked:border-blue-500 peer-checked:ring-2 peer-checked:ring-blue-500/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={asset.url} alt={asset.alt || "Media asset preview"} className="h-24 w-full bg-foreground/[0.03] object-cover" loading="lazy" />
+                    <p className="truncate px-2 py-1 text-xs text-foreground/75">{label}</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <p className="text-xs text-foreground/65">Pick an image card to apply it, then submit create/save.</p>
       </label>
 
       {mediaLoadError && (
