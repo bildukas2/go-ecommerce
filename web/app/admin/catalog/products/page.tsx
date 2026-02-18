@@ -17,6 +17,7 @@ import { formatMoney } from "@/lib/money";
 import { selectProductGridImage } from "@/lib/product-images";
 import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/admin-catalog-state";
 import { ProductsBulkTools } from "@/components/admin/catalog/products-bulk-tools";
+import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -328,50 +329,20 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-sm text-foreground/70">Create, edit, assign categories, and apply discounts with single or bulk workflows.</p>
         </div>
-        <Link
-          href="/admin/catalog/categories"
-          className="rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
-        >
-          Manage categories
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ProductsCreateModal createAction={createProductAction} returnTo={currentHref} />
+          <Link
+            href="/admin/catalog/categories"
+            className="rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
+          >
+            Manage categories
+          </Link>
+        </div>
       </div>
 
       {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</div>}
       {actionError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</div>}
       {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
-
-      <section className="glass rounded-2xl border p-4">
-        <h2 className="text-lg font-semibold">Create product</h2>
-        <form action={createProductAction} className="mt-4 grid gap-3 md:grid-cols-2">
-          <input type="hidden" name="return_to" value={currentHref} />
-          <label className="space-y-1 text-sm">
-            <span>Title</span>
-            <input name="title" required className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Slug</span>
-            <input name="slug" required placeholder="everyday-hoodie" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm md:col-span-2">
-            <span>Description</span>
-            <textarea name="description" rows={3} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>SEO title</span>
-            <input name="seo_title" maxLength={120} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>SEO description</span>
-            <input name="seo_description" maxLength={320} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-          </label>
-          <button
-            type="submit"
-            className="md:col-span-2 rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
-          >
-            Create product
-          </button>
-        </form>
-      </section>
 
       <section className="glass rounded-2xl border p-4">
         <form method="get" action="/admin/catalog/products" className="grid gap-3 md:grid-cols-5">
@@ -485,89 +456,119 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           </div>
         </div>
 
-        <div className="space-y-3 p-3">
-          {visibleProducts.map((product) => {
-            const view = toProductViewData(product);
-            return (
-              <article key={product.id} className="rounded-xl border border-surface-border bg-foreground/[0.02] p-3">
-                <div className="flex flex-wrap gap-3">
-                  <div className="image-default-bg size-20 shrink-0 overflow-hidden rounded-lg border border-surface-border">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={view.imageUrl} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-semibold">{product.title}</p>
-                    <p className="truncate font-mono text-xs text-foreground/60">/{product.slug}</p>
-                    <p className="text-sm font-medium">{view.priceLabel}</p>
-                    <p className="text-xs text-foreground/65">{view.stockTotal} in stock · Created {view.createdLabel}</p>
-                  </div>
-                </div>
-
-                <details className="mt-3 rounded-xl border border-surface-border bg-background/70 p-3">
-                  <summary className="cursor-pointer text-sm font-medium">Edit product, categories, and single discount</summary>
-                  <div className="mt-3 grid gap-3 lg:grid-cols-3">
-                    <form action={updateProductAction} className="space-y-2 rounded-lg border border-surface-border p-3">
-                      <input type="hidden" name="return_to" value={currentHref} />
-                      <input type="hidden" name="product_id" value={product.id} />
-                      <p className="text-sm font-medium">Edit product</p>
-                      <input defaultValue={product.title} name="title" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                      <input defaultValue={product.slug} name="slug" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                      <textarea defaultValue={product.description} name="description" rows={3} className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                      <input defaultValue={product.seoTitle ?? ""} name="seo_title" maxLength={120} placeholder="SEO title" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                      <input defaultValue={product.seoDescription ?? ""} name="seo_description" maxLength={320} placeholder="SEO description" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                      <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Save product</button>
-                    </form>
-
-                    <form action={assignCategoriesToSingleAction} className="space-y-2 rounded-lg border border-surface-border p-3">
-                      <input type="hidden" name="return_to" value={currentHref} />
-                      <input type="hidden" name="product_id" value={product.id} />
-                      <p className="text-sm font-medium">Assign categories</p>
-                      <select multiple name="category_ids" className="h-36 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                        {categories.map((category) => (
-                          <option key={`${product.id}-assign-${category.id}`} value={category.id}>{category.name}</option>
-                        ))}
-                      </select>
-                      <button type="submit" className="w-full rounded-lg border border-emerald-500/35 bg-emerald-500/12 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">Assign selected</button>
-                    </form>
-
-                    <div className="space-y-2 rounded-lg border border-surface-border p-3">
-                      <form action={removeCategoriesFromSingleAction} className="space-y-2">
-                        <input type="hidden" name="return_to" value={currentHref} />
-                        <input type="hidden" name="product_id" value={product.id} />
-                        <p className="text-sm font-medium">Remove categories</p>
-                        <select multiple name="category_ids" className="h-24 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                          {categories.map((category) => (
-                            <option key={`${product.id}-remove-${category.id}`} value={category.id}>{category.name}</option>
-                          ))}
-                        </select>
-                        <button type="submit" className="w-full rounded-lg border border-amber-500/35 bg-amber-500/12 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">Remove selected</button>
-                      </form>
-                      <form action={discountSingleProductAction} className="space-y-2 border-t border-surface-border pt-2">
-                        <input type="hidden" name="return_to" value={currentHref} />
-                        <input type="hidden" name="product_id" value={product.id} />
-                        <p className="text-sm font-medium">Single discount</p>
-                        <select name="mode" defaultValue="percent" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                          <option value="percent">Percent %</option>
-                          <option value="price">Static price (cents)</option>
-                        </select>
-                        <input name="discount_percent" defaultValue="10" type="number" step="0.01" min="0" max="100" placeholder="discount_percent" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                        <input name="discount_price_cents" type="number" min="0" placeholder="discount_price_cents (for price mode)" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                        <p className="text-xs text-foreground/60">Use the bulk tool above for instant discount-price preview while typing.</p>
-                        <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Apply discount</button>
-                      </form>
-                    </div>
-                  </div>
-                </details>
-              </article>
-            );
-          })}
-
-          {visibleProducts.length === 0 && (
+        {visibleProducts.length === 0 ? (
+          <div className="p-4">
             <div className="rounded-xl border border-surface-border p-8 text-center text-sm text-foreground/60">
               {fetchError ? "No products loaded." : "No products match the selected filters."}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-foreground/[0.02] text-left text-xs uppercase tracking-wide text-foreground/70">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Product</th>
+                  <th className="px-3 py-2 font-medium">Slug</th>
+                  <th className="px-3 py-2 font-medium">Price</th>
+                  <th className="px-3 py-2 font-medium">Stock</th>
+                  <th className="px-3 py-2 font-medium">Created</th>
+                  <th className="px-3 py-2 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleProducts.map((product) => {
+                  const view = toProductViewData(product);
+                  return (
+                    <tr key={product.id} className="border-t border-surface-border align-top">
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="image-default-bg size-14 shrink-0 overflow-hidden rounded-lg border border-surface-border">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={view.imageUrl} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
+                          </div>
+                          <p className="max-w-[260px] truncate font-semibold">{product.title}</p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-xs text-foreground/60">/{product.slug}</td>
+                      <td className="px-3 py-3">{view.priceLabel}</td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            view.stockState === "in_stock"
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                              : view.stockState === "low_stock"
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                : "bg-red-500/15 text-red-700 dark:text-red-300"
+                          }`}
+                        >
+                          {view.stockTotal}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-foreground/75">{view.createdLabel}</td>
+                      <td className="px-3 py-3 text-right">
+                        <details className="inline-block rounded-lg border border-surface-border bg-background/70 p-2 text-left">
+                          <summary className="cursor-pointer text-xs font-medium">Edit</summary>
+                          <div className="mt-3 grid w-[min(90vw,900px)] gap-3 lg:grid-cols-3">
+                            <form action={updateProductAction} className="space-y-2 rounded-lg border border-surface-border p-3">
+                              <input type="hidden" name="return_to" value={currentHref} />
+                              <input type="hidden" name="product_id" value={product.id} />
+                              <p className="text-sm font-medium">Edit product</p>
+                              <input defaultValue={product.title} name="title" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                              <input defaultValue={product.slug} name="slug" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                              <textarea defaultValue={product.description} name="description" rows={3} className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                              <input defaultValue={product.seoTitle ?? ""} name="seo_title" maxLength={120} placeholder="SEO title" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                              <input defaultValue={product.seoDescription ?? ""} name="seo_description" maxLength={320} placeholder="SEO description" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                              <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Save product</button>
+                            </form>
+
+                            <form action={assignCategoriesToSingleAction} className="space-y-2 rounded-lg border border-surface-border p-3">
+                              <input type="hidden" name="return_to" value={currentHref} />
+                              <input type="hidden" name="product_id" value={product.id} />
+                              <p className="text-sm font-medium">Assign categories</p>
+                              <select multiple name="category_ids" className="h-36 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
+                                {categories.map((category) => (
+                                  <option key={`${product.id}-assign-${category.id}`} value={category.id}>{category.name}</option>
+                                ))}
+                              </select>
+                              <button type="submit" className="w-full rounded-lg border border-emerald-500/35 bg-emerald-500/12 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">Assign selected</button>
+                            </form>
+
+                            <div className="space-y-2 rounded-lg border border-surface-border p-3">
+                              <form action={removeCategoriesFromSingleAction} className="space-y-2">
+                                <input type="hidden" name="return_to" value={currentHref} />
+                                <input type="hidden" name="product_id" value={product.id} />
+                                <p className="text-sm font-medium">Remove categories</p>
+                                <select multiple name="category_ids" className="h-24 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
+                                  {categories.map((category) => (
+                                    <option key={`${product.id}-remove-${category.id}`} value={category.id}>{category.name}</option>
+                                  ))}
+                                </select>
+                                <button type="submit" className="w-full rounded-lg border border-amber-500/35 bg-amber-500/12 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">Remove selected</button>
+                              </form>
+                              <form action={discountSingleProductAction} className="space-y-2 border-t border-surface-border pt-2">
+                                <input type="hidden" name="return_to" value={currentHref} />
+                                <input type="hidden" name="product_id" value={product.id} />
+                                <p className="text-sm font-medium">Single discount</p>
+                                <select name="mode" defaultValue="percent" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
+                                  <option value="percent">Percent %</option>
+                                  <option value="price">Static price (cents)</option>
+                                </select>
+                                <input name="discount_percent" defaultValue="10" type="number" step="0.01" min="0" max="100" placeholder="discount_percent" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                                <input name="discount_price_cents" type="number" min="0" placeholder="discount_price_cents (for price mode)" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
+                                <p className="text-xs text-foreground/60">Use bulk tools for instant discount preview.</p>
+                                <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Apply discount</button>
+                              </form>
+                            </div>
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );
