@@ -24,6 +24,14 @@ type fakeCatalogStore struct {
 	bulkAssignProductCatsFn func(context.Context, []string, []string) (int64, error)
 	bulkRemoveProductCatsFn func(context.Context, []string, []string) (int64, error)
 	applyDiscountProductsFn func(context.Context, []string, storcat.ProductDiscountInput) (int64, error)
+	listCustomOptionsFn     func(context.Context, storcat.ListCustomOptionsParams) ([]storcat.ProductCustomOption, error)
+	createCustomOptionFn    func(context.Context, storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
+	getCustomOptionByIDFn   func(context.Context, string) (storcat.ProductCustomOption, error)
+	updateCustomOptionFn    func(context.Context, string, storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
+	deleteCustomOptionFn    func(context.Context, string) error
+	listAssignmentsFn       func(context.Context, string) ([]storcat.ProductCustomOptionAssignment, error)
+	attachAssignmentFn      func(context.Context, string, string, *int) (storcat.ProductCustomOptionAssignment, error)
+	detachAssignmentFn      func(context.Context, string, string) error
 }
 
 func (f *fakeCatalogStore) CreateCategory(ctx context.Context, in storcat.CategoryUpsertInput) (storcat.Category, error) {
@@ -91,6 +99,54 @@ func (f *fakeCatalogStore) ApplyDiscountToProducts(ctx context.Context, productI
 		return 0, nil
 	}
 	return f.applyDiscountProductsFn(ctx, productIDs, in)
+}
+func (f *fakeCatalogStore) ListCustomOptions(ctx context.Context, in storcat.ListCustomOptionsParams) ([]storcat.ProductCustomOption, error) {
+	if f.listCustomOptionsFn == nil {
+		return []storcat.ProductCustomOption{}, nil
+	}
+	return f.listCustomOptionsFn(ctx, in)
+}
+func (f *fakeCatalogStore) CreateCustomOption(ctx context.Context, in storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error) {
+	if f.createCustomOptionFn == nil {
+		return storcat.ProductCustomOption{}, nil
+	}
+	return f.createCustomOptionFn(ctx, in)
+}
+func (f *fakeCatalogStore) GetCustomOptionByID(ctx context.Context, id string) (storcat.ProductCustomOption, error) {
+	if f.getCustomOptionByIDFn == nil {
+		return storcat.ProductCustomOption{}, nil
+	}
+	return f.getCustomOptionByIDFn(ctx, id)
+}
+func (f *fakeCatalogStore) UpdateCustomOption(ctx context.Context, id string, in storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error) {
+	if f.updateCustomOptionFn == nil {
+		return storcat.ProductCustomOption{}, nil
+	}
+	return f.updateCustomOptionFn(ctx, id, in)
+}
+func (f *fakeCatalogStore) DeleteCustomOption(ctx context.Context, id string) error {
+	if f.deleteCustomOptionFn == nil {
+		return nil
+	}
+	return f.deleteCustomOptionFn(ctx, id)
+}
+func (f *fakeCatalogStore) ListProductCustomOptionAssignments(ctx context.Context, productID string) ([]storcat.ProductCustomOptionAssignment, error) {
+	if f.listAssignmentsFn == nil {
+		return []storcat.ProductCustomOptionAssignment{}, nil
+	}
+	return f.listAssignmentsFn(ctx, productID)
+}
+func (f *fakeCatalogStore) AttachProductCustomOption(ctx context.Context, productID, optionID string, sortOrder *int) (storcat.ProductCustomOptionAssignment, error) {
+	if f.attachAssignmentFn == nil {
+		return storcat.ProductCustomOptionAssignment{}, nil
+	}
+	return f.attachAssignmentFn(ctx, productID, optionID, sortOrder)
+}
+func (f *fakeCatalogStore) DetachProductCustomOption(ctx context.Context, productID, optionID string) error {
+	if f.detachAssignmentFn == nil {
+		return nil
+	}
+	return f.detachAssignmentFn(ctx, productID, optionID)
 }
 
 func TestCatalogCreateCategorySuccess(t *testing.T) {

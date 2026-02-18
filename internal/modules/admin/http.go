@@ -101,6 +101,9 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/catalog/products/categories/bulk-remove", m.wrapAuth(m.handleCatalogProductsBulkRemoveCategories))
 	mux.HandleFunc("/admin/catalog/products/discount/bulk", m.wrapAuth(m.handleCatalogProductsBulkDiscount))
 	mux.HandleFunc("/admin/catalog/products/", m.wrapAuth(m.handleCatalogProductDetailActions))
+	mux.HandleFunc("/admin/custom-options", m.wrapAuth(m.handleCustomOptions))
+	mux.HandleFunc("/admin/custom-options/", m.wrapAuth(m.handleCustomOptionDetail))
+	mux.HandleFunc("/admin/products/", m.wrapAuth(m.handleProductCustomOptionAssignments))
 }
 
 func (m *module) wrapAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -260,6 +263,14 @@ type catalogStore interface {
 	BulkAssignProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
 	BulkRemoveProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
 	ApplyDiscountToProducts(ctx context.Context, productIDs []string, in storcat.ProductDiscountInput) (int64, error)
+	ListCustomOptions(ctx context.Context, in storcat.ListCustomOptionsParams) ([]storcat.ProductCustomOption, error)
+	CreateCustomOption(ctx context.Context, in storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
+	GetCustomOptionByID(ctx context.Context, id string) (storcat.ProductCustomOption, error)
+	UpdateCustomOption(ctx context.Context, id string, in storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
+	DeleteCustomOption(ctx context.Context, id string) error
+	ListProductCustomOptionAssignments(ctx context.Context, productID string) ([]storcat.ProductCustomOptionAssignment, error)
+	AttachProductCustomOption(ctx context.Context, productID, optionID string, sortOrder *int) (storcat.ProductCustomOptionAssignment, error)
+	DetachProductCustomOption(ctx context.Context, productID, optionID string) error
 }
 
 type mediaStore interface {
