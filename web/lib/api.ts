@@ -13,6 +13,8 @@ export type Product = {
   slug: string;
   title: string;
   description: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   variants: ProductVariant[];
   images: ProductImage[];
   createdAt?: string;
@@ -23,6 +25,7 @@ export type ProductVariant = {
   id: string;
   sku: string;
   priceCents: number;
+  compareAtPriceCents?: number | null;
   currency: string;
   stock: number;
   attributes: Record<string, string | number | boolean | null>;
@@ -40,8 +43,11 @@ export type Category = {
   id: string;
   slug: string;
   name: string;
+  description: string;
   parentId?: string | null;
   defaultImageUrl?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 };
 
 export type ProductListResponse = {
@@ -109,6 +115,12 @@ function normalizeVariant(raw: unknown): ProductVariant | null {
     id,
     sku: asString(obj.sku),
     priceCents: asNumber(obj.priceCents ?? obj.price_cents),
+    compareAtPriceCents:
+      obj.compareAtPriceCents === null || obj.compare_at_price_cents === null
+        ? null
+        : (obj.compareAtPriceCents ?? obj.compare_at_price_cents) === undefined
+          ? null
+          : asNumber(obj.compareAtPriceCents ?? obj.compare_at_price_cents),
     currency: asString(obj.currency),
     stock: asNumber(obj.stock),
     attributes: normalizeAttributes(obj.attributes ?? obj.attributes_json),
@@ -138,6 +150,8 @@ function normalizeProduct(raw: unknown): Product {
     slug: asString(obj.slug),
     title: asString(obj.title),
     description: asString(obj.description),
+    seoTitle: asNullableString(obj.seoTitle ?? obj.seo_title),
+    seoDescription: asNullableString(obj.seoDescription ?? obj.seo_description),
     images: imagesRaw.map(normalizeImage).filter((img): img is ProductImage => img !== null),
     variants: variantsRaw.map(normalizeVariant).filter((variant): variant is ProductVariant => variant !== null),
     createdAt: asString(obj.createdAt ?? obj.created_at) || undefined,
@@ -156,8 +170,11 @@ function normalizeCategory(raw: unknown): Category | null {
     id,
     slug,
     name,
+    description: asString(obj.description),
     parentId: asNullableString(obj.parentId ?? obj.parent_id),
     defaultImageUrl: asNullableString(obj.defaultImageUrl ?? obj.default_image_url),
+    seoTitle: asNullableString(obj.seoTitle ?? obj.seo_title),
+    seoDescription: asNullableString(obj.seoDescription ?? obj.seo_description),
   };
 }
 
@@ -378,4 +395,144 @@ export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
   });
   if (!res.ok) throw new Error(`Failed to fetch order: ${res.status}`);
   return res.json();
+}
+
+type AdminCatalogRequestMethod = "POST" | "PATCH" | "PUT";
+
+type AdminCatalogRequestOptions = {
+  path: string;
+  method: AdminCatalogRequestMethod;
+  body: unknown;
+};
+
+async function adminCatalogRequest<T>({ path, method, body }: AdminCatalogRequestOptions): Promise<T> {
+  const url = new URL(apiJoin(path));
+  const res = await fetch(url.toString(), {
+    method,
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = `Admin catalog request failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+  return res.json() as Promise<T>;
+}
+
+export type AdminCategoryMutationInput = {
+  slug: string;
+  name: string;
+  description?: string;
+  parent_id?: string | null;
+  default_image_url?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+};
+
+export type AdminProductMutationInput = {
+  slug: string;
+  title: string;
+  description?: string;
+  seo_title?: string | null;
+  seo_description?: string | null;
+};
+
+type AdminCategoryIDsInput = {
+  product_ids: string[];
+  category_ids: string[];
+};
+
+export type AdminDiscountInput =
+  | { mode: "price"; discount_price_cents: number }
+  | { mode: "percent"; discount_percent: number };
+
+export async function createAdminCategory(input: AdminCategoryMutationInput): Promise<Category> {
+  const out = await adminCatalogRequest<unknown>({
+    path: "admin/catalog/categories",
+    method: "POST",
+    body: input,
+  });
+  const normalized = normalizeCategory(out);
+  if (!normalized) throw new Error("Admin catalog request failed: invalid category response");
+  return normalized;
+}
+
+export async function updateAdminCategory(id: string, input: AdminCategoryMutationInput): Promise<Category> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/catalog/categories/${encodeURIComponent(id)}`,
+    method: "PATCH",
+    body: input,
+  });
+  const normalized = normalizeCategory(out);
+  if (!normalized) throw new Error("Admin catalog request failed: invalid category response");
+  return normalized;
+}
+
+export async function createAdminProduct(input: AdminProductMutationInput): Promise<Product> {
+  const out = await adminCatalogRequest<unknown>({
+    path: "admin/catalog/products",
+    method: "POST",
+    body: input,
+  });
+  return normalizeProduct(out);
+}
+
+export async function updateAdminProduct(id: string, input: AdminProductMutationInput): Promise<Product> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/catalog/products/${encodeURIComponent(id)}`,
+    method: "PATCH",
+    body: input,
+  });
+  return normalizeProduct(out);
+}
+
+export async function setAdminProductCategories(productID: string, categoryIDs: string[]): Promise<void> {
+  await adminCatalogRequest({
+    path: `admin/catalog/products/${encodeURIComponent(productID)}/categories`,
+    method: "PUT",
+    body: { category_ids: categoryIDs },
+  });
+}
+
+export async function bulkAssignAdminProductCategories(input: AdminCategoryIDsInput): Promise<{ affected: number }> {
+  return adminCatalogRequest<{ affected: number }>({
+    path: "admin/catalog/products/categories/bulk-assign",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function bulkRemoveAdminProductCategories(input: AdminCategoryIDsInput): Promise<{ affected: number }> {
+  return adminCatalogRequest<{ affected: number }>({
+    path: "admin/catalog/products/categories/bulk-remove",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function applyAdminProductDiscount(productID: string, discount: AdminDiscountInput): Promise<{ updated_variants: number }> {
+  return adminCatalogRequest<{ updated_variants: number }>({
+    path: `admin/catalog/products/${encodeURIComponent(productID)}/discount`,
+    method: "POST",
+    body: discount,
+  });
+}
+
+export async function bulkApplyAdminProductDiscount(input: {
+  product_ids: string[];
+} & AdminDiscountInput): Promise<{ updated_variants: number }> {
+  return adminCatalogRequest<{ updated_variants: number }>({
+    path: "admin/catalog/products/discount/bulk",
+    method: "POST",
+    body: input,
+  });
 }

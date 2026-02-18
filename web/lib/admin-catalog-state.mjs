@@ -1,6 +1,7 @@
 export const DEFAULT_ADMIN_PRODUCTS_PAGE = 1;
 export const DEFAULT_ADMIN_PRODUCTS_LIMIT = 20;
 export const LOW_STOCK_THRESHOLD = 5;
+const DISCOUNT_MODE_VALUES = new Set(["price", "percent"]);
 
 const SORT_VALUES = new Set([
   "newest",
@@ -37,6 +38,87 @@ export function parseAdminProductsSearchParams(searchParams) {
     sort: SORT_VALUES.has(sortRaw) ? sortRaw : "newest",
     stock: STOCK_VALUES.has(stockRaw) ? stockRaw : "all",
   };
+}
+
+export function normalizeSelectedProductIDs(productIDs) {
+  if (!Array.isArray(productIDs)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const value of productIDs) {
+    if (typeof value !== "string") continue;
+    const id = value.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+export function isEveryProductSelected(productIDs, selectedProductIDs) {
+  const all = normalizeSelectedProductIDs(productIDs);
+  const selectedSet = new Set(normalizeSelectedProductIDs(selectedProductIDs));
+  return all.length > 0 && all.every((id) => selectedSet.has(id));
+}
+
+export function toggleProductSelection(selectedProductIDs, productID, checked) {
+  const selected = normalizeSelectedProductIDs(selectedProductIDs);
+  const id = typeof productID === "string" ? productID.trim() : "";
+  if (!id) return selected;
+  const set = new Set(selected);
+  if (checked) {
+    set.add(id);
+  } else {
+    set.delete(id);
+  }
+  return [...set];
+}
+
+export function parseDiscountDraft(inputMode, inputValue) {
+  const mode = typeof inputMode === "string" && DISCOUNT_MODE_VALUES.has(inputMode) ? inputMode : "percent";
+  const parsedValue = Number.parseFloat(String(inputValue ?? ""));
+  const value = Number.isFinite(parsedValue) ? parsedValue : 0;
+  return { mode, value };
+}
+
+export function calculateDiscountPreview(basePriceCents, mode, value) {
+  const base = Number(basePriceCents);
+  if (!Number.isFinite(base) || base <= 0) {
+    return {
+      valid: false,
+      discountedPriceCents: null,
+      savingsCents: null,
+      percentOff: null,
+    };
+  }
+  if (mode === "price") {
+    const discounted = Math.round(value);
+    if (!Number.isFinite(discounted) || discounted < 0 || discounted >= base) {
+      return { valid: false, discountedPriceCents: null, savingsCents: null, percentOff: null };
+    }
+    const savings = base - discounted;
+    return {
+      valid: true,
+      discountedPriceCents: discounted,
+      savingsCents: savings,
+      percentOff: Math.round((savings / base) * 10000) / 100,
+    };
+  }
+  if (mode === "percent") {
+    if (!Number.isFinite(value) || value <= 0 || value >= 100) {
+      return { valid: false, discountedPriceCents: null, savingsCents: null, percentOff: null };
+    }
+    const discounted = Math.round(base * (1 - value / 100));
+    if (discounted < 0 || discounted >= base) {
+      return { valid: false, discountedPriceCents: null, savingsCents: null, percentOff: null };
+    }
+    return {
+      valid: true,
+      discountedPriceCents: discounted,
+      savingsCents: base - discounted,
+      percentOff: Math.round(value * 100) / 100,
+    };
+  }
+  return { valid: false, discountedPriceCents: null, savingsCents: null, percentOff: null };
 }
 
 function totalStock(product) {

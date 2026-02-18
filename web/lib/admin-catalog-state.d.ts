@@ -34,3 +34,16 @@ export function parseAdminProductsSearchParams(searchParams: {
 
 export function applyAdminProductsState(products: Product[], state: Pick<AdminProductsState, "sort" | "stock">): Product[];
 export function isUnauthorizedAdminError(error: unknown): boolean;
+export function normalizeSelectedProductIDs(productIDs: string[]): string[];
+export function isEveryProductSelected(productIDs: string[], selectedProductIDs: string[]): boolean;
+export function toggleProductSelection(selectedProductIDs: string[], productID: string, checked: boolean): string[];
+export function parseDiscountDraft(inputMode: string, inputValue: string | number): {
+  mode: "price" | "percent";
+  value: number;
+};
+export function calculateDiscountPreview(basePriceCents: number, mode: "price" | "percent", value: number): {
+  valid: boolean;
+  discountedPriceCents: number | null;
+  savingsCents: number | null;
+  percentOff: number | null;
+};

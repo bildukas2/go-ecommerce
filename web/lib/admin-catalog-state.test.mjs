@@ -2,8 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyAdminProductsState,
+  calculateDiscountPreview,
+  isEveryProductSelected,
   isUnauthorizedAdminError,
+  normalizeSelectedProductIDs,
   parseAdminProductsSearchParams,
+  parseDiscountDraft,
+  toggleProductSelection,
 } from "./admin-catalog-state.mjs";
 
 test("parseAdminProductsSearchParams returns safe defaults", () => {
@@ -69,4 +74,44 @@ test("isUnauthorizedAdminError detects 401 responses", () => {
   assert.equal(isUnauthorizedAdminError(new Error("Failed to fetch products: 401")), true);
   assert.equal(isUnauthorizedAdminError(new Error("Failed to fetch products: 500")), false);
   assert.equal(isUnauthorizedAdminError({ message: "401" }), false);
+});
+
+test("normalizeSelectedProductIDs trims and deduplicates ids", () => {
+  assert.deepEqual(normalizeSelectedProductIDs([" a ", "b", "a", "", "   "]), ["a", "b"]);
+});
+
+test("toggleProductSelection adds and removes ids safely", () => {
+  const added = toggleProductSelection(["a"], "b", true);
+  assert.deepEqual(added, ["a", "b"]);
+
+  const removed = toggleProductSelection(["a", "b"], "a", false);
+  assert.deepEqual(removed, ["b"]);
+});
+
+test("isEveryProductSelected returns true only when all ids are present", () => {
+  assert.equal(isEveryProductSelected(["p1", "p2"], ["p2", "p1", "p1"]), true);
+  assert.equal(isEveryProductSelected(["p1", "p2"], ["p1"]), false);
+});
+
+test("parseDiscountDraft normalizes discount mode and numeric value", () => {
+  assert.deepEqual(parseDiscountDraft("price", "1299.2"), { mode: "price", value: 1299.2 });
+  assert.deepEqual(parseDiscountDraft("wat", "abc"), { mode: "percent", value: 0 });
+});
+
+test("calculateDiscountPreview computes valid percent discounts", () => {
+  assert.deepEqual(calculateDiscountPreview(1000, "percent", 25), {
+    valid: true,
+    discountedPriceCents: 750,
+    savingsCents: 250,
+    percentOff: 25,
+  });
+});
+
+test("calculateDiscountPreview rejects invalid static prices", () => {
+  assert.deepEqual(calculateDiscountPreview(1000, "price", 1000), {
+    valid: false,
+    discountedPriceCents: null,
+    savingsCents: null,
+    percentOff: null,
+  });
 });
