@@ -17,14 +17,19 @@ import (
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
 	storcat "goecommerce/internal/storage/catalog"
+	stormedia "goecommerce/internal/storage/media"
 	stororders "goecommerce/internal/storage/orders"
 )
 
 type module struct {
-	orders  ordersStore
-	catalog catalogStore
-	user    string
-	pass    string
+	orders              ordersStore
+	catalog             catalogStore
+	media               mediaStore
+	validateImportHost  func(context.Context, string) error
+	downloadImportImage func(context.Context, string) ([]byte, string, error)
+	uploadsDir          string
+	user                string
+	pass                string
 }
 
 func NewModule(deps app.Deps) app.Module {
@@ -40,11 +45,24 @@ func NewModule(deps app.Deps) app.Module {
 			cst = s
 		}
 	}
+	var mst mediaStore
+	if deps.DB != nil {
+		if s, err := stormedia.NewStore(context.Background(), deps.DB); err == nil {
+			mst = s
+		}
+	}
+	uploadsDir := strings.TrimSpace(os.Getenv("UPLOADS_DIR"))
+	if uploadsDir == "" {
+		uploadsDir = "./tmp/uploads"
+	}
+	_ = os.MkdirAll(uploadsDir, 0o755)
 	return &module{
-		orders:  ost,
-		catalog: cst,
-		user:    strings.TrimSpace(os.Getenv("ADMIN_USER")),
-		pass:    strings.TrimSpace(os.Getenv("ADMIN_PASS")),
+		orders:     ost,
+		catalog:    cst,
+		media:      mst,
+		uploadsDir: uploadsDir,
+		user:       strings.TrimSpace(os.Getenv("ADMIN_USER")),
+		pass:       strings.TrimSpace(os.Getenv("ADMIN_PASS")),
 	}
 }
 
@@ -59,6 +77,11 @@ func (m *module) Close() error {
 			_ = closer.Close()
 		}
 	}
+	if m.media != nil {
+		if closer, ok := m.media.(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
+	}
 	return nil
 }
 
@@ -68,6 +91,9 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/dashboard", m.wrapAuth(m.handleDashboard))
 	mux.HandleFunc("/admin/orders", m.wrapAuth(m.handleOrders))
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
+	mux.HandleFunc("/admin/media", m.wrapAuth(m.handleMedia))
+	mux.HandleFunc("/admin/media/upload", m.wrapAuth(m.handleMediaUpload))
+	mux.HandleFunc("/admin/media/import-url", m.wrapAuth(m.handleMediaImportURL))
 	mux.HandleFunc("/admin/catalog/categories", m.wrapAuth(m.handleCatalogCategories))
 	mux.HandleFunc("/admin/catalog/categories/", m.wrapAuth(m.handleCatalogCategoryDetail))
 	mux.HandleFunc("/admin/catalog/products", m.wrapAuth(m.handleCatalogProducts))
@@ -231,6 +257,11 @@ type catalogStore interface {
 	BulkAssignProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
 	BulkRemoveProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
 	ApplyDiscountToProducts(ctx context.Context, productIDs []string, in storcat.ProductDiscountInput) (int64, error)
+}
+
+type mediaStore interface {
+	CreateAsset(ctx context.Context, in stormedia.CreateAssetInput) (stormedia.Asset, error)
+	ListAssets(ctx context.Context, in stormedia.ListAssetsParams) ([]stormedia.Asset, error)
 }
 
 type upsertCategoryRequest struct {
