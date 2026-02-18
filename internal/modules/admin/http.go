@@ -1,37 +1,63 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
+	storcat "goecommerce/internal/storage/catalog"
 	stororders "goecommerce/internal/storage/orders"
 )
 
 type module struct {
-	orders *stororders.Store
-	user   string
-	pass   string
+	orders  ordersStore
+	catalog catalogStore
+	user    string
+	pass    string
 }
 
 func NewModule(deps app.Deps) app.Module {
-	var ost *stororders.Store
+	var ost ordersStore
 	if deps.DB != nil {
 		if s, err := stororders.NewStore(context.Background(), deps.DB); err == nil {
 			ost = s
 		}
 	}
-	return &module{orders: ost, user: strings.TrimSpace(os.Getenv("ADMIN_USER")), pass: strings.TrimSpace(os.Getenv("ADMIN_PASS"))}
+	var cst catalogStore
+	if deps.DB != nil {
+		if s, err := storcat.NewStore(context.Background(), deps.DB); err == nil {
+			cst = s
+		}
+	}
+	return &module{
+		orders:  ost,
+		catalog: cst,
+		user:    strings.TrimSpace(os.Getenv("ADMIN_USER")),
+		pass:    strings.TrimSpace(os.Getenv("ADMIN_PASS")),
+	}
 }
 
 func (m *module) Close() error {
 	if m.orders != nil {
-		_ = m.orders.Close()
+		if closer, ok := m.orders.(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
+	}
+	if m.catalog != nil {
+		if closer, ok := m.catalog.(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
 	}
 	return nil
 }
@@ -42,6 +68,13 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/dashboard", m.wrapAuth(m.handleDashboard))
 	mux.HandleFunc("/admin/orders", m.wrapAuth(m.handleOrders))
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
+	mux.HandleFunc("/admin/catalog/categories", m.wrapAuth(m.handleCatalogCategories))
+	mux.HandleFunc("/admin/catalog/categories/", m.wrapAuth(m.handleCatalogCategoryDetail))
+	mux.HandleFunc("/admin/catalog/products", m.wrapAuth(m.handleCatalogProducts))
+	mux.HandleFunc("/admin/catalog/products/categories/bulk-assign", m.wrapAuth(m.handleCatalogProductsBulkAssignCategories))
+	mux.HandleFunc("/admin/catalog/products/categories/bulk-remove", m.wrapAuth(m.handleCatalogProductsBulkRemoveCategories))
+	mux.HandleFunc("/admin/catalog/products/discount/bulk", m.wrapAuth(m.handleCatalogProductsBulkDiscount))
+	mux.HandleFunc("/admin/catalog/products/", m.wrapAuth(m.handleCatalogProductDetailActions))
 }
 
 func (m *module) wrapAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -181,4 +214,508 @@ func atoiDefault(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+type ordersStore interface {
+	GetOrderMetrics(ctx context.Context) (stororders.OrderMetrics, error)
+	ListOrders(ctx context.Context, limit, offset int) ([]stororders.Order, error)
+	GetOrderByID(ctx context.Context, id string) (stororders.Order, error)
+}
+
+type catalogStore interface {
+	CreateCategory(ctx context.Context, in storcat.CategoryUpsertInput) (storcat.Category, error)
+	UpdateCategory(ctx context.Context, id string, in storcat.CategoryUpsertInput) (storcat.Category, error)
+	CreateProduct(ctx context.Context, in storcat.ProductUpsertInput) (storcat.Product, error)
+	UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error)
+	ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error
+	BulkAssignProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
+	BulkRemoveProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
+	ApplyDiscountToProducts(ctx context.Context, productIDs []string, in storcat.ProductDiscountInput) (int64, error)
+}
+
+type upsertCategoryRequest struct {
+	Slug            string  `json:"slug"`
+	Name            string  `json:"name"`
+	Description     string  `json:"description"`
+	ParentID        *string `json:"parent_id"`
+	DefaultImageURL *string `json:"default_image_url"`
+	SEOTitle        *string `json:"seo_title"`
+	SEODescription  *string `json:"seo_description"`
+}
+
+type upsertProductRequest struct {
+	Slug           string  `json:"slug"`
+	Title          string  `json:"title"`
+	Description    string  `json:"description"`
+	SEOTitle       *string `json:"seo_title"`
+	SEODescription *string `json:"seo_description"`
+}
+
+type replaceProductCategoriesRequest struct {
+	CategoryIDs []string `json:"category_ids"`
+}
+
+type bulkProductCategoriesRequest struct {
+	ProductIDs  []string `json:"product_ids"`
+	CategoryIDs []string `json:"category_ids"`
+}
+
+type discountRequest struct {
+	Mode               string   `json:"mode"`
+	DiscountPriceCents *int     `json:"discount_price_cents"`
+	DiscountPercent    *float64 `json:"discount_percent"`
+}
+
+type bulkDiscountRequest struct {
+	ProductIDs []string `json:"product_ids"`
+	discountRequest
+}
+
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+
+func (m *module) handleCatalogCategories(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/admin/catalog/categories" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.catalog == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	var req upsertCategoryRequest
+	if err := decodeRequest(r, &req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	in, err := validateCategoryRequest(req)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	item, err := m.catalog.CreateCategory(r.Context(), in)
+	if err != nil {
+		writeCatalogStoreError(w, err, "create category error")
+		return
+	}
+	_ = platformhttp.JSON(w, http.StatusCreated, item)
+}
+
+func (m *module) handleCatalogCategoryDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch || !strings.HasPrefix(r.URL.Path, "/admin/catalog/categories/") {
+		http.NotFound(w, r)
+		return
+	}
+	if m.catalog == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	id := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/admin/catalog/categories/"))
+	if id == "" || strings.Contains(id, "/") {
+		http.NotFound(w, r)
+		return
+	}
+
+	var req upsertCategoryRequest
+	if err := decodeRequest(r, &req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	in, err := validateCategoryRequest(req)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	item, err := m.catalog.UpdateCategory(r.Context(), id, in)
+	if err != nil {
+		writeCatalogStoreError(w, err, "update category error")
+		return
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, item)
+}
+
+func (m *module) handleCatalogProducts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/admin/catalog/products" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.catalog == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	var req upsertProductRequest
+	if err := decodeRequest(r, &req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	in, err := validateProductRequest(req)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	item, err := m.catalog.CreateProduct(r.Context(), in)
+	if err != nil {
+		writeCatalogStoreError(w, err, "create product error")
+		return
+	}
+	_ = platformhttp.JSON(w, http.StatusCreated, item)
+}
+
+func (m *module) handleCatalogProductsBulkAssignCategories(w http.ResponseWriter, r *http.Request) {
+	m.handleCatalogProductsBulkCategories(w, r, true)
+}
+
+func (m *module) handleCatalogProductsBulkRemoveCategories(w http.ResponseWriter, r *http.Request) {
+	m.handleCatalogProductsBulkCategories(w, r, false)
+}
+
+func (m *module) handleCatalogProductsBulkCategories(w http.ResponseWriter, r *http.Request, assign bool) {
+	expectedPath := "/admin/catalog/products/categories/bulk-remove"
+	if assign {
+		expectedPath = "/admin/catalog/products/categories/bulk-assign"
+	}
+	if r.Method != http.MethodPost || r.URL.Path != expectedPath {
+		http.NotFound(w, r)
+		return
+	}
+	if m.catalog == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	var req bulkProductCategoriesRequest
+	if err := decodeRequest(r, &req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	req.ProductIDs = cleanNonEmptyStrings(req.ProductIDs)
+	req.CategoryIDs = cleanNonEmptyStrings(req.CategoryIDs)
+	if len(req.ProductIDs) == 0 || len(req.CategoryIDs) == 0 {
+		platformhttp.Error(w, http.StatusBadRequest, "product_ids and category_ids are required")
+		return
+	}
+
+	var (
+		affected int64
+		err      error
+	)
+	if assign {
+		affected, err = m.catalog.BulkAssignProductCategories(r.Context(), req.ProductIDs, req.CategoryIDs)
+	} else {
+		affected, err = m.catalog.BulkRemoveProductCategories(r.Context(), req.ProductIDs, req.CategoryIDs)
+	}
+	if err != nil {
+		writeCatalogStoreError(w, err, "bulk category update error")
+		return
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"affected": affected})
+}
+
+func (m *module) handleCatalogProductsBulkDiscount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/admin/catalog/products/discount/bulk" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.catalog == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	var req bulkDiscountRequest
+	if err := decodeRequest(r, &req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	req.ProductIDs = cleanNonEmptyStrings(req.ProductIDs)
+	if len(req.ProductIDs) == 0 {
+		platformhttp.Error(w, http.StatusBadRequest, "product_ids are required")
+		return
+	}
+	in, err := validateDiscountRequest(req.discountRequest)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	updated, err := m.catalog.ApplyDiscountToProducts(r.Context(), req.ProductIDs, in)
+	if err != nil {
+		writeCatalogStoreError(w, err, "bulk discount error")
+		return
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"updated_variants": updated})
+}
+
+func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *http.Request) {
+	if !strings.HasPrefix(r.URL.Path, "/admin/catalog/products/") {
+		http.NotFound(w, r)
+		return
+	}
+	if m.catalog == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	rest := strings.TrimPrefix(r.URL.Path, "/admin/catalog/products/")
+	parts := strings.Split(rest, "/")
+	if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
+		http.NotFound(w, r)
+		return
+	}
+	id := strings.TrimSpace(parts[0])
+
+	if len(parts) == 1 {
+		if r.Method != http.MethodPatch {
+			http.NotFound(w, r)
+			return
+		}
+		var req upsertProductRequest
+		if err := decodeRequest(r, &req); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		in, err := validateProductRequest(req)
+		if err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		item, err := m.catalog.UpdateProduct(r.Context(), id, in)
+		if err != nil {
+			writeCatalogStoreError(w, err, "update product error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, item)
+		return
+	}
+
+	if len(parts) != 2 {
+		http.NotFound(w, r)
+		return
+	}
+	switch parts[1] {
+	case "categories":
+		if r.Method != http.MethodPut {
+			http.NotFound(w, r)
+			return
+		}
+		var req replaceProductCategoriesRequest
+		if err := decodeRequest(r, &req); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		categoryIDs := cleanNonEmptyStrings(req.CategoryIDs)
+		if err := m.catalog.ReplaceProductCategories(r.Context(), id, categoryIDs); err != nil {
+			writeCatalogStoreError(w, err, "replace categories error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"product_id": id, "category_ids": categoryIDs})
+	case "discount":
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		var req discountRequest
+		if err := decodeRequest(r, &req); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		in, err := validateDiscountRequest(req)
+		if err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		updated, err := m.catalog.ApplyDiscountToProducts(r.Context(), []string{id}, in)
+		if err != nil {
+			writeCatalogStoreError(w, err, "discount error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"updated_variants": updated})
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func decodeRequest(r *http.Request, dst any) error {
+	defer r.Body.Close()
+	const maxBodyBytes = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes+1))
+	if err != nil {
+		return errors.New("invalid json body")
+	}
+	if len(body) == 0 {
+		return errors.New("request body is required")
+	}
+	if len(body) > maxBodyBytes {
+		return errors.New("request body too large")
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(dst); err != nil {
+		if errors.Is(err, io.EOF) {
+			return errors.New("request body is required")
+		}
+		return errors.New("invalid json body")
+	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		return errors.New("invalid json body")
+	}
+	return nil
+}
+
+func validateCategoryRequest(req upsertCategoryRequest) (storcat.CategoryUpsertInput, error) {
+	slug := strings.TrimSpace(req.Slug)
+	name := strings.TrimSpace(req.Name)
+	if !isValidSlug(slug) {
+		return storcat.CategoryUpsertInput{}, errors.New("invalid slug")
+	}
+	if name == "" {
+		return storcat.CategoryUpsertInput{}, errors.New("name is required")
+	}
+	if !isValidOptionalURL(req.DefaultImageURL) {
+		return storcat.CategoryUpsertInput{}, errors.New("default_image_url must be a valid http/https URL")
+	}
+	seoTitle, seoDescription, err := validateSEO(req.SEOTitle, req.SEODescription)
+	if err != nil {
+		return storcat.CategoryUpsertInput{}, err
+	}
+	parentID := normalizeOptionalString(req.ParentID)
+	defaultImageURL := normalizeOptionalString(req.DefaultImageURL)
+	return storcat.CategoryUpsertInput{
+		Slug:            slug,
+		Name:            name,
+		Description:     strings.TrimSpace(req.Description),
+		ParentID:        parentID,
+		DefaultImageURL: defaultImageURL,
+		SEOTitle:        seoTitle,
+		SEODescription:  seoDescription,
+	}, nil
+}
+
+func validateProductRequest(req upsertProductRequest) (storcat.ProductUpsertInput, error) {
+	slug := strings.TrimSpace(req.Slug)
+	title := strings.TrimSpace(req.Title)
+	if !isValidSlug(slug) {
+		return storcat.ProductUpsertInput{}, errors.New("invalid slug")
+	}
+	if title == "" {
+		return storcat.ProductUpsertInput{}, errors.New("title is required")
+	}
+	seoTitle, seoDescription, err := validateSEO(req.SEOTitle, req.SEODescription)
+	if err != nil {
+		return storcat.ProductUpsertInput{}, err
+	}
+	return storcat.ProductUpsertInput{
+		Slug:           slug,
+		Title:          title,
+		Description:    strings.TrimSpace(req.Description),
+		SEOTitle:       seoTitle,
+		SEODescription: seoDescription,
+	}, nil
+}
+
+func validateDiscountRequest(req discountRequest) (storcat.ProductDiscountInput, error) {
+	mode := strings.TrimSpace(strings.ToLower(req.Mode))
+	switch mode {
+	case string(storcat.DiscountModePrice):
+		if req.DiscountPriceCents == nil {
+			return storcat.ProductDiscountInput{}, errors.New("discount_price_cents is required for mode=price")
+		}
+		if *req.DiscountPriceCents < 0 {
+			return storcat.ProductDiscountInput{}, errors.New("discount_price_cents must be >= 0")
+		}
+		return storcat.ProductDiscountInput{
+			Mode:               storcat.DiscountModePrice,
+			DiscountPriceCents: req.DiscountPriceCents,
+		}, nil
+	case string(storcat.DiscountModePercent):
+		if req.DiscountPercent == nil {
+			return storcat.ProductDiscountInput{}, errors.New("discount_percent is required for mode=percent")
+		}
+		if *req.DiscountPercent <= 0 || *req.DiscountPercent >= 100 {
+			return storcat.ProductDiscountInput{}, errors.New("discount_percent must be between 0 and 100")
+		}
+		return storcat.ProductDiscountInput{
+			Mode:            storcat.DiscountModePercent,
+			DiscountPercent: req.DiscountPercent,
+		}, nil
+	default:
+		return storcat.ProductDiscountInput{}, errors.New("mode must be one of: price, percent")
+	}
+}
+
+func validateSEO(title *string, description *string) (*string, *string, error) {
+	normalizedTitle := normalizeOptionalString(title)
+	if normalizedTitle != nil && len(*normalizedTitle) > 120 {
+		return nil, nil, errors.New("seo_title must be <= 120 chars")
+	}
+	normalizedDescription := normalizeOptionalString(description)
+	if normalizedDescription != nil && len(*normalizedDescription) > 320 {
+		return nil, nil, errors.New("seo_description must be <= 320 chars")
+	}
+	return normalizedTitle, normalizedDescription, nil
+}
+
+func writeCatalogStoreError(w http.ResponseWriter, err error, fallbackMessage string) {
+	switch {
+	case errors.Is(err, storcat.ErrNotFound):
+		platformhttp.Error(w, http.StatusNotFound, "not found")
+	case errors.Is(err, storcat.ErrConflict):
+		platformhttp.Error(w, http.StatusConflict, "conflict")
+	default:
+		platformhttp.Error(w, http.StatusInternalServerError, fallbackMessage)
+	}
+}
+
+func normalizeOptionalString(v *string) *string {
+	if v == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*v)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func isValidSlug(s string) bool {
+	return slugPattern.MatchString(s)
+}
+
+func isValidOptionalURL(raw *string) bool {
+	v := normalizeOptionalString(raw)
+	if v == nil {
+		return true
+	}
+	parsed, err := url.Parse(*v)
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	return parsed.Host != ""
+}
+
+func cleanNonEmptyStrings(in []string) []string {
+	if len(in) == 0 {
+		return []string{}
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, item := range in {
+		id := strings.TrimSpace(item)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
