@@ -72,6 +72,13 @@ export type AdminCustomOption = {
   values: AdminCustomOptionValue[];
 };
 
+export type AdminProductCustomOptionAssignment = {
+  product_id: string;
+  option_id: string;
+  sort_order: number;
+  option?: AdminCustomOption | null;
+};
+
 export type Category = {
   id: string;
   slug: string;
@@ -247,6 +254,22 @@ function normalizeCustomOption(raw: unknown): AdminCustomOption | null {
     created_at: asString(obj.created_at) || undefined,
     updated_at: asString(obj.updated_at) || undefined,
     values: valuesRaw.map(normalizeCustomOptionValue).filter((item): item is AdminCustomOptionValue => item !== null),
+  };
+}
+
+function normalizeProductCustomOptionAssignment(raw: unknown): AdminProductCustomOptionAssignment | null {
+  const obj = asRecord(raw);
+  const productID = asString(obj.product_id);
+  const optionID = asString(obj.option_id);
+  if (!productID || !optionID) return null;
+
+  const optionRaw = obj.option;
+  const option = optionRaw === undefined || optionRaw === null ? null : normalizeCustomOption(optionRaw);
+  return {
+    product_id: productID,
+    option_id: optionID,
+    sort_order: asNumber(obj.sort_order),
+    option,
   };
 }
 
@@ -733,6 +756,11 @@ export type AdminCustomOptionMutationInput = {
   values?: AdminCustomOptionValueMutationInput[];
 };
 
+export type AdminProductCustomOptionAssignInput = {
+  option_id: string;
+  sort_order?: number | null;
+};
+
 export type AdminCreateVariantInput = {
   sku: string;
   price_cents: number;
@@ -877,6 +905,60 @@ export async function deleteAdminCustomOption(id: string): Promise<{ id: string 
   }
   const payload = asRecord(await res.json());
   return { id: asString(payload.id) };
+}
+
+export async function getAdminProductCustomOptions(productID: string): Promise<{ items: AdminProductCustomOptionAssignment[] }> {
+  const url = new URL(apiJoin(`admin/products/${encodeURIComponent(productID)}/custom-options`));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch product custom options: ${res.status}`);
+
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw
+      .map(normalizeProductCustomOptionAssignment)
+      .filter((item): item is AdminProductCustomOptionAssignment => item !== null),
+  };
+}
+
+export async function attachAdminProductCustomOption(
+  productID: string,
+  input: AdminProductCustomOptionAssignInput,
+): Promise<AdminProductCustomOptionAssignment> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/products/${encodeURIComponent(productID)}/custom-options`,
+    method: "POST",
+    body: input,
+  });
+  const normalized = normalizeProductCustomOptionAssignment(out);
+  if (!normalized) throw new Error("Admin custom option assignment request failed: invalid response");
+  return normalized;
+}
+
+export async function detachAdminProductCustomOption(productID: string, optionID: string): Promise<{ product_id: string; option_id: string }> {
+  const url = new URL(apiJoin(`admin/products/${encodeURIComponent(productID)}/custom-options/${encodeURIComponent(optionID)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `Admin custom option assignment request failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+  const payload = asRecord(await res.json());
+  return {
+    product_id: asString(payload.product_id),
+    option_id: asString(payload.option_id),
+  };
 }
 
 export async function updateAdminProduct(id: string, input: AdminProductMutationInput): Promise<Product> {

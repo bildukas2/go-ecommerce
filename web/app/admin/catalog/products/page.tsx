@@ -3,13 +3,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   applyAdminProductDiscount,
+  attachAdminProductCustomOption,
   bulkApplyAdminProductDiscount,
   bulkAssignAdminProductCategories,
   bulkRemoveAdminProductCategories,
   createAdminProductVariant,
   createAdminProduct,
+  detachAdminProductCustomOption,
+  getAdminCustomOptions,
+  getAdminProductCustomOptions,
   getCategories,
   getProducts,
+  type AdminProductCustomOptionAssignment,
   type Product,
   type ProductVariant,
   updateAdminProduct,
@@ -126,6 +131,24 @@ function parseTags(raw: string): string[] {
     out.push(tag);
   }
   return out;
+}
+
+function parseSortOrderInput(raw: FormDataEntryValue | null): number {
+  if (typeof raw !== "string") return 0;
+  const trimmed = raw.trim();
+  if (!trimmed) return 0;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed)) return 0;
+  return parsed;
+}
+
+function parseOptionPickerValue(raw: FormDataEntryValue | null): string {
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const match = trimmed.match(/\(([0-9a-fA-F-]{36})\)$/);
+  if (match?.[1]) return match[1];
+  return trimmed;
 }
 
 function errorMessage(error: unknown): string {
@@ -312,6 +335,46 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
     }
   };
 
+  const attachCustomOptionAction = async (formData: FormData) => {
+    "use server";
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const productID = String(formData.get("product_id") ?? "").trim();
+    if (!productID) {
+      redirect(messageHref(returnTo, "error", "Missing product id"));
+    }
+    const optionID = parseOptionPickerValue(formData.get("option_pick"));
+    if (!optionID) {
+      redirect(messageHref(returnTo, "error", "Choose a customizable option"));
+    }
+    try {
+      await attachAdminProductCustomOption(productID, {
+        option_id: optionID,
+        sort_order: parseSortOrderInput(formData.get("sort_order")),
+      });
+      revalidatePath("/admin/catalog/products");
+      redirect(messageHref(returnTo, "notice", "Customizable option attached"));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+
+  const detachCustomOptionAction = async (formData: FormData) => {
+    "use server";
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const productID = String(formData.get("product_id") ?? "").trim();
+    const optionID = String(formData.get("option_id") ?? "").trim();
+    if (!productID || !optionID) {
+      redirect(messageHref(returnTo, "error", "Missing assignment data"));
+    }
+    try {
+      await detachAdminProductCustomOption(productID, optionID);
+      revalidatePath("/admin/catalog/products");
+      redirect(messageHref(returnTo, "notice", "Customizable option detached"));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+
   const bulkAssignCategoriesAction = async (formData: FormData) => {
     "use server";
     const returnTo = safeReturnTo(formData.get("return_to"));
@@ -364,7 +427,10 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
 
   let categories: Awaited<ReturnType<typeof getCategories>>["items"] = [];
   let products: Awaited<ReturnType<typeof getProducts>>["items"] = [];
+  let availableCustomOptions: Awaited<ReturnType<typeof getAdminCustomOptions>>["items"] = [];
+  const assignmentsByProductID = new Map<string, AdminProductCustomOptionAssignment[]>();
   let fetchError: string | null = null;
+  let customOptionsFetchError: string | null = null;
 
   try {
     const [categoriesResponse, productsResponse] = await Promise.all([
@@ -382,6 +448,26 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   }
 
   const visibleProducts = applyAdminProductsState(products, state);
+  if (!fetchError && visibleProducts.length > 0) {
+    try {
+      const [optionsResponse, assignments] = await Promise.all([
+        getAdminCustomOptions(),
+        Promise.all(
+          visibleProducts.map(async (product) => {
+            const response = await getAdminProductCustomOptions(product.id);
+            return [product.id, response.items] as const;
+          }),
+        ),
+      ]);
+      availableCustomOptions = optionsResponse.items;
+      for (const [productID, items] of assignments) {
+        assignmentsByProductID.set(productID, items);
+      }
+    } catch {
+      customOptionsFetchError = "Customizable options section is temporarily unavailable.";
+    }
+  }
+
   const hasPrev = params.page > 1;
   const hasNext = products.length === params.limit;
 
@@ -410,6 +496,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</div>}
       {actionError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</div>}
       {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
+      {customOptionsFetchError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">{customOptionsFetchError}</div>}
 
       <section className="glass rounded-2xl border p-4">
         <form method="get" action="/admin/catalog/products" className="grid gap-3 md:grid-cols-5">
@@ -546,6 +633,10 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
               <tbody>
                 {visibleProducts.map((product) => {
                   const view = toProductViewData(product);
+                  const assignments = assignmentsByProductID.get(product.id) ?? [];
+                  const assignedOptionIDs = new Set(assignments.map((assignment) => assignment.option_id));
+                  const attachableOptions = availableCustomOptions.filter((option) => !assignedOptionIDs.has(option.id));
+                  const optionPickerID = `custom-option-picker-${product.id}`;
                   return (
                     <tr key={product.id} className="border-t border-surface-border align-top">
                       <td className="px-3 py-3">
@@ -585,7 +676,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                       <td className="px-3 py-3 text-right">
                         <details className="inline-block rounded-lg border border-surface-border bg-background/70 p-2 text-left">
                           <summary className="cursor-pointer text-xs font-medium">Edit</summary>
-                          <div className="mt-3 grid w-[min(90vw,900px)] gap-3 lg:grid-cols-3">
+                          <div className="mt-3 grid w-[min(92vw,1100px)] gap-3 lg:grid-cols-4">
                             <form action={updateProductAction} className="space-y-2 rounded-lg border border-surface-border p-3">
                               <input type="hidden" name="return_to" value={currentHref} />
                               <input type="hidden" name="product_id" value={product.id} />
@@ -637,6 +728,83 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                                 <p className="text-xs text-foreground/60">Use bulk tools for instant discount preview.</p>
                                 <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Apply discount</button>
                               </form>
+                            </div>
+
+                            <div className="space-y-3 rounded-lg border border-surface-border p-3">
+                              <form action={attachCustomOptionAction} className="space-y-2">
+                                <input type="hidden" name="return_to" value={currentHref} />
+                                <input type="hidden" name="product_id" value={product.id} />
+                                <p className="text-sm font-medium">Customizable options</p>
+                                <label className="block space-y-1 text-xs">
+                                  <span className="text-foreground/70">Search/select option</span>
+                                  <input
+                                    name="option_pick"
+                                    list={optionPickerID}
+                                    placeholder="Type title and pick an option"
+                                    className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                                  />
+                                </label>
+                                <datalist id={optionPickerID}>
+                                  {attachableOptions.map((option) => (
+                                    <option key={`${product.id}-custom-option-${option.id}`} value={`${option.title} (${option.id})`}>
+                                      {option.type_group} / {option.type}
+                                    </option>
+                                  ))}
+                                </datalist>
+                                <label className="block space-y-1 text-xs">
+                                  <span className="text-foreground/70">Sort order</span>
+                                  <input
+                                    name="sort_order"
+                                    type="number"
+                                    defaultValue="0"
+                                    className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                                  />
+                                </label>
+                                <button
+                                  type="submit"
+                                  className="w-full rounded-lg border border-emerald-500/35 bg-emerald-500/12 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300"
+                                >
+                                  Attach option
+                                </button>
+                              </form>
+                              <div className="space-y-2 border-t border-surface-border pt-3">
+                                <p className="text-xs font-medium uppercase tracking-wide text-foreground/65">Assigned options</p>
+                                {assignments.length === 0 ? (
+                                  <p className="text-xs text-foreground/60">No customizable options attached.</p>
+                                ) : (
+                                  <ul className="space-y-2">
+                                    {assignments.map((assignment) => {
+                                      const option = assignment.option;
+                                      return (
+                                        <li key={`${assignment.product_id}-${assignment.option_id}`} className="rounded-lg border border-surface-border p-2 text-xs">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                              <p className="font-medium">{option?.title || assignment.option_id}</p>
+                                              <p className="text-foreground/65">
+                                                {option ? `${option.type_group} / ${option.type}` : "Unknown type"} | Sort {assignment.sort_order}
+                                              </p>
+                                              <p className="text-foreground/65">
+                                                Required: {option?.required ? "Yes" : "No"} | Active: {option?.is_active ? "Yes" : "No"}
+                                              </p>
+                                            </div>
+                                            <form action={detachCustomOptionAction}>
+                                              <input type="hidden" name="return_to" value={currentHref} />
+                                              <input type="hidden" name="product_id" value={product.id} />
+                                              <input type="hidden" name="option_id" value={assignment.option_id} />
+                                              <button
+                                                type="submit"
+                                                className="rounded-md border border-red-500/35 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-500/15 dark:text-red-300"
+                                              >
+                                                Detach
+                                              </button>
+                                            </form>
+                                          </div>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </details>
