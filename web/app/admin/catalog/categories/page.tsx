@@ -188,7 +188,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
 
       <section className="glass rounded-2xl border p-4 md:p-5">
-        <details open className="group">
+        <details className="group">
           <summary className="cursor-pointer list-none text-lg font-semibold">
             <div className="flex items-center justify-between gap-3">
               <span>Create category</span>
