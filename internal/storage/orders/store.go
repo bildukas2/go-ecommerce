@@ -51,6 +51,10 @@ func generateOrderNumber(now time.Time) string {
 }
 
 func (s *Store) CreateFromCart(ctx context.Context, c storcart.Cart) (Order, error) {
+	return s.CreateFromCartForCustomer(ctx, c, "")
+}
+
+func (s *Store) CreateFromCartForCustomer(ctx context.Context, c storcart.Cart, customerID string) (Order, error) {
 	if c.ID == "" {
 		return Order{}, errors.New("invalid cart")
 	}
@@ -80,8 +84,8 @@ func (s *Store) CreateFromCart(ctx context.Context, c storcart.Cart) (Order, err
 	var o Order
 	var oid string
 	if err := tx.QueryRowContext(ctx,
-		"INSERT INTO orders (number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents) VALUES ($1,'pending_payment',$2,$3,0,0,$4) RETURNING id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at",
-		num, currency, c.Totals.SubtotalCents, c.Totals.SubtotalCents,
+		"INSERT INTO orders (number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, customer_id) VALUES ($1,'pending_payment',$2,$3,0,0,$4,NULLIF($5,'')) RETURNING id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at",
+		num, currency, c.Totals.SubtotalCents, c.Totals.SubtotalCents, customerID,
 	).Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {
 		return Order{}, err
 	}

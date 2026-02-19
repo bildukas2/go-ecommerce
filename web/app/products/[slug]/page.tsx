@@ -1,4 +1,5 @@
 import { AddToCartButton } from "@/components/add-to-cart";
+import { FavoriteToggleButton } from "@/components/account/favorite-toggle-button";
 import { ProductImageGallery } from "@/components/storefront/product-image-gallery";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getProduct } from "@/lib/api";
@@ -31,6 +32,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
           <div className="pt-2">
             <AddToCartButton variants={product.variants} />
+          </div>
+          <div className="pt-1">
+            <FavoriteToggleButton productID={product.id} nextPathOnLogin={`/products/${encodeURIComponent(product.slug)}`} />
           </div>
         </GlassCard>
       </div>
