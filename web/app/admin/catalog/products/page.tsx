@@ -27,6 +27,7 @@ import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/a
 import { ProductsBulkTools } from "@/components/admin/catalog/products-bulk-tools";
 import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
 import { ProductsEditModal } from "@/components/admin/catalog/products-edit-modal";
+import { ProductsMoreModal } from "@/components/admin/catalog/products-more-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -700,7 +701,6 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                   const assignments = assignmentsByProductID.get(product.id) ?? [];
                   const assignedOptionIDs = new Set(assignments.map((assignment) => assignment.option_id));
                   const attachableOptions = availableCustomOptions.filter((option) => !assignedOptionIDs.has(option.id));
-                  const optionPickerID = `custom-option-picker-${product.id}`;
                   return (
                     <tr key={product.id} className="border-t border-surface-border align-top">
                       <td className="px-3 py-3">
@@ -760,147 +760,32 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                                   : "0.00",
                             }}
                           />
-                          <details className="inline-block rounded-lg border border-surface-border bg-background/70 p-2 text-left">
-                            <summary className="cursor-pointer text-xs font-medium">More</summary>
-                            <div className="mt-3 grid w-[min(92vw,1100px)] gap-3 lg:grid-cols-3">
-
-                              <form action={assignCategoriesToSingleAction} className="space-y-2 rounded-lg border border-surface-border p-3">
-                              <input type="hidden" name="return_to" value={currentHref} />
-                              <input type="hidden" name="product_id" value={product.id} />
-                              <p className="text-sm font-medium">Assign categories</p>
-                              <select multiple name="category_ids" className="h-36 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                                {categories.map((category) => (
-                                  <option key={`${product.id}-assign-${category.id}`} value={category.id}>{category.name}</option>
-                                ))}
-                              </select>
-                              <button type="submit" className="w-full rounded-lg border border-emerald-500/35 bg-emerald-500/12 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">Assign selected</button>
-                            </form>
-
-                            <div className="space-y-2 rounded-lg border border-surface-border p-3">
-                              <form action={removeCategoriesFromSingleAction} className="space-y-2">
-                                <input type="hidden" name="return_to" value={currentHref} />
-                                <input type="hidden" name="product_id" value={product.id} />
-                                <p className="text-sm font-medium">Remove categories</p>
-                                <select multiple name="category_ids" className="h-24 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                                  {categories.map((category) => (
-                                    <option key={`${product.id}-remove-${category.id}`} value={category.id}>{category.name}</option>
-                                  ))}
-                                </select>
-                                <button type="submit" className="w-full rounded-lg border border-amber-500/35 bg-amber-500/12 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">Remove selected</button>
-                              </form>
-                              <form action={discountSingleProductAction} className="space-y-2 border-t border-surface-border pt-2">
-                                <input type="hidden" name="return_to" value={currentHref} />
-                                <input type="hidden" name="product_id" value={product.id} />
-                                <p className="text-sm font-medium">Single discount</p>
-                                <select name="mode" defaultValue="percent" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                                  <option value="percent">Percent %</option>
-                                  <option value="price">Static price (cents)</option>
-                                </select>
-                                <input name="discount_percent" defaultValue="10" type="number" step="0.01" min="0" max="100" placeholder="discount_percent" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                                <input name="discount_price_cents" type="number" min="0" placeholder="discount_price_cents (for price mode)" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                                <p className="text-xs text-foreground/60">Use bulk tools for instant discount preview.</p>
-                                <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Apply discount</button>
-                              </form>
-                              <form action={deleteProductAction} className="space-y-2 border-t border-surface-border pt-2">
-                                <input type="hidden" name="return_to" value={currentHref} />
-                                <input type="hidden" name="product_id" value={product.id} />
-                                <p className="text-xs text-foreground/60">Delete removes product, variants, images, and category/custom option links.</p>
-                                <button type="submit" className="w-full rounded-lg border border-red-500/35 bg-red-500/12 px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300">Delete product</button>
-                              </form>
-                            </div>
-
-                            <div className="space-y-3 rounded-lg border border-surface-border p-3">
-                              <form action={attachCustomOptionAction} className="space-y-2">
-                                <input type="hidden" name="return_to" value={currentHref} />
-                                <input type="hidden" name="product_id" value={product.id} />
-                                <p className="text-sm font-medium">Customizable options</p>
-                                <label className="block space-y-1 text-xs">
-                                  <span className="text-foreground/70">Search/select option</span>
-                                  <input
-                                    name="option_pick"
-                                    list={optionPickerID}
-                                    placeholder="Type title and pick an option"
-                                    className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
-                                  />
-                                </label>
-                                <datalist id={optionPickerID}>
-                                  {attachableOptions.map((option) => (
-                                    <option key={`${product.id}-custom-option-${option.id}`} value={`${option.title} (${option.id})`}>
-                                      {option.type_group} / {option.type}
-                                    </option>
-                                  ))}
-                                </datalist>
-                                <label className="block space-y-1 text-xs">
-                                  <span className="text-foreground/70">Or select multiple</span>
-                                  <select
-                                    multiple
-                                    name="option_ids"
-                                    className="h-28 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
-                                  >
-                                    {attachableOptions.map((option) => (
-                                      <option key={`${product.id}-custom-option-multi-${option.id}`} value={option.id}>
-                                        {option.title} ({option.type_group} / {option.type})
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <label className="block space-y-1 text-xs">
-                                  <span className="text-foreground/70">Sort order</span>
-                                  <input
-                                    name="sort_order"
-                                    type="number"
-                                    defaultValue="0"
-                                    className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
-                                  />
-                                </label>
-                                <button
-                                  type="submit"
-                                  className="w-full rounded-lg border border-emerald-500/35 bg-emerald-500/12 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300"
-                                >
-                                  Attach option
-                                </button>
-                              </form>
-                              <div className="space-y-2 border-t border-surface-border pt-3">
-                                <p className="text-xs font-medium uppercase tracking-wide text-foreground/65">Assigned options</p>
-                                {assignments.length === 0 ? (
-                                  <p className="text-xs text-foreground/60">No customizable options attached.</p>
-                                ) : (
-                                  <ul className="space-y-2">
-                                    {assignments.map((assignment) => {
-                                      const option = assignment.option;
-                                      return (
-                                        <li key={`${assignment.product_id}-${assignment.option_id}`} className="rounded-lg border border-surface-border p-2 text-xs">
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                              <p className="font-medium">{option?.title || assignment.option_id}</p>
-                                              <p className="text-foreground/65">
-                                                {option ? `${option.type_group} / ${option.type}` : "Unknown type"} | Sort {assignment.sort_order}
-                                              </p>
-                                              <p className="text-foreground/65">
-                                                Required: {option?.required ? "Yes" : "No"} | Active: {option?.is_active ? "Yes" : "No"}
-                                              </p>
-                                            </div>
-                                            <form action={detachCustomOptionAction}>
-                                              <input type="hidden" name="return_to" value={currentHref} />
-                                              <input type="hidden" name="product_id" value={product.id} />
-                                              <input type="hidden" name="option_id" value={assignment.option_id} />
-                                              <button
-                                                type="submit"
-                                                className="rounded-md border border-red-500/35 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-500/15 dark:text-red-300"
-                                              >
-                                                Detach
-                                              </button>
-                                            </form>
-                                          </div>
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
-                                )}
-                              </div>
-                            </div>
-                            </div>
-                          </details>
+                          <ProductsMoreModal
+                            returnTo={currentHref}
+                            productID={product.id}
+                            categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+                            assignments={assignments}
+                            attachableOptions={attachableOptions}
+                            assignCategoriesAction={assignCategoriesToSingleAction}
+                            removeCategoriesAction={removeCategoriesFromSingleAction}
+                            discountAction={discountSingleProductAction}
+                            attachCustomOptionAction={attachCustomOptionAction}
+                            detachCustomOptionAction={detachCustomOptionAction}
+                          />
+                          <form action={deleteProductAction}>
+                            <input type="hidden" name="return_to" value={currentHref} />
+                            <input type="hidden" name="product_id" value={product.id} />
+                            <button
+                              type="submit"
+                              title="Delete product"
+                              aria-label="Delete product"
+                              className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
+                                <path d="M9 3a1 1 0 0 0-1 1v1H4.5a1 1 0 1 0 0 2H5v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4v1h-4V5Zm-3 2h10v12H7V7Zm2 2a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0v-6a1 1 0 0 0-1-1Zm6 0a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0v-6a1 1 0 0 0-1-1Z" />
+                              </svg>
+                            </button>
+                          </form>
                         </div>
                       </td>
                     </tr>
