@@ -151,6 +151,15 @@ function parseOptionPickerValue(raw: FormDataEntryValue | null): string {
   return trimmed;
 }
 
+function parseOptionIDs(formData: FormData): string[] {
+  const selected = cleanIDs(formData.getAll("option_ids"));
+  if (selected.length > 0) {
+    return selected;
+  }
+  const single = parseOptionPickerValue(formData.get("option_pick"));
+  return single ? [single] : [];
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Request failed";
@@ -342,17 +351,26 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
     if (!productID) {
       redirect(messageHref(returnTo, "error", "Missing product id"));
     }
-    const optionID = parseOptionPickerValue(formData.get("option_pick"));
-    if (!optionID) {
-      redirect(messageHref(returnTo, "error", "Choose a customizable option"));
+    const optionIDs = parseOptionIDs(formData);
+    if (optionIDs.length === 0) {
+      redirect(messageHref(returnTo, "error", "Choose at least one customizable option"));
     }
     try {
-      await attachAdminProductCustomOption(productID, {
-        option_id: optionID,
-        sort_order: parseSortOrderInput(formData.get("sort_order")),
-      });
+      const sortOrder = parseSortOrderInput(formData.get("sort_order"));
+      for (const optionID of optionIDs) {
+        await attachAdminProductCustomOption(productID, {
+          option_id: optionID,
+          sort_order: sortOrder,
+        });
+      }
       revalidatePath("/admin/catalog/products");
-      redirect(messageHref(returnTo, "notice", "Customizable option attached"));
+      redirect(
+        messageHref(
+          returnTo,
+          "notice",
+          optionIDs.length === 1 ? "Customizable option attached" : `${optionIDs.length} customizable options attached`,
+        ),
+      );
     } catch (error) {
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
@@ -751,6 +769,20 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                                     </option>
                                   ))}
                                 </datalist>
+                                <label className="block space-y-1 text-xs">
+                                  <span className="text-foreground/70">Or select multiple</span>
+                                  <select
+                                    multiple
+                                    name="option_ids"
+                                    className="h-28 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                                  >
+                                    {attachableOptions.map((option) => (
+                                      <option key={`${product.id}-custom-option-multi-${option.id}`} value={option.id}>
+                                        {option.title} ({option.type_group} / {option.type})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
                                 <label className="block space-y-1 text-xs">
                                   <span className="text-foreground/70">Sort order</span>
                                   <input
