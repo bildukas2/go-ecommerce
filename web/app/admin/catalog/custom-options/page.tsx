@@ -78,13 +78,14 @@ export default async function AdminCustomOptionsPage({ searchParams }: PageProps
     const returnTo = safeReturnTo(formData.get("return_to"));
     const optionID = String(formData.get("option_id") ?? "").trim();
     if (!optionID) redirect(messageHref(returnTo, "error", "Missing option id"));
+    let destination = messageHref(returnTo, "notice", "Custom option deleted");
     try {
       await deleteAdminCustomOption(optionID);
       revalidatePath("/admin/catalog/custom-options");
-      redirect(messageHref(returnTo, "notice", "Custom option deleted"));
     } catch (error) {
-      redirect(messageHref(returnTo, "error", errorMessage(error)));
+      destination = messageHref(returnTo, "error", errorMessage(error));
     }
+    redirect(destination);
   };
 
   const duplicateAction = async (formData: FormData) => {
@@ -92,6 +93,7 @@ export default async function AdminCustomOptionsPage({ searchParams }: PageProps
     const returnTo = safeReturnTo(formData.get("return_to"));
     const optionID = String(formData.get("option_id") ?? "").trim();
     if (!optionID) redirect(messageHref(returnTo, "error", "Missing option id"));
+    let destination = messageHref(returnTo, "notice", "Custom option duplicated");
     try {
       const original = await getAdminCustomOption(optionID);
       await createAdminCustomOption({
@@ -115,10 +117,10 @@ export default async function AdminCustomOptionsPage({ searchParams }: PageProps
         })),
       });
       revalidatePath("/admin/catalog/custom-options");
-      redirect(messageHref(returnTo, "notice", "Custom option duplicated"));
     } catch (error) {
-      redirect(messageHref(returnTo, "error", errorMessage(error)));
+      destination = messageHref(returnTo, "error", errorMessage(error));
     }
+    redirect(destination);
   };
 
   let items: AdminCustomOption[] = [];

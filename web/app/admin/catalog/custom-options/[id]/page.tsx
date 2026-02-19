@@ -45,15 +45,16 @@ export default async function AdminCustomOptionEditPage({ params, searchParams }
 
   const updateAction = async (formData: FormData) => {
     "use server";
+    let destination = messageHref("/admin/catalog/custom-options", "notice", "Custom option updated");
     try {
       const payload = parseCustomOptionFormData(formData);
       await updateAdminCustomOption(id, payload);
       revalidatePath("/admin/catalog/custom-options");
       revalidatePath(`/admin/catalog/custom-options/${id}`);
-      redirect(messageHref("/admin/catalog/custom-options", "notice", "Custom option updated"));
     } catch (error) {
-      redirect(messageHref(`/admin/catalog/custom-options/${id}`, "error", errorMessage(error)));
+      destination = messageHref(`/admin/catalog/custom-options/${id}`, "error", errorMessage(error));
     }
+    redirect(destination);
   };
 
   if (!option) {

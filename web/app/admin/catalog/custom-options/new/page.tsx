@@ -32,14 +32,15 @@ export default async function AdminCustomOptionCreatePage({ searchParams }: Page
 
   const createAction = async (formData: FormData) => {
     "use server";
+    let destination = messageHref("/admin/catalog/custom-options", "notice", "Custom option created");
     try {
       const payload = parseCustomOptionFormData(formData);
       await createAdminCustomOption(payload);
       revalidatePath("/admin/catalog/custom-options");
-      redirect(messageHref("/admin/catalog/custom-options", "notice", "Custom option created"));
     } catch (error) {
-      redirect(messageHref("/admin/catalog/custom-options/new", "error", errorMessage(error)));
+      destination = messageHref("/admin/catalog/custom-options/new", "error", errorMessage(error));
     }
+    redirect(destination);
   };
 
   return (
