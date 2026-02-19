@@ -31,8 +31,9 @@ function errorMessage(error: unknown): string {
 
 export default async function AdminCustomOptionEditPage({ params, searchParams }: PageProps) {
   const { id } = await params;
-  const notice = firstQueryValue(searchParams?.notice);
-  const actionError = firstQueryValue(searchParams?.error);
+  const resolvedSearchParams = await Promise.resolve(searchParams ?? {});
+  const notice = firstQueryValue(resolvedSearchParams.notice);
+  const actionError = firstQueryValue(resolvedSearchParams.error);
 
   let option: Awaited<ReturnType<typeof getAdminCustomOption>> | null = null;
   let fetchError: string | null = null;

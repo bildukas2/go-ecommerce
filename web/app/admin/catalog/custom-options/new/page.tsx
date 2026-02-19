@@ -25,9 +25,10 @@ function errorMessage(error: unknown): string {
   return "Request failed";
 }
 
-export default function AdminCustomOptionCreatePage({ searchParams }: PageProps) {
-  const notice = firstQueryValue(searchParams?.notice);
-  const actionError = firstQueryValue(searchParams?.error);
+export default async function AdminCustomOptionCreatePage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await Promise.resolve(searchParams ?? {});
+  const notice = firstQueryValue(resolvedSearchParams.notice);
+  const actionError = firstQueryValue(resolvedSearchParams.error);
 
   const createAction = async (formData: FormData) => {
     "use server";

@@ -62,10 +62,11 @@ function duplicatedCode(baseCode: string): string {
 }
 
 export default async function AdminCustomOptionsPage({ searchParams }: PageProps) {
-  const notice = firstQueryValue(searchParams?.notice);
-  const actionError = firstQueryValue(searchParams?.error);
-  const query = firstQueryValue(searchParams?.q).trim();
-  const typeGroup = firstQueryValue(searchParams?.type_group).trim().toLowerCase();
+  const resolvedSearchParams = await Promise.resolve(searchParams ?? {});
+  const notice = firstQueryValue(resolvedSearchParams.notice);
+  const actionError = firstQueryValue(resolvedSearchParams.error);
+  const query = firstQueryValue(resolvedSearchParams.q).trim();
+  const typeGroup = firstQueryValue(resolvedSearchParams.type_group).trim().toLowerCase();
 
   const currentQuery = new URLSearchParams();
   if (query) currentQuery.set("q", query);
