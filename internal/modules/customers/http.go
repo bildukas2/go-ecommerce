@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,12 @@ type customerStore interface {
 	CreateSession(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) (storcustomers.Session, error)
 	GetCustomerBySessionTokenHash(ctx context.Context, tokenHash string) (storcustomers.Customer, error)
 	RevokeSessionByTokenHash(ctx context.Context, tokenHash string) error
+	RevokeSessionsByCustomerID(ctx context.Context, customerID string) error
+	AddFavorite(ctx context.Context, customerID, productID string) (bool, error)
+	RemoveFavorite(ctx context.Context, customerID, productID string) error
+	ListFavorites(ctx context.Context, customerID string, page, limit int) (storcustomers.FavoritesPage, error)
+	ListOrdersByCustomer(ctx context.Context, customerID string, page, limit int) (storcustomers.OrdersPage, error)
+	UpdatePasswordAndRevokeSessions(ctx context.Context, customerID, passwordHash string) error
 }
 
 type module struct {
@@ -72,6 +79,10 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/auth/login", m.handleLogin)
 	mux.HandleFunc("/auth/logout", m.handleLogout)
 	mux.HandleFunc("/auth/me", m.handleMe)
+	mux.HandleFunc("/account/favorites", m.handleFavorites)
+	mux.HandleFunc("/account/favorites/", m.handleFavorites)
+	mux.HandleFunc("/account/orders", m.handleOrders)
+	mux.HandleFunc("/account/change-password", m.handleChangePassword)
 }
 
 type credentialsRequest struct {
@@ -87,6 +98,15 @@ type authCustomerResponse struct {
 
 type customerCartStore interface {
 	ResolveCustomerCart(ctx context.Context, customerID, guestCartID string) (storcart.Cart, error)
+}
+
+type favoriteRequest struct {
+	ProductID string `json:"product_id"`
+}
+
+type passwordChangeRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
 }
 
 func (m *module) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -207,6 +227,162 @@ func (m *module) handleMe(w http.ResponseWriter, r *http.Request) {
 	_ = platformhttp.JSON(w, http.StatusOK, toAuthResponse(customer))
 }
 
+func (m *module) handleFavorites(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	customer, _, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
+	if err != nil {
+		if errors.Is(err, ErrUnauthenticated) {
+			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
+
+	switch {
+	case r.URL.Path == "/account/favorites" && r.Method == http.MethodGet:
+		page, limit := parsePageLimit(r)
+		favorites, err := m.store.ListFavorites(r.Context(), customer.ID, page, limit)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "list error")
+			return
+		}
+		out := map[string]any{
+			"items": favorites.Items,
+			"total": favorites.Total,
+			"page":  favorites.Page,
+			"limit": favorites.Limit,
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, out)
+		return
+	case r.URL.Path == "/account/favorites" && r.Method == http.MethodPost:
+		var body favoriteRequest
+		if err := decodeAuthRequest(r, &body); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		productID := strings.TrimSpace(body.ProductID)
+		if productID == "" {
+			platformhttp.Error(w, http.StatusBadRequest, "product_id is required")
+			return
+		}
+		created, err := m.store.AddFavorite(r.Context(), customer.ID, productID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "favorite error")
+			return
+		}
+		status := http.StatusOK
+		if created {
+			status = http.StatusCreated
+		}
+		_ = platformhttp.JSON(w, status, map[string]any{"product_id": productID})
+		return
+	case strings.HasPrefix(r.URL.Path, "/account/favorites/") && r.Method == http.MethodDelete:
+		productID := strings.TrimSpace(r.URL.Path[len("/account/favorites/"):])
+		if productID == "" || strings.Contains(productID, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		if err := m.store.RemoveFavorite(r.Context(), customer.ID, productID); err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "favorite error")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	default:
+		http.NotFound(w, r)
+		return
+	}
+}
+
+func (m *module) handleOrders(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet || r.URL.Path != "/account/orders" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	customer, _, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
+	if err != nil {
+		if errors.Is(err, ErrUnauthenticated) {
+			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
+
+	page, limit := parsePageLimit(r)
+	orders, err := m.store.ListOrdersByCustomer(r.Context(), customer.ID, page, limit)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "list error")
+		return
+	}
+	out := map[string]any{
+		"items": orders.Items,
+		"total": orders.Total,
+		"page":  orders.Page,
+		"limit": orders.Limit,
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, out)
+}
+
+func (m *module) handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/account/change-password" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	customer, _, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
+	if err != nil {
+		if errors.Is(err, ErrUnauthenticated) {
+			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
+
+	var body passwordChangeRequest
+	if err := decodeAuthRequest(r, &body); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	currentPassword := strings.TrimSpace(body.CurrentPassword)
+	newPassword := strings.TrimSpace(body.NewPassword)
+	if currentPassword == "" || newPassword == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "current_password and new_password are required")
+		return
+	}
+	if len(newPassword) < minimumPasswordLength {
+		platformhttp.Error(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+	if !verifyPassword(customer.PasswordHash, currentPassword) {
+		platformhttp.Error(w, http.StatusBadRequest, "current password is incorrect")
+		return
+	}
+	passwordHash, err := hashPassword(newPassword)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "password change error")
+		return
+	}
+	if err := m.store.UpdatePasswordAndRevokeSessions(r.Context(), customer.ID, passwordHash); err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "password change error")
+		return
+	}
+	clearSessionCookie(w, r)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func readCartID(r *http.Request) (string, bool) {
 	cookie, err := r.Cookie("cart_id")
 	if err != nil {
@@ -271,4 +447,18 @@ func validateCredentials(in credentialsRequest) (string, string, error) {
 		return "", "", errors.New("password must be at least 8 characters")
 	}
 	return email, password, nil
+}
+
+func parsePageLimit(r *http.Request) (int, int) {
+	page := atoiDefault(r.URL.Query().Get("page"), 1)
+	limit := atoiDefault(r.URL.Query().Get("limit"), 20)
+	return page, limit
+}
+
+func atoiDefault(s string, def int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil || n == 0 {
+		return def
+	}
+	return n
 }

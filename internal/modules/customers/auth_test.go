@@ -35,6 +35,30 @@ func (f *fakeCustomerStore) RevokeSessionByTokenHash(context.Context, string) er
 	return errors.New("not implemented")
 }
 
+func (f *fakeCustomerStore) RevokeSessionsByCustomerID(context.Context, string) error {
+	return errors.New("not implemented")
+}
+
+func (f *fakeCustomerStore) AddFavorite(context.Context, string, string) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (f *fakeCustomerStore) RemoveFavorite(context.Context, string, string) error {
+	return errors.New("not implemented")
+}
+
+func (f *fakeCustomerStore) ListFavorites(context.Context, string, int, int) (storcustomers.FavoritesPage, error) {
+	return storcustomers.FavoritesPage{}, errors.New("not implemented")
+}
+
+func (f *fakeCustomerStore) ListOrdersByCustomer(context.Context, string, int, int) (storcustomers.OrdersPage, error) {
+	return storcustomers.OrdersPage{}, errors.New("not implemented")
+}
+
+func (f *fakeCustomerStore) UpdatePasswordAndRevokeSessions(context.Context, string, string) error {
+	return errors.New("not implemented")
+}
+
 func (f *fakeCustomerStore) GetCustomerBySessionTokenHash(_ context.Context, tokenHash string) (storcustomers.Customer, error) {
 	if c, ok := f.customerByToken[tokenHash]; ok {
 		return c, nil
@@ -142,6 +166,30 @@ func (f *fakeLoginStore) CreateSession(context.Context, string, string, time.Tim
 
 func (f *fakeLoginStore) RevokeSessionByTokenHash(context.Context, string) error {
 	return nil
+}
+
+func (f *fakeLoginStore) RevokeSessionsByCustomerID(context.Context, string) error {
+	return nil
+}
+
+func (f *fakeLoginStore) AddFavorite(context.Context, string, string) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (f *fakeLoginStore) RemoveFavorite(context.Context, string, string) error {
+	return errors.New("not implemented")
+}
+
+func (f *fakeLoginStore) ListFavorites(context.Context, string, int, int) (storcustomers.FavoritesPage, error) {
+	return storcustomers.FavoritesPage{}, errors.New("not implemented")
+}
+
+func (f *fakeLoginStore) ListOrdersByCustomer(context.Context, string, int, int) (storcustomers.OrdersPage, error) {
+	return storcustomers.OrdersPage{}, errors.New("not implemented")
+}
+
+func (f *fakeLoginStore) UpdatePasswordAndRevokeSessions(context.Context, string, string) error {
+	return errors.New("not implemented")
 }
 
 func (f *fakeLoginStore) GetCustomerBySessionTokenHash(context.Context, string) (storcustomers.Customer, error) {
