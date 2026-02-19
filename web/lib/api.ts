@@ -773,6 +773,13 @@ export type AdminOrderSummary = {
   created_at: string;
 };
 
+export type AdminCustomerSummary = {
+  id: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DashboardMetrics = {
   total_orders: number;
   pending_payment: number;
@@ -836,6 +843,18 @@ export async function getAdminOrders(params: { page?: number; limit?: number } =
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
+  return res.json();
+}
+
+export async function getAdminCustomers(params: { page?: number; limit?: number } = {}): Promise<{ items: AdminCustomerSummary[]; page: number; limit: number; }> {
+  const url = new URL(apiJoin("admin/customers"));
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch customers: ${res.status}`);
   return res.json();
 }
 

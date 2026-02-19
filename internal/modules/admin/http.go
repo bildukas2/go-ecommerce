@@ -17,12 +17,14 @@ import (
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
 	storcat "goecommerce/internal/storage/catalog"
+	storcustomers "goecommerce/internal/storage/customers"
 	stormedia "goecommerce/internal/storage/media"
 	stororders "goecommerce/internal/storage/orders"
 )
 
 type module struct {
 	orders              ordersStore
+	customers           customersStore
 	catalog             catalogStore
 	media               mediaStore
 	validateImportHost  func(context.Context, string) error
@@ -37,6 +39,12 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if s, err := stororders.NewStore(context.Background(), deps.DB); err == nil {
 			ost = s
+		}
+	}
+	var cust customersStore
+	if deps.DB != nil {
+		if s, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
+			cust = s
 		}
 	}
 	var cst catalogStore
@@ -58,6 +66,7 @@ func NewModule(deps app.Deps) app.Module {
 	_ = os.MkdirAll(uploadsDir, 0o755)
 	return &module{
 		orders:     ost,
+		customers:  cust,
 		catalog:    cst,
 		media:      mst,
 		uploadsDir: uploadsDir,
@@ -69,6 +78,11 @@ func NewModule(deps app.Deps) app.Module {
 func (m *module) Close() error {
 	if m.orders != nil {
 		if closer, ok := m.orders.(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
+	}
+	if m.customers != nil {
+		if closer, ok := m.customers.(interface{ Close() error }); ok {
 			_ = closer.Close()
 		}
 	}
@@ -91,6 +105,7 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/dashboard", m.wrapAuth(m.handleDashboard))
 	mux.HandleFunc("/admin/orders", m.wrapAuth(m.handleOrders))
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
+	mux.HandleFunc("/admin/customers", m.wrapAuth(m.handleCustomers))
 	mux.HandleFunc("/admin/media", m.wrapAuth(m.handleMedia))
 	mux.HandleFunc("/admin/media/upload", m.wrapAuth(m.handleMediaUpload))
 	mux.HandleFunc("/admin/media/import-url", m.wrapAuth(m.handleMediaImportURL))
@@ -237,6 +252,44 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 	_ = platformhttp.JSON(w, http.StatusOK, o)
 }
 
+func (m *module) handleCustomers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+	if r.URL.Path != "/admin/customers" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.customers == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	qp := r.URL.Query()
+	page := atoiDefault(qp.Get("page"), 1)
+	limit := atoiDefault(qp.Get("limit"), 20)
+	offset := (page - 1) * limit
+	items, err := m.customers.ListCustomers(r.Context(), limit, offset)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "list error")
+		return
+	}
+	outItems := make([]map[string]any, 0, len(items))
+	for _, customer := range items {
+		outItems = append(outItems, map[string]any{
+			"id":         customer.ID,
+			"email":      customer.Email,
+			"created_at": customer.CreatedAt,
+			"updated_at": customer.UpdatedAt,
+		})
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+		"items": outItems,
+		"page":  page,
+		"limit": limit,
+	})
+}
+
 func atoiDefault(s string, def int) int {
 	n, err := strconv.Atoi(strings.TrimSpace(s))
 	if err != nil || n == 0 {
@@ -249,6 +302,10 @@ type ordersStore interface {
 	GetOrderMetrics(ctx context.Context) (stororders.OrderMetrics, error)
 	ListOrders(ctx context.Context, limit, offset int) ([]stororders.Order, error)
 	GetOrderByID(ctx context.Context, id string) (stororders.Order, error)
+}
+
+type customersStore interface {
+	ListCustomers(ctx context.Context, limit, offset int) ([]storcustomers.AdminCustomer, error)
 }
 
 type catalogStore interface {

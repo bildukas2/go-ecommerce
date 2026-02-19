@@ -72,6 +72,13 @@ type OrdersPage struct {
 	Limit int
 }
 
+type AdminCustomer struct {
+	ID        string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Store struct {
 	db *sql.DB
 }
@@ -387,4 +394,37 @@ func (s *Store) UpdatePasswordAndRevokeSessions(ctx context.Context, customerID,
 		return err
 	}
 	return tx.Commit()
+}
+
+func (s *Store) ListCustomers(ctx context.Context, limit, offset int) ([]AdminCustomer, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, email, created_at, updated_at
+		FROM customers
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]AdminCustomer, 0, limit)
+	for rows.Next() {
+		var item AdminCustomer
+		if err := rows.Scan(&item.ID, &item.Email, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
