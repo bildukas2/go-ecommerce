@@ -8,6 +8,7 @@ import {
   bulkAssignAdminProductCategories,
   bulkRemoveAdminProductCategories,
   createAdminProductVariant,
+  deleteAdminProduct,
   createAdminProduct,
   detachAdminProductCustomOption,
   getAdminCustomOptions,
@@ -317,6 +318,22 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       }
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Product updated"));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+
+  const deleteProductAction = async (formData: FormData) => {
+    "use server";
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const productID = String(formData.get("product_id") ?? "").trim();
+    if (!productID) {
+      redirect(messageHref(returnTo, "error", "Missing product id"));
+    }
+    try {
+      await deleteAdminProduct(productID);
+      revalidatePath("/admin/catalog/products");
+      redirect(messageHref(returnTo, "notice", "Product deleted"));
     } catch (error) {
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
@@ -783,6 +800,12 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                                 <input name="discount_price_cents" type="number" min="0" placeholder="discount_price_cents (for price mode)" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
                                 <p className="text-xs text-foreground/60">Use bulk tools for instant discount preview.</p>
                                 <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Apply discount</button>
+                              </form>
+                              <form action={deleteProductAction} className="space-y-2 border-t border-surface-border pt-2">
+                                <input type="hidden" name="return_to" value={currentHref} />
+                                <input type="hidden" name="product_id" value={product.id} />
+                                <p className="text-xs text-foreground/60">Delete removes product, variants, images, and category/custom option links.</p>
+                                <button type="submit" className="w-full rounded-lg border border-red-500/35 bg-red-500/12 px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300">Delete product</button>
                               </form>
                             </div>
 

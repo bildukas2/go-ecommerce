@@ -20,6 +20,7 @@ type fakeCatalogStore struct {
 	createProductFn         func(context.Context, storcat.ProductUpsertInput) (storcat.Product, error)
 	createProductVariantFn  func(context.Context, string, storcat.ProductVariantCreateInput) (storcat.Variant, error)
 	updateProductFn         func(context.Context, string, storcat.ProductUpsertInput) (storcat.Product, error)
+	deleteProductFn         func(context.Context, string) error
 	replaceProductCatsFn    func(context.Context, string, []string) error
 	bulkAssignProductCatsFn func(context.Context, []string, []string) (int64, error)
 	bulkRemoveProductCatsFn func(context.Context, []string, []string) (int64, error)
@@ -75,6 +76,12 @@ func (f *fakeCatalogStore) UpdateProduct(ctx context.Context, id string, in stor
 		return storcat.Product{}, nil
 	}
 	return f.updateProductFn(ctx, id, in)
+}
+func (f *fakeCatalogStore) DeleteProduct(ctx context.Context, id string) error {
+	if f.deleteProductFn == nil {
+		return nil
+	}
+	return f.deleteProductFn(ctx, id)
 }
 func (f *fakeCatalogStore) ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error {
 	if f.replaceProductCatsFn == nil {
@@ -283,6 +290,56 @@ func TestCatalogProductDiscountValidationError(t *testing.T) {
 	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/catalog/products/prod-1/discount", body)
 	if res.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, res.Code)
+	}
+}
+
+func TestCatalogDeleteProductSuccess(t *testing.T) {
+	store := &fakeCatalogStore{
+		deleteProductFn: func(_ context.Context, id string) error {
+			if id != "prod-1" {
+				t.Fatalf("unexpected id: %s", id)
+			}
+			return nil
+		},
+	}
+	m := &module{catalog: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/catalog/products/prod-1", nil)
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("admin:pass")))
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload["id"] != "prod-1" {
+		t.Fatalf("expected id prod-1, got %#v", payload["id"])
+	}
+}
+
+func TestCatalogDeleteProductMapsConflict(t *testing.T) {
+	store := &fakeCatalogStore{
+		deleteProductFn: func(_ context.Context, _ string) error {
+			return storcat.ErrConflict
+		},
+	}
+	m := &module{catalog: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/catalog/products/prod-1", nil)
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("admin:pass")))
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+
+	if res.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, res.Code)
 	}
 }
 

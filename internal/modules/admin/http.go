@@ -259,6 +259,7 @@ type catalogStore interface {
 	CreateProduct(ctx context.Context, in storcat.ProductUpsertInput) (storcat.Product, error)
 	CreateProductVariant(ctx context.Context, productID string, in storcat.ProductVariantCreateInput) (storcat.Variant, error)
 	UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error)
+	DeleteProduct(ctx context.Context, id string) error
 	ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error
 	BulkAssignProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
 	BulkRemoveProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
@@ -554,26 +555,34 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 	id := strings.TrimSpace(parts[0])
 
 	if len(parts) == 1 {
-		if r.Method != http.MethodPatch {
-			http.NotFound(w, r)
+		if r.Method == http.MethodDelete {
+			if err := m.catalog.DeleteProduct(r.Context(), id); err != nil {
+				writeCatalogStoreError(w, err, "delete product error")
+				return
+			}
+			_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"id": id})
 			return
 		}
-		var req upsertProductRequest
-		if err := decodeRequest(r, &req); err != nil {
-			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		if r.Method == http.MethodPatch {
+			var req upsertProductRequest
+			if err := decodeRequest(r, &req); err != nil {
+				platformhttp.Error(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			in, err := validateProductRequest(req)
+			if err != nil {
+				platformhttp.Error(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			item, err := m.catalog.UpdateProduct(r.Context(), id, in)
+			if err != nil {
+				writeCatalogStoreError(w, err, "update product error")
+				return
+			}
+			_ = platformhttp.JSON(w, http.StatusOK, item)
 			return
 		}
-		in, err := validateProductRequest(req)
-		if err != nil {
-			platformhttp.Error(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		item, err := m.catalog.UpdateProduct(r.Context(), id, in)
-		if err != nil {
-			writeCatalogStoreError(w, err, "update product error")
-			return
-		}
-		_ = platformhttp.JSON(w, http.StatusOK, item)
+		http.NotFound(w, r)
 		return
 	}
 

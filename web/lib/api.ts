@@ -970,6 +970,26 @@ export async function updateAdminProduct(id: string, input: AdminProductMutation
   return normalizeProduct(out);
 }
 
+export async function deleteAdminProduct(id: string): Promise<{ id: string }> {
+  const url = new URL(apiJoin(`admin/catalog/products/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `Admin catalog request failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+  const payload = asRecord(await res.json());
+  return { id: asString(payload.id) };
+}
+
 export async function createAdminProductVariant(productID: string, input: AdminCreateVariantInput): Promise<ProductVariant> {
   const out = await adminCatalogRequest<unknown>({
     path: `admin/catalog/products/${encodeURIComponent(productID)}/variants`,

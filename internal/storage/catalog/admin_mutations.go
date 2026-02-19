@@ -367,6 +367,20 @@ func (s *Store) UpdateProduct(ctx context.Context, id string, in ProductUpsertIn
 	return p, nil
 }
 
+func (s *Store) DeleteProduct(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM products WHERE id = $1::uuid`, id)
+	if err != nil {
+		if isForeignKeyViolation(err) {
+			return ErrConflict
+		}
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) CreateProductVariant(ctx context.Context, productID string, in ProductVariantCreateInput) (Variant, error) {
 	var exists int
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM products WHERE id = $1::uuid`, productID).Scan(&exists); err != nil {
@@ -662,9 +676,13 @@ func uniqueStrings(in []string) []string {
 }
 
 func isUniqueViolation(err error) bool {
+	return isPGErrorCode(err, "23505")
+}
+
+func isPGErrorCode(err error, code string) bool {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) {
 		return false
 	}
-	return pgErr.Code == "23505"
+	return pgErr.Code == code
 }
