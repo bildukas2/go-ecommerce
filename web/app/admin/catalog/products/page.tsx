@@ -14,6 +14,7 @@ import {
   getAdminProductCustomOptions,
   getCategories,
   getProducts,
+  setAdminProductCategories,
   type AdminProductCustomOptionAssignment,
   type Product,
   type ProductVariant,
@@ -24,6 +25,7 @@ import { selectProductGridImage } from "@/lib/product-images";
 import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/admin-catalog-state";
 import { ProductsBulkTools } from "@/components/admin/catalog/products-bulk-tools";
 import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
+import { ProductsEditModal } from "@/components/admin/catalog/products-edit-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -287,6 +289,32 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         seo_title: cleanOptional(formData.get("seo_title")),
         seo_description: cleanOptional(formData.get("seo_description")),
       });
+      const categoryIDs = cleanIDs(formData.getAll("category_ids"));
+      if (categoryIDs.length > 0) {
+        await setAdminProductCategories(productID, categoryIDs);
+      }
+
+      const discountType = String(formData.get("discount_type") ?? "none").trim().toLowerCase();
+      const discountRaw = String(formData.get("discount_value") ?? "").trim();
+      if (discountType !== "none" && discountRaw) {
+        if (discountType === "percent") {
+          const percent = Number.parseFloat(discountRaw);
+          if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) {
+            throw new Error("discount percent must be between 0 and 100");
+          }
+          await applyAdminProductDiscount(productID, { mode: "percent", discount_percent: percent });
+        } else if (discountType === "flat") {
+          const basePriceCents = parseMoneyToCents(String(formData.get("base_price") ?? ""), "base_price");
+          const flatCents = parseMoneyToCents(discountRaw, "discount_value");
+          if (flatCents <= 0 || flatCents >= basePriceCents) {
+            throw new Error("flat discount must be greater than 0 and less than base price");
+          }
+          await applyAdminProductDiscount(productID, {
+            mode: "price",
+            discount_price_cents: basePriceCents - flatCents,
+          });
+        }
+      }
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Product updated"));
     } catch (error) {
@@ -651,6 +679,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
               <tbody>
                 {visibleProducts.map((product) => {
                   const view = toProductViewData(product);
+                  const displayVariant = pickDisplayVariant(product);
                   const assignments = assignmentsByProductID.get(product.id) ?? [];
                   const assignedOptionIDs = new Set(assignments.map((assignment) => assignment.option_id));
                   const attachableOptions = availableCustomOptions.filter((option) => !assignedOptionIDs.has(option.id));
@@ -692,24 +721,33 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                       </td>
                       <td className="px-3 py-3 text-foreground/75">{view.createdLabel}</td>
                       <td className="px-3 py-3 text-right">
-                        <details className="inline-block rounded-lg border border-surface-border bg-background/70 p-2 text-left">
-                          <summary className="cursor-pointer text-xs font-medium">Edit</summary>
-                          <div className="mt-3 grid w-[min(92vw,1100px)] gap-3 lg:grid-cols-4">
-                            <form action={updateProductAction} className="space-y-2 rounded-lg border border-surface-border p-3">
-                              <input type="hidden" name="return_to" value={currentHref} />
-                              <input type="hidden" name="product_id" value={product.id} />
-                              <input type="hidden" name="status" value={product.status || "published"} />
-                              <input type="hidden" name="tags" value={(product.tags || []).join(", ")} />
-                              <p className="text-sm font-medium">Edit product</p>
-                              <input defaultValue={product.title} name="title" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                              <input defaultValue={product.slug} name="slug" required className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                              <textarea defaultValue={product.description} name="description" rows={3} className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                              <input defaultValue={product.seoTitle ?? ""} name="seo_title" maxLength={120} placeholder="SEO title" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                              <input defaultValue={product.seoDescription ?? ""} name="seo_description" maxLength={320} placeholder="SEO description" className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm" />
-                              <button type="submit" className="w-full rounded-lg border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300">Save product</button>
-                            </form>
+                        <div className="inline-flex items-center gap-2">
+                          <ProductsEditModal
+                            updateAction={updateProductAction}
+                            returnTo={currentHref}
+                            categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+                            product={{
+                              id: product.id,
+                              title: product.title,
+                              slug: product.slug,
+                              description: product.description,
+                              status: product.status || "published",
+                              tags: product.tags || [],
+                              seoTitle: product.seoTitle ?? "",
+                              seoDescription: product.seoDescription ?? "",
+                              sku: displayVariant?.sku || "",
+                              stock: displayVariant?.stock ?? 0,
+                              basePrice:
+                                displayVariant && Number.isFinite(displayVariant.priceCents)
+                                  ? (displayVariant.priceCents / 100).toFixed(2)
+                                  : "0.00",
+                            }}
+                          />
+                          <details className="inline-block rounded-lg border border-surface-border bg-background/70 p-2 text-left">
+                            <summary className="cursor-pointer text-xs font-medium">More</summary>
+                            <div className="mt-3 grid w-[min(92vw,1100px)] gap-3 lg:grid-cols-3">
 
-                            <form action={assignCategoriesToSingleAction} className="space-y-2 rounded-lg border border-surface-border p-3">
+                              <form action={assignCategoriesToSingleAction} className="space-y-2 rounded-lg border border-surface-border p-3">
                               <input type="hidden" name="return_to" value={currentHref} />
                               <input type="hidden" name="product_id" value={product.id} />
                               <p className="text-sm font-medium">Assign categories</p>
@@ -838,8 +876,9 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                                 )}
                               </div>
                             </div>
-                          </div>
-                        </details>
+                            </div>
+                          </details>
+                        </div>
                       </td>
                     </tr>
                   );
