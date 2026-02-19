@@ -175,3 +175,51 @@ func TestCreateFromCartForCustomerPersistsCustomerID(t *testing.T) {
 		t.Fatalf("expected customer_id %s, got %#v", customer.ID, savedCustomerID)
 	}
 }
+
+func TestUpdateOrderStatusToNewStatuses(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping status update test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var regclass *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.orders')").Scan(&regclass); err != nil || regclass == nil || *regclass == "" {
+		t.Skip("orders table not present; apply migrations to run this test")
+	}
+
+	orderStore, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	// Find an order to update
+	var orderID string
+	err = db.QueryRowContext(ctx, "SELECT id FROM orders LIMIT 1").Scan(&orderID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			t.Skip("no orders found; skipping status update test")
+		}
+		t.Fatalf("query order: %v", err)
+	}
+
+	newStatuses := []string{"processing", "completed", "paid", "cancelled", "pending_payment"}
+	for _, status := range newStatuses {
+		if err := orderStore.UpdateOrderStatus(ctx, orderID, status); err != nil {
+			t.Fatalf("UpdateOrderStatus to %s failed: %v", status, err)
+		}
+
+		var savedStatus string
+		if err := db.QueryRowContext(ctx, "SELECT status::text FROM orders WHERE id = $1", orderID).Scan(&savedStatus); err != nil {
+			t.Fatalf("query saved status: %v", err)
+		}
+		if savedStatus != status {
+			t.Fatalf("expected status %s, got %s", status, savedStatus)
+		}
+	}
+}

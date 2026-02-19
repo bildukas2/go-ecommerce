@@ -84,7 +84,7 @@ func (s *Store) CreateFromCartForCustomer(ctx context.Context, c storcart.Cart, 
 	var o Order
 	var oid string
 	if err := tx.QueryRowContext(ctx,
-		"INSERT INTO orders (number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, customer_id) VALUES ($1,'pending_payment',$2,$3,0,0,$4,NULLIF($5,'')) RETURNING id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at",
+		"INSERT INTO orders (number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, customer_id) VALUES ($1,'pending_payment',$2,$3,0,0,$4,NULLIF($5,'')::uuid) RETURNING id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at",
 		num, currency, c.Totals.SubtotalCents, c.Totals.SubtotalCents, customerID,
 	).Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {
 		return Order{}, err
@@ -138,6 +138,8 @@ type OrderMetrics struct {
 	TotalOrders    int `json:"total_orders"`
 	PendingPayment int `json:"pending_payment"`
 	Paid           int `json:"paid"`
+	Processing     int `json:"processing"`
+	Completed      int `json:"completed"`
 	Cancelled      int `json:"cancelled"`
 }
 
@@ -148,9 +150,11 @@ func (s *Store) GetOrderMetrics(ctx context.Context) (OrderMetrics, error) {
 			COUNT(*),
 			COUNT(*) FILTER (WHERE status = 'pending_payment'),
 			COUNT(*) FILTER (WHERE status = 'paid'),
+			COUNT(*) FILTER (WHERE status = 'processing'),
+			COUNT(*) FILTER (WHERE status = 'completed'),
 			COUNT(*) FILTER (WHERE status = 'cancelled')
 		FROM orders
-	`).Scan(&m.TotalOrders, &m.PendingPayment, &m.Paid, &m.Cancelled)
+	`).Scan(&m.TotalOrders, &m.PendingPayment, &m.Paid, &m.Processing, &m.Completed, &m.Cancelled)
 	return m, err
 }
 

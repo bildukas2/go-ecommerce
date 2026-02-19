@@ -283,6 +283,8 @@ func (m *module) handleUpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 	validStatuses := map[string]bool{
 		"pending_payment": true,
 		"paid":            true,
+		"processing":      true,
+		"completed":       true,
 		"cancelled":       true,
 	}
 	if !validStatuses[req.Status] {

@@ -7,6 +7,8 @@ import { Check, ChevronDown } from "lucide-react";
 const statuses = [
   { id: "pending_payment", label: "Pending Payment" },
   { id: "paid", label: "Paid" },
+  { id: "processing", label: "In Progress" },
+  { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },
 ];
 
