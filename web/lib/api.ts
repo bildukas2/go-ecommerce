@@ -368,6 +368,15 @@ export async function getCategories(): Promise<{ items: Category[] }> {
   };
 }
 
+async function apiErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const payload = asRecord(await res.json());
+    const message = asString(payload.error);
+    if (message) return message;
+  } catch {}
+  return fallback;
+}
+
 export async function getAdminCategories(): Promise<{ items: AdminCategory[] }> {
   const url = new URL(apiJoin("admin/catalog/categories"));
   const res = await fetch(url.toString(), {
@@ -463,6 +472,295 @@ export async function checkout(): Promise<{ order_id: string; checkout_url: stri
   if (!res.ok) throw new Error(`Failed to checkout: ${res.status}`);
   const payload: unknown = await res.json();
   return parseCheckoutResponse(payload);
+}
+
+export type AccountCustomer = {
+  id: string;
+  email: string;
+  created_at: string;
+};
+
+export type AccountFavorite = {
+  product_id: string;
+  slug: string;
+  title: string;
+  default_image_url: string | null;
+  price_cents: number | null;
+  currency: string | null;
+  created_at: string;
+};
+
+export type AccountFavoritesResponse = {
+  items: AccountFavorite[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type AccountOrderItem = {
+  product_id: string;
+  slug: string;
+  title: string;
+  quantity: number;
+  unit_price_cents: number;
+  currency: string;
+};
+
+export type AccountOrder = {
+  id: string;
+  number: string;
+  status: string;
+  total_cents: number;
+  currency: string;
+  created_at: string;
+  items: AccountOrderItem[];
+};
+
+export type AccountOrdersResponse = {
+  items: AccountOrder[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+type AccountRequestOptions = {
+  cookieHeader?: string;
+};
+
+function accountHeaders(options?: AccountRequestOptions): HeadersInit | undefined {
+  if (!options?.cookieHeader) return undefined;
+  return { Cookie: options.cookieHeader };
+}
+
+function accountFetchInit(base?: RequestInit, options?: AccountRequestOptions): RequestInit {
+  return {
+    ...base,
+    headers: {
+      ...(base?.headers ?? {}),
+      ...(accountHeaders(options) ?? {}),
+    },
+    ...(options?.cookieHeader ? { cache: "no-store" } : { credentials: "include" }),
+  };
+}
+
+function normalizeAccountCustomer(raw: unknown): AccountCustomer {
+  const obj = asRecord(raw);
+  return {
+    id: asString(obj.id),
+    email: asString(obj.email),
+    created_at: asString(obj.created_at ?? obj.createdAt),
+  };
+}
+
+function normalizeAccountFavorite(raw: unknown): AccountFavorite | null {
+  const obj = asRecord(raw);
+  const productID = asString(obj.product_id ?? obj.ProductID);
+  if (!productID) return null;
+  return {
+    product_id: productID,
+    slug: asString(obj.slug ?? obj.Slug),
+    title: asString(obj.title ?? obj.Title),
+    default_image_url: asNullableString(obj.default_image_url ?? obj.DefaultImageURL),
+    price_cents:
+      obj.price_cents === null || obj.PriceCents === null
+        ? null
+        : (obj.price_cents ?? obj.PriceCents) === undefined
+          ? null
+          : asNumber(obj.price_cents ?? obj.PriceCents),
+    currency: asNullableString(obj.currency ?? obj.Currency),
+    created_at: asString(obj.created_at ?? obj.CreatedAt),
+  };
+}
+
+function normalizeAccountOrderItem(raw: unknown): AccountOrderItem | null {
+  const obj = asRecord(raw);
+  const productID = asString(obj.product_id ?? obj.ProductID);
+  if (!productID) return null;
+  return {
+    product_id: productID,
+    slug: asString(obj.slug ?? obj.Slug),
+    title: asString(obj.title ?? obj.Title),
+    quantity: asNumber(obj.quantity ?? obj.Quantity),
+    unit_price_cents: asNumber(obj.unit_price_cents ?? obj.UnitPriceCents),
+    currency: asString(obj.currency ?? obj.Currency),
+  };
+}
+
+function normalizeAccountOrder(raw: unknown): AccountOrder | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id ?? obj.ID);
+  if (!id) return null;
+  const maybeItems = obj.items ?? obj.Items;
+  const itemsRaw: unknown[] = Array.isArray(maybeItems) ? maybeItems : [];
+  return {
+    id,
+    number: asString(obj.number ?? obj.Number),
+    status: asString(obj.status ?? obj.Status),
+    total_cents: asNumber(obj.total_cents ?? obj.TotalCents),
+    currency: asString(obj.currency ?? obj.Currency),
+    created_at: asString(obj.created_at ?? obj.CreatedAt),
+    items: itemsRaw.map(normalizeAccountOrderItem).filter((item): item is AccountOrderItem => item !== null),
+  };
+}
+
+export async function registerAccount(email: string, password: string, options?: AccountRequestOptions): Promise<AccountCustomer> {
+  const res = await fetch(
+    apiJoin("auth/register"),
+    accountFetchInit(
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to register: ${res.status}`));
+  return normalizeAccountCustomer(await res.json());
+}
+
+export async function loginAccount(email: string, password: string, options?: AccountRequestOptions): Promise<AccountCustomer> {
+  const res = await fetch(
+    apiJoin("auth/login"),
+    accountFetchInit(
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to login: ${res.status}`));
+  return normalizeAccountCustomer(await res.json());
+}
+
+export async function logoutAccount(options?: AccountRequestOptions): Promise<void> {
+  const res = await fetch(
+    apiJoin("auth/logout"),
+    accountFetchInit(
+      {
+        method: "POST",
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to logout: ${res.status}`));
+}
+
+export async function getCurrentAccount(options?: AccountRequestOptions): Promise<AccountCustomer> {
+  const res = await fetch(
+    apiJoin("auth/me"),
+    accountFetchInit(
+      {
+        method: "GET",
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch account: ${res.status}`));
+  return normalizeAccountCustomer(await res.json());
+}
+
+export async function getAccountFavorites(
+  params: { page?: number; limit?: number } = {},
+  options?: AccountRequestOptions,
+): Promise<AccountFavoritesResponse> {
+  const url = new URL(apiJoin("account/favorites"));
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+
+  const res = await fetch(
+    url.toString(),
+    accountFetchInit(
+      {
+        method: "GET",
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to load favorites: ${res.status}`));
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAccountFavorite).filter((item): item is AccountFavorite => item !== null),
+    total: asNumber(payload.total),
+    page: asNumber(payload.page) || 1,
+    limit: asNumber(payload.limit) || 20,
+  };
+}
+
+export async function addAccountFavorite(productID: string, options?: AccountRequestOptions): Promise<{ product_id: string }> {
+  const res = await fetch(
+    apiJoin("account/favorites"),
+    accountFetchInit(
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productID }),
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to add favorite: ${res.status}`));
+  const payload = asRecord(await res.json());
+  return { product_id: asString(payload.product_id) };
+}
+
+export async function removeAccountFavorite(productID: string, options?: AccountRequestOptions): Promise<void> {
+  const res = await fetch(
+    apiJoin(`account/favorites/${encodeURIComponent(productID)}`),
+    accountFetchInit(
+      {
+        method: "DELETE",
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to remove favorite: ${res.status}`));
+}
+
+export async function getAccountOrders(
+  params: { page?: number; limit?: number } = {},
+  options?: AccountRequestOptions,
+): Promise<AccountOrdersResponse> {
+  const url = new URL(apiJoin("account/orders"));
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+
+  const res = await fetch(
+    url.toString(),
+    accountFetchInit(
+      {
+        method: "GET",
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to load order history: ${res.status}`));
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAccountOrder).filter((item): item is AccountOrder => item !== null),
+    total: asNumber(payload.total),
+    page: asNumber(payload.page) || 1,
+    limit: asNumber(payload.limit) || 20,
+  };
+}
+
+export async function changeAccountPassword(currentPassword: string, newPassword: string, options?: AccountRequestOptions): Promise<void> {
+  const res = await fetch(
+    apiJoin("account/change-password"),
+    accountFetchInit(
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to change password: ${res.status}`));
 }
 
 // Admin API (server-side only)
