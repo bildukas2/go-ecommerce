@@ -4,24 +4,34 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"goecommerce/internal/app"
+	modcustomers "goecommerce/internal/modules/customers"
 	platformhttp "goecommerce/internal/platform/http"
 	storcart "goecommerce/internal/storage/cart"
+	storcustomers "goecommerce/internal/storage/customers"
 )
 
-type module struct{ store *storcart.Store }
+type module struct {
+	store         *storcart.Store
+	customerStore *storcustomers.Store
+}
 
 func NewModule(deps app.Deps) app.Module {
 	var s *storcart.Store
+	var cs *storcustomers.Store
 	if deps.DB != nil {
 		if st, err := storcart.NewStore(context.Background(), deps.DB); err == nil {
 			s = st
 		}
+		if st, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
+			cs = st
+		}
 	}
-	return &module{store: s}
+	return &module{store: s, customerStore: cs}
 }
 
 func (m *module) Close() error {
@@ -60,7 +70,24 @@ func (m *module) handleCart(w http.ResponseWriter, r *http.Request) {
 
 func (m *module) handleCartPost(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	customerID, authenticated, err := m.resolveCustomerID(r)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
+
 	cartID, _ := readCartID(r)
+	if authenticated {
+		c, err := m.store.ResolveCustomerCart(ctx, customerID, cartID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "create error")
+			return
+		}
+		setCartCookie(w, r, c.ID)
+		_ = platformhttp.JSON(w, http.StatusOK, c)
+		return
+	}
+
 	if cartID == "" {
 		c, err := m.store.CreateCart(ctx)
 		if err != nil {
@@ -94,7 +121,25 @@ func (m *module) handleCartGet(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	customerID, authenticated, err := m.resolveCustomerID(r)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
+
 	cartID, ok := readCartID(r)
+	if authenticated {
+		c, err := m.store.ResolveCustomerCart(r.Context(), customerID, cartID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "get error")
+			return
+		}
+		setCartCookie(w, r, c.ID)
+		_ = platformhttp.JSON(w, http.StatusOK, c)
+		return
+	}
+
 	if !ok || strings.TrimSpace(cartID) == "" {
 		platformhttp.Error(w, http.StatusNotFound, "not found")
 		return
@@ -128,8 +173,22 @@ func (m *module) handleCartItems(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
+
+	customerID, authenticated, err := m.resolveCustomerID(r)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
 	cartID, ok := readCartID(r)
-	if !ok || strings.TrimSpace(cartID) == "" {
+	if authenticated {
+		c, err := m.store.ResolveCustomerCart(r.Context(), customerID, cartID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "get error")
+			return
+		}
+		cartID = c.ID
+		setCartCookie(w, r, cartID)
+	} else if !ok || strings.TrimSpace(cartID) == "" {
 		platformhttp.Error(w, http.StatusBadRequest, "no cart")
 		return
 	}
@@ -167,8 +226,22 @@ func (m *module) handleCartItemByID(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
+
+	customerID, authenticated, err := m.resolveCustomerID(r)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
 	cartID, ok := readCartID(r)
-	if !ok || strings.TrimSpace(cartID) == "" {
+	if authenticated {
+		c, err := m.store.ResolveCustomerCart(r.Context(), customerID, cartID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "get error")
+			return
+		}
+		cartID = c.ID
+		setCartCookie(w, r, cartID)
+	} else if !ok || strings.TrimSpace(cartID) == "" {
 		platformhttp.Error(w, http.StatusBadRequest, "no cart")
 		return
 	}
@@ -249,4 +322,18 @@ func isSecure(r *http.Request) bool {
 		return true
 	}
 	return false
+}
+
+func (m *module) resolveCustomerID(r *http.Request) (string, bool, error) {
+	if m.customerStore == nil {
+		return "", false, nil
+	}
+	customer, _, err := modcustomers.ResolveAuthenticatedCustomer(r.Context(), r, m.customerStore)
+	if err != nil {
+		if errors.Is(err, modcustomers.ErrUnauthenticated) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return customer.ID, true, nil
 }

@@ -18,7 +18,7 @@ const (
 	sessionCookieName = "customer_session"
 )
 
-var errUnauthenticated = errors.New("unauthenticated")
+var ErrUnauthenticated = errors.New("unauthenticated")
 
 func hashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -84,27 +84,27 @@ func requestIsSecure(r *http.Request) bool {
 	return false
 }
 
-type sessionCustomerStore interface {
+type SessionCustomerStore interface {
 	GetCustomerBySessionTokenHash(ctx context.Context, tokenHash string) (storcustomers.Customer, error)
 }
 
-func resolveAuthenticatedCustomer(ctx context.Context, r *http.Request, store sessionCustomerStore) (storcustomers.Customer, string, error) {
+func ResolveAuthenticatedCustomer(ctx context.Context, r *http.Request, store SessionCustomerStore) (storcustomers.Customer, string, error) {
 	if store == nil {
-		return storcustomers.Customer{}, "", errUnauthenticated
+		return storcustomers.Customer{}, "", ErrUnauthenticated
 	}
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		return storcustomers.Customer{}, "", errUnauthenticated
+		return storcustomers.Customer{}, "", ErrUnauthenticated
 	}
 	token := strings.TrimSpace(cookie.Value)
 	if token == "" {
-		return storcustomers.Customer{}, "", errUnauthenticated
+		return storcustomers.Customer{}, "", ErrUnauthenticated
 	}
 	hashed := hashSessionToken(token)
 	customer, err := store.GetCustomerBySessionTokenHash(ctx, hashed)
 	if err != nil {
 		if errors.Is(err, storcustomers.ErrNotFound) {
-			return storcustomers.Customer{}, "", errUnauthenticated
+			return storcustomers.Customer{}, "", ErrUnauthenticated
 		}
 		return storcustomers.Customer{}, "", err
 	}

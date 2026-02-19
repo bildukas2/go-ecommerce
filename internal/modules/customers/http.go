@@ -12,6 +12,7 @@ import (
 
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
+	storcart "goecommerce/internal/storage/cart"
 	storcustomers "goecommerce/internal/storage/customers"
 )
 
@@ -30,27 +31,40 @@ type customerStore interface {
 
 type module struct {
 	store      customerStore
+	cartStore  customerCartStore
 	sessionTTL time.Duration
 	now        func() time.Time
 }
 
 func NewModule(deps app.Deps) app.Module {
 	var store customerStore
+	var cartStore customerCartStore
 	if deps.DB != nil {
 		if st, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			store = st
 		}
+		if st, err := storcart.NewStore(context.Background(), deps.DB); err == nil {
+			cartStore = st
+		}
 	}
-	return &module{store: store, sessionTTL: defaultSessionTTL, now: time.Now}
+	return &module{store: store, cartStore: cartStore, sessionTTL: defaultSessionTTL, now: time.Now}
 }
 
 func (m *module) Name() string { return "customers" }
 
 func (m *module) Close() error {
+	var firstErr error
 	if closer, ok := m.store.(interface{ Close() error }); ok && closer != nil {
-		return closer.Close()
+		if err := closer.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
 	}
-	return nil
+	if closer, ok := m.cartStore.(interface{ Close() error }); ok && closer != nil {
+		if err := closer.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
@@ -69,6 +83,10 @@ type authCustomerResponse struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type customerCartStore interface {
+	ResolveCustomerCart(ctx context.Context, customerID, guestCartID string) (storcart.Cart, error)
 }
 
 func (m *module) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +157,15 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "login error")
 		return
 	}
+	if m.cartStore != nil {
+		guestCartID, _ := readCartID(r)
+		canonicalCart, err := m.cartStore.ResolveCustomerCart(r.Context(), customer.ID, guestCartID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "login error")
+			return
+		}
+		setCartCookie(w, r, canonicalCart.ID)
+	}
 	_ = platformhttp.JSON(w, http.StatusOK, toAuthResponse(customer))
 }
 
@@ -151,7 +178,7 @@ func (m *module) handleLogout(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
-	_, tokenHash, err := resolveAuthenticatedCustomer(r.Context(), r, m.store)
+	_, tokenHash, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
 	if err == nil {
 		_ = m.store.RevokeSessionByTokenHash(r.Context(), tokenHash)
 	}
@@ -168,9 +195,9 @@ func (m *module) handleMe(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
 	}
-	customer, _, err := resolveAuthenticatedCustomer(r.Context(), r, m.store)
+	customer, _, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
 	if err != nil {
-		if errors.Is(err, errUnauthenticated) {
+		if errors.Is(err, ErrUnauthenticated) {
 			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
@@ -178,6 +205,26 @@ func (m *module) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = platformhttp.JSON(w, http.StatusOK, toAuthResponse(customer))
+}
+
+func readCartID(r *http.Request) (string, bool) {
+	cookie, err := r.Cookie("cart_id")
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimSpace(cookie.Value), true
+}
+
+func setCartCookie(w http.ResponseWriter, r *http.Request, cartID string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "cart_id",
+		Value:    cartID,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   30 * 24 * 60 * 60,
+		Secure:   requestIsSecure(r),
+	})
 }
 
 func toAuthResponse(c storcustomers.Customer) authCustomerResponse {

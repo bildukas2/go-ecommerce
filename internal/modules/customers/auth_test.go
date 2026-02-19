@@ -1,13 +1,17 @@
 package customers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	storcart "goecommerce/internal/storage/cart"
 	storcustomers "goecommerce/internal/storage/customers"
 )
 
@@ -67,7 +71,7 @@ func TestResolveAuthenticatedCustomer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
 		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "valid-token"})
-		customer, tokenHash, err := resolveAuthenticatedCustomer(req.Context(), req, store)
+		customer, tokenHash, err := ResolveAuthenticatedCustomer(req.Context(), req, store)
 		if err != nil {
 			t.Fatalf("resolveAuthenticatedCustomer error: %v", err)
 		}
@@ -81,8 +85,8 @@ func TestResolveAuthenticatedCustomer(t *testing.T) {
 
 	t.Run("missing cookie", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
-		_, _, err := resolveAuthenticatedCustomer(req.Context(), req, store)
-		if !errors.Is(err, errUnauthenticated) {
+		_, _, err := ResolveAuthenticatedCustomer(req.Context(), req, store)
+		if !errors.Is(err, ErrUnauthenticated) {
 			t.Fatalf("expected unauthenticated error, got: %v", err)
 		}
 	})
@@ -118,4 +122,92 @@ func TestHandleMeAuthBehavior(t *testing.T) {
 			t.Fatalf("expected 200, got %d", rr.Code)
 		}
 	})
+}
+
+type fakeLoginStore struct {
+	customer storcustomers.Customer
+}
+
+func (f *fakeLoginStore) CreateCustomer(context.Context, string, string) (storcustomers.Customer, error) {
+	return storcustomers.Customer{}, errors.New("not implemented")
+}
+
+func (f *fakeLoginStore) GetCustomerByEmail(context.Context, string) (storcustomers.Customer, error) {
+	return f.customer, nil
+}
+
+func (f *fakeLoginStore) CreateSession(context.Context, string, string, time.Time) (storcustomers.Session, error) {
+	return storcustomers.Session{ID: "sess_1"}, nil
+}
+
+func (f *fakeLoginStore) RevokeSessionByTokenHash(context.Context, string) error {
+	return nil
+}
+
+func (f *fakeLoginStore) GetCustomerBySessionTokenHash(context.Context, string) (storcustomers.Customer, error) {
+	return storcustomers.Customer{}, storcustomers.ErrNotFound
+}
+
+type fakeCartResolver struct {
+	cartID     string
+	customerID string
+	guestCart  string
+}
+
+func (f *fakeCartResolver) ResolveCustomerCart(_ context.Context, customerID, guestCartID string) (storcart.Cart, error) {
+	f.customerID = customerID
+	f.guestCart = guestCartID
+	return storcart.Cart{ID: f.cartID}, nil
+}
+
+func TestHandleLoginMergesGuestCartAndSetsCanonicalCookie(t *testing.T) {
+	passwordHash, err := hashPassword("supersecret")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	loginStore := &fakeLoginStore{
+		customer: storcustomers.Customer{
+			ID:           "cust_1",
+			Email:        "user@example.com",
+			PasswordHash: passwordHash,
+			CreatedAt:    time.Unix(1700000000, 0).UTC(),
+		},
+	}
+	cartStore := &fakeCartResolver{cartID: "customer-cart"}
+
+	m := &module{store: loginStore, cartStore: cartStore, sessionTTL: defaultSessionTTL, now: time.Now}
+	body, _ := json.Marshal(credentialsRequest{Email: "user@example.com", Password: "supersecret"})
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: "cart_id", Value: "guest-cart"})
+
+	rr := httptest.NewRecorder()
+	m.handleLogin(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if cartStore.customerID != "cust_1" {
+		t.Fatalf("expected customer id cust_1, got %s", cartStore.customerID)
+	}
+	if cartStore.guestCart != "guest-cart" {
+		t.Fatalf("expected guest cart guest-cart, got %s", cartStore.guestCart)
+	}
+
+	setCookies := rr.Result().Header.Values("Set-Cookie")
+	foundCustomerSession := false
+	foundCartCookie := false
+	for _, raw := range setCookies {
+		if strings.HasPrefix(raw, sessionCookieName+"=") {
+			foundCustomerSession = true
+		}
+		if strings.HasPrefix(raw, "cart_id=customer-cart") {
+			foundCartCookie = true
+		}
+	}
+	if !foundCustomerSession {
+		t.Fatalf("expected session cookie to be set")
+	}
+	if !foundCartCookie {
+		t.Fatalf("expected canonical cart cookie to be set")
+	}
 }

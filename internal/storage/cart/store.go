@@ -8,11 +8,12 @@ import (
 )
 
 type Cart struct {
-	ID        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Items     []CartItem
-	Totals    Totals
+	ID         string
+	CustomerID sql.NullString
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Items      []CartItem
+	Totals     Totals
 }
 
 type CartItem struct {
@@ -59,7 +60,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	stmtGetCartMeta, err := db.PrepareContext(ctx, `
-		SELECT id, created_at, updated_at
+		SELECT id, customer_id, created_at, updated_at
 		FROM carts WHERE id = $1`)
 	if err != nil {
 		return nil, err
@@ -153,6 +154,7 @@ func (s *Store) CreateCart(ctx context.Context) (Cart, error) {
 	if err := s.stmtCreateCart.QueryRowContext(ctx).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt); err != nil {
 		return Cart{}, err
 	}
+	c.CustomerID = sql.NullString{}
 	c.Items = []CartItem{}
 	c.Totals = Totals{SubtotalCents: 0, Currency: "", ItemCount: 0}
 	return c, nil
@@ -160,7 +162,7 @@ func (s *Store) CreateCart(ctx context.Context) (Cart, error) {
 
 func (s *Store) GetCart(ctx context.Context, cartID string) (Cart, error) {
 	var c Cart
-	if err := s.stmtGetCartMeta.QueryRowContext(ctx, cartID).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt); err != nil {
+	if err := s.stmtGetCartMeta.QueryRowContext(ctx, cartID).Scan(&c.ID, &c.CustomerID, &c.CreatedAt, &c.UpdatedAt); err != nil {
 		return Cart{}, err
 	}
 	rows, err := s.stmtListCartItems.QueryContext(ctx, cartID)
@@ -190,6 +192,82 @@ func (s *Store) GetCart(ctx context.Context, cartID string) (Cart, error) {
 	c.Items = items
 	c.Totals = Totals{SubtotalCents: subtotal, Currency: currency, ItemCount: itemCount}
 	return c, nil
+}
+
+func (s *Store) ResolveCustomerCart(ctx context.Context, customerID, guestCartID string) (Cart, error) {
+	if customerID == "" {
+		return Cart{}, errors.New("customer id required")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Cart{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	customerCartID, err := ensureCustomerCartTx(ctx, tx, customerID)
+	if err != nil {
+		return Cart{}, err
+	}
+
+	if guestCartID != "" && guestCartID != customerCartID {
+		if err := mergeGuestCartTx(ctx, tx, customerCartID, guestCartID); err != nil {
+			return Cart{}, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Cart{}, err
+	}
+	return s.GetCart(ctx, customerCartID)
+}
+
+func ensureCustomerCartTx(ctx context.Context, tx *sql.Tx, customerID string) (string, error) {
+	var cartID string
+	err := tx.QueryRowContext(ctx, `SELECT id FROM carts WHERE customer_id = $1`, customerID).Scan(&cartID)
+	if err == nil {
+		return cartID, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO carts (customer_id)
+		VALUES ($1)
+		RETURNING id`, customerID).Scan(&cartID)
+	if err == nil {
+		return cartID, nil
+	}
+
+	// Concurrent creation may win the unique index first; in that case, read the cart.
+	if err2 := tx.QueryRowContext(ctx, `SELECT id FROM carts WHERE customer_id = $1`, customerID).Scan(&cartID); err2 == nil {
+		return cartID, nil
+	}
+	return "", err
+}
+
+func mergeGuestCartTx(ctx context.Context, tx *sql.Tx, customerCartID, guestCartID string) error {
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO cart_items (cart_id, product_variant_id, unit_price_cents, currency, quantity)
+		SELECT $1, ci.product_variant_id, ci.unit_price_cents, ci.currency, ci.quantity
+		FROM cart_items ci
+		JOIN carts c ON c.id = ci.cart_id
+		WHERE ci.cart_id = $2 AND c.customer_id IS NULL
+		ON CONFLICT (cart_id, product_variant_id)
+		DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity, updated_at = now()`,
+		customerCartID, guestCartID,
+	); err != nil {
+		return err
+	}
+
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM cart_items ci
+		USING carts c
+		WHERE ci.cart_id = c.id
+		AND c.id = $1
+		AND c.customer_id IS NULL`, guestCartID)
+	return err
 }
 
 func (s *Store) AddItem(ctx context.Context, cartID, variantID string, quantity int) (Cart, error) {
