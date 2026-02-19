@@ -176,3 +176,8 @@ func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
 	}
 	return o, nil
 }
+
+func (s *Store) UpdateOrderStatus(ctx context.Context, id string, status string) error {
+	_, err := s.db.ExecContext(ctx, "UPDATE orders SET status = $1, updated_at = now() WHERE id = $2", status, id)
+	return err
+}

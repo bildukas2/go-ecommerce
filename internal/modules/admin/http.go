@@ -105,6 +105,7 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/dashboard", m.wrapAuth(m.handleDashboard))
 	mux.HandleFunc("/admin/orders", m.wrapAuth(m.handleOrders))
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
+	mux.HandleFunc("/admin/orders/status", m.wrapAuth(m.handleUpdateOrderStatus))
 	mux.HandleFunc("/admin/customers", m.wrapAuth(m.handleCustomers))
 	mux.HandleFunc("/admin/media", m.wrapAuth(m.handleMedia))
 	mux.HandleFunc("/admin/media/upload", m.wrapAuth(m.handleMediaUpload))
@@ -252,6 +253,50 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 	_ = platformhttp.JSON(w, http.StatusOK, o)
 }
 
+type updateOrderStatusRequest struct {
+	OrderID string `json:"order_id"`
+	Status  string `json:"status"`
+}
+
+func (m *module) handleUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.NotFound(w, r)
+		return
+	}
+	if m.orders == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	var req updateOrderStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	req.OrderID = strings.TrimSpace(req.OrderID)
+	req.Status = strings.TrimSpace(req.Status)
+	if req.OrderID == "" || req.Status == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "missing fields")
+		return
+	}
+
+	// Validate status
+	validStatuses := map[string]bool{
+		"pending_payment": true,
+		"paid":            true,
+		"cancelled":       true,
+	}
+	if !validStatuses[req.Status] {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid status")
+		return
+	}
+
+	if err := m.orders.UpdateOrderStatus(r.Context(), req.OrderID, req.Status); err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "update error")
+		return
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (m *module) handleCustomers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.NotFound(w, r)
@@ -302,6 +347,7 @@ type ordersStore interface {
 	GetOrderMetrics(ctx context.Context) (stororders.OrderMetrics, error)
 	ListOrders(ctx context.Context, limit, offset int) ([]stororders.Order, error)
 	GetOrderByID(ctx context.Context, id string) (stororders.Order, error)
+	UpdateOrderStatus(ctx context.Context, id string, status string) error
 }
 
 type customersStore interface {

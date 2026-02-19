@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAdminOrder } from "@/lib/api";
 import { isNotFoundAdminError, isUnauthorizedAdminError } from "@/lib/admin-orders-state";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Package, DollarSign, Clock } from "lucide-react";
 
@@ -106,6 +107,9 @@ export default async function AdminOrderDetailPage({ params }: Params) {
               }) : "-"}
             </p>
           </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <OrderStatusSelect orderId={order.ID} currentStatus={order.Status} />
         </div>
       </div>
 

@@ -878,6 +878,21 @@ export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
   return res.json();
 }
 
+export async function updateAdminOrderStatus(orderID: string, status: string): Promise<{ status: string }> {
+  const url = new URL(apiJoin("admin/orders/status"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({ order_id: orderID, status }),
+  });
+  if (!res.ok) throw new Error(`Failed to update order status: ${res.status}`);
+  return res.json();
+}
+
 type AdminCatalogRequestMethod = "POST" | "PATCH" | "PUT";
 
 type AdminCatalogRequestOptions = {
