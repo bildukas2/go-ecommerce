@@ -26,6 +26,7 @@ import { selectProductGridImage } from "@/lib/product-images";
 import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/admin-catalog-state";
 import { ProductsBulkTools } from "@/components/admin/catalog/products-bulk-tools";
 import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
+import { ProductsDeleteButton } from "@/components/admin/catalog/products-delete-button";
 import { ProductsEditModal } from "@/components/admin/catalog/products-edit-modal";
 import { ProductsMoreModal } from "@/components/admin/catalog/products-more-modal";
 
@@ -772,20 +773,12 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                             attachCustomOptionAction={attachCustomOptionAction}
                             detachCustomOptionAction={detachCustomOptionAction}
                           />
-                          <form action={deleteProductAction}>
-                            <input type="hidden" name="return_to" value={currentHref} />
-                            <input type="hidden" name="product_id" value={product.id} />
-                            <button
-                              type="submit"
-                              title="Delete product"
-                              aria-label="Delete product"
-                              className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
-                            >
-                              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
-                                <path d="M9 3a1 1 0 0 0-1 1v1H4.5a1 1 0 1 0 0 2H5v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4v1h-4V5Zm-3 2h10v12H7V7Zm2 2a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0v-6a1 1 0 0 0-1-1Zm6 0a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0v-6a1 1 0 0 0-1-1Z" />
-                              </svg>
-                            </button>
-                          </form>
+                          <ProductsDeleteButton
+                            deleteAction={deleteProductAction}
+                            productID={product.id}
+                            productTitle={product.title}
+                            returnTo={currentHref}
+                          />
                         </div>
                       </td>
                     </tr>
