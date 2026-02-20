@@ -342,7 +342,64 @@ export function AddToCartButton({
                   {option.required ? <span className="ml-1 text-red-500">*</span> : null}
                 </div>
 
-                {(option.type === "dropdown" || option.type === "radio") && (
+                {(option.type === "dropdown" || option.type === "radio") && option.display_mode === "buttons" && (
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const isSelected = selection.valueId === value.id;
+                      return (
+                        <button
+                          key={value.id}
+                          onClick={() => {
+                            setCustomOptionSelections((prev) => ({
+                              ...prev,
+                              [option.id]: { ...selection, valueId: isSelected ? "" : value.id },
+                            }));
+                          }}
+                          className={`
+                            rounded-xl border px-4 py-2 text-sm font-medium transition-all
+                            ${isSelected
+                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
+                          `}
+                        >
+                          {value.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(option.type === "checkbox" || option.type === "multiple") && option.display_mode === "buttons" && (
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const isSelected = selection.valueIds.includes(value.id);
+                      return (
+                        <button
+                          key={value.id}
+                          onClick={() => {
+                            const nextIDs = isSelected
+                              ? selection.valueIds.filter((id) => id !== value.id)
+                              : dedupeSorted([...selection.valueIds, value.id]);
+                            setCustomOptionSelections((prev) => ({
+                              ...prev,
+                              [option.id]: { ...selection, valueIds: nextIDs },
+                            }));
+                          }}
+                          className={`
+                            rounded-xl border px-4 py-2 text-sm font-medium transition-all
+                            ${isSelected
+                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
+                          `}
+                        >
+                          {value.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(option.type === "dropdown" || option.type === "radio") && option.display_mode !== "buttons" && (
                   <select
                     className="w-full rounded-xl border border-surface-border bg-background px-3 py-2 text-sm"
                     value={selection.valueId}
@@ -363,7 +420,7 @@ export function AddToCartButton({
                   </select>
                 )}
 
-                {(option.type === "checkbox" || option.type === "multiple") && (
+                {(option.type === "checkbox" || option.type === "multiple") && option.display_mode !== "buttons" && (
                   <div className="space-y-2">
                     {option.values.map((value) => {
                       const checked = selection.valueIds.includes(value.id);
