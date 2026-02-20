@@ -16,13 +16,9 @@ import {
   getCategories,
   getProducts,
   setAdminProductCategories,
-  type AdminProductCustomOptionAssignment,
-  type Product,
-  type ProductVariant,
   updateAdminProduct,
+  type AdminProductCustomOptionAssignment,
 } from "@/lib/api";
-import { formatMoney } from "@/lib/money";
-import { selectProductGridImage } from "@/lib/product-images";
 import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/admin-catalog-state";
 import { ProductsTableManager } from "@/components/admin/catalog/products-table-manager";
 import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
@@ -30,16 +26,6 @@ import { ProductsCreateModal } from "@/components/admin/catalog/products-create-
 export const dynamic = "force-dynamic";
 
 type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
-
-type ProductViewData = {
-  basePriceCents: number | null;
-  priceLabel: string;
-  stockTotal: number;
-  stockState: "in_stock" | "out_of_stock" | "low_stock";
-  createdLabel: string;
-  imageUrl: string;
-  currency: string;
-};
 
 const sortOptions = [
   { value: "newest", label: "Newest" },
@@ -653,5 +639,4 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       )}
     </div>
   );
-}
 }

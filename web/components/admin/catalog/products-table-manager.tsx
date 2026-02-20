@@ -135,7 +135,6 @@ export function ProductsTableManager({
         })}
         categories={categories}
         selectedProductIDs={selectedProductIDs}
-        setSelectedProductIDs={setSelectedProductIDs}
         bulkAssignAction={bulkAssignCategoriesAction}
         bulkRemoveAction={bulkRemoveCategoriesAction}
         bulkDiscountAction={bulkDiscountAction}

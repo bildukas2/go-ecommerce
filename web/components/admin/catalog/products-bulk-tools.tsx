@@ -23,7 +23,6 @@ type Props = {
   products: ProductOption[];
   categories: CategoryOption[];
   selectedProductIDs: string[];
-  setSelectedProductIDs: (ids: string[] | ((current: string[]) => string[])) => void;
   bulkAssignAction: ActionFn;
   bulkRemoveAction: ActionFn;
   bulkDiscountAction: ActionFn;
@@ -34,7 +33,6 @@ export function ProductsBulkTools({
   products,
   categories,
   selectedProductIDs,
-  setSelectedProductIDs,
   bulkAssignAction,
   bulkRemoveAction,
   bulkDiscountAction,
