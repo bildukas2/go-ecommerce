@@ -28,6 +28,8 @@ test("ProductsEditModal includes custom-option fields for form submission", asyn
   expectCustomOptionFields(source);
   assert.match(source, /customOptions/);
   assert.match(source, /Currently attached options/);
+  assert.match(source, /name="remove_option_ids"/);
+  assert.match(source, /"Remove"/);
 });
 
 test("Custom option picker includes add, customize, and remove actions", async () => {

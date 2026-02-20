@@ -33,6 +33,11 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
   const [open, setOpen] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
+  const [removedCustomOptionIDs, setRemovedCustomOptionIDs] = useState<string[]>([]);
+
+  const toggleRemoveOption = (optionID: string) => {
+    setRemovedCustomOptionIDs((prev) => (prev.includes(optionID) ? prev.filter((id) => id !== optionID) : [...prev, optionID]));
+  };
 
   return (
     <>
@@ -152,14 +157,33 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
                     <p className="mt-1 text-xs text-foreground/65">No customizable options attached.</p>
                   ) : (
                     <ul className="mt-2 space-y-1 text-xs text-foreground/75">
-                      {assignments.map((assignment) => (
-                        <li key={`${product.id}-attached-${assignment.option_id}`}>
-                          {assignment.option?.title || assignment.option_id} ({assignment.option?.type_group || "unknown"}/
-                          {assignment.option?.type || "unknown"})
-                        </li>
-                      ))}
+                      {assignments.map((assignment) => {
+                        const isRemoved = removedCustomOptionIDs.includes(assignment.option_id);
+                        return (
+                          <li key={`${product.id}-attached-${assignment.option_id}`} className="flex items-center justify-between gap-2">
+                            <span className={isRemoved ? "line-through opacity-60" : ""}>
+                              {assignment.option?.title || assignment.option_id} ({assignment.option?.type_group || "unknown"}/
+                              {assignment.option?.type || "unknown"})
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleRemoveOption(assignment.option_id)}
+                              className={`rounded-md border px-2 py-1 text-[11px] font-medium ${
+                                isRemoved
+                                  ? "border-surface-border bg-background text-foreground/75"
+                                  : "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300"
+                              }`}
+                            >
+                              {isRemoved ? "Undo" : "Remove"}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
+                  {removedCustomOptionIDs.map((optionID) => (
+                    <input key={`edit-remove-option-${product.id}-${optionID}`} type="hidden" name="remove_option_ids" value={optionID} />
+                  ))}
                 </div>
               </label>
               <label className="space-y-1 text-sm">

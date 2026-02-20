@@ -272,6 +272,10 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           attach: attachAdminProductCustomOption,
         });
       }
+      const removeOptionIDs = cleanIDs(formData.getAll("remove_option_ids"));
+      if (removeOptionIDs.length > 0) {
+        await Promise.all(removeOptionIDs.map((optionID) => detachAdminProductCustomOption(productID, optionID)));
+      }
 
       const discountType = String(formData.get("discount_type") ?? "none").trim().toLowerCase();
       const discountRaw = String(formData.get("discount_value") ?? "").trim();
