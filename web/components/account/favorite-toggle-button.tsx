@@ -43,7 +43,7 @@ export function FavoriteToggleButton({ productID, nextPathOnLogin = "/" }: Favor
         type="button"
         variant="bordered"
         radius="lg"
-        className="w-full border-surface-border bg-background/40 font-medium"
+        className="w-full border-blue-500/45 bg-blue-500/10 font-medium text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
         onPress={onFavorite}
         isDisabled={loading}
         startContent={<Heart size={17} aria-hidden />}

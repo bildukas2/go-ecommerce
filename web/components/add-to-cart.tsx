@@ -429,9 +429,8 @@ export function AddToCartButton({
           onPress={onClick}
           size="lg"
           radius="lg"
-          color="primary"
           variant="solid"
-          className="h-12 w-full text-base font-semibold transition-transform data-[hover=true]:scale-[1.01]"
+          className="h-12 w-full bg-blue-600 text-base font-semibold text-white shadow-sm transition-transform hover:bg-blue-500 data-[hover=true]:scale-[1.01]"
           isLoading={status === "loading"}
           isDisabled={status === "loading" || !canAdd || disableControls}
           startContent={status === "loading" ? null : <ShoppingCart size={18} aria-hidden />}
