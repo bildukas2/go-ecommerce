@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,10 @@ const (
 
 	CustomOptionPriceTypeFixed   = "fixed"
 	CustomOptionPriceTypePercent = "percent"
+
+	CustomOptionDisplayModeDefault      = "default"
+	CustomOptionDisplayModeButtons      = "buttons"
+	CustomOptionDisplayModeColorButtons = "color_buttons"
 )
 
 var ErrInvalidInput = errors.New("catalog invalid input")
@@ -435,6 +440,28 @@ type normalizedCustomOptionValueInput struct {
 	IsDefault  bool
 }
 
+var hexColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+
+func isValidCustomOptionDisplayMode(v string) bool {
+	switch v {
+	case CustomOptionDisplayModeDefault, CustomOptionDisplayModeButtons, CustomOptionDisplayModeColorButtons:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidSwatchHex(v *string) bool {
+	if v == nil {
+		return true
+	}
+	trimmed := strings.TrimSpace(*v)
+	if trimmed == "" {
+		return true
+	}
+	return hexColorPattern.MatchString(trimmed)
+}
+
 func validateAndNormalizeCustomOptionInput(in CustomOptionUpsertInput) (normalizedCustomOptionInput, error) {
 	title := strings.TrimSpace(in.Title)
 	if len(title) < 2 {
@@ -468,9 +495,17 @@ func validateAndNormalizeCustomOptionInput(in CustomOptionUpsertInput) (normaliz
 
 	displayMode := strings.TrimSpace(strings.ToLower(in.DisplayMode))
 	if displayMode == "" {
-		displayMode = "default"
+		displayMode = CustomOptionDisplayModeDefault
 	}
-	
+
+	if !isValidCustomOptionDisplayMode(displayMode) {
+		return normalizedCustomOptionInput{}, invalidInput("invalid display_mode, must be one of: default, buttons, color_buttons")
+	}
+
+	if displayMode != CustomOptionDisplayModeDefault && typeGroup != CustomOptionTypeGroupSelect {
+		return normalizedCustomOptionInput{}, invalidInput("display_mode can only be used with select type options")
+	}
+
 	out := normalizedCustomOptionInput{
 		StoreID:     normalizeOptionalTrimmedString(in.StoreID),
 		Code:        code,
@@ -540,6 +575,9 @@ func normalizeCustomOptionValueInput(in CustomOptionValueUpsertInput) (normalize
 	}
 	sku := normalizeOptionalTrimmedString(in.SKU)
 	swatchHex := normalizeOptionalTrimmedString(in.SwatchHex)
+	if !isValidSwatchHex(swatchHex) {
+		return normalizedCustomOptionValueInput{}, errors.New("swatch_hex must be a valid hex color in format #RRGGBB")
+	}
 	return normalizedCustomOptionValueInput{
 		Title:      title,
 		SKU:        sku,

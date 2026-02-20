@@ -133,6 +133,205 @@ func TestAttachProductCustomOptionUniqueness(t *testing.T) {
 	}
 }
 
+func TestCreateCustomOptionInvalidDisplayMode(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	valuePrice := 0.0
+	_, err := store.CreateCustomOption(context.Background(), CustomOptionUpsertInput{
+		Code:        uniqueCode("invalid-display-mode"),
+		Title:       "Size",
+		TypeGroup:   CustomOptionTypeGroupSelect,
+		Type:        "dropdown",
+		DisplayMode: "invalid_mode",
+		IsActive:    boolPtr(true),
+		Values: []CustomOptionValueUpsertInput{
+			{
+				Title:      "S",
+				PriceType:  CustomOptionPriceTypeFixed,
+				PriceValue: &valuePrice,
+			},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected error for invalid display_mode")
+	}
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestCreateCustomOptionDisplayModeOnlyForSelect(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	priceValue := 0.0
+	_, err := store.CreateCustomOption(context.Background(), CustomOptionUpsertInput{
+		Code:        uniqueCode("buttons-on-text"),
+		Title:       "Custom Text",
+		TypeGroup:   CustomOptionTypeGroupText,
+		Type:        "field",
+		DisplayMode: "buttons",
+		PriceType:   stringPtr(CustomOptionPriceTypeFixed),
+		PriceValue:  &priceValue,
+		IsActive:    boolPtr(true),
+	})
+	if err == nil {
+		t.Fatalf("expected error for display_mode on non-select option")
+	}
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestCreateCustomOptionValidDisplayModes(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	displayModes := []string{"default", "buttons", "color_buttons"}
+
+	for _, displayMode := range displayModes {
+		valuePrice := 0.0
+		option, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+			Code:        uniqueCode(fmt.Sprintf("test-%s", displayMode)),
+			Title:       fmt.Sprintf("Option %s", displayMode),
+			TypeGroup:   CustomOptionTypeGroupSelect,
+			Type:        "dropdown",
+			DisplayMode: displayMode,
+			IsActive:    boolPtr(true),
+			Values: []CustomOptionValueUpsertInput{
+				{
+					Title:      "Value 1",
+					PriceType:  CustomOptionPriceTypeFixed,
+					PriceValue: &valuePrice,
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("create option with display_mode=%s: %v", displayMode, err)
+		}
+		defer deleteOptionByID(t, store.db, option.ID)
+
+		if option.DisplayMode != displayMode {
+			t.Fatalf("expected display_mode=%s, got %s", displayMode, option.DisplayMode)
+		}
+	}
+}
+
+func TestCreateCustomOptionInvalidSwatchHex(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	invalidHexValues := []string{
+		"#GGG000",   // invalid hex chars
+		"#FF0000FF", // too long
+		"#FF00",     // too short
+		"FF0000",    // missing #
+		"#FF000Z",   // invalid char Z
+	}
+
+	for _, hexValue := range invalidHexValues {
+		valuePrice := 0.0
+		_, err := store.CreateCustomOption(context.Background(), CustomOptionUpsertInput{
+			Code:        uniqueCode("invalid-hex"),
+			Title:       "Color Option",
+			TypeGroup:   CustomOptionTypeGroupSelect,
+			Type:        "dropdown",
+			DisplayMode: "color_buttons",
+			IsActive:    boolPtr(true),
+			Values: []CustomOptionValueUpsertInput{
+				{
+					Title:      "Red",
+					SwatchHex:  stringPtr(hexValue),
+					PriceType:  CustomOptionPriceTypeFixed,
+					PriceValue: &valuePrice,
+				},
+			},
+		})
+		if err == nil {
+			t.Fatalf("expected error for invalid swatch_hex=%s", hexValue)
+		}
+		if !errors.Is(err, ErrInvalidInput) {
+			t.Fatalf("expected ErrInvalidInput for hex=%s, got %v", hexValue, err)
+		}
+	}
+}
+
+func TestCreateCustomOptionValidSwatchHex(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	validHexValues := []string{"#FF0000", "#00FF00", "#0000FF", "#111827", "#F9FAFB"}
+
+	for _, hexValue := range validHexValues {
+		valuePrice := 0.0
+		option, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+			Code:        uniqueCode(fmt.Sprintf("valid-hex-%s", hexValue)),
+			Title:       "Color Option",
+			TypeGroup:   CustomOptionTypeGroupSelect,
+			Type:        "dropdown",
+			DisplayMode: "color_buttons",
+			IsActive:    boolPtr(true),
+			Values: []CustomOptionValueUpsertInput{
+				{
+					Title:      "Color",
+					SwatchHex:  stringPtr(hexValue),
+					PriceType:  CustomOptionPriceTypeFixed,
+					PriceValue: &valuePrice,
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("create option with valid swatch_hex=%s: %v", hexValue, err)
+		}
+		defer deleteOptionByID(t, store.db, option.ID)
+
+		if len(option.Values) == 0 {
+			t.Fatalf("expected at least one value")
+		}
+		if option.Values[0].SwatchHex == nil || *option.Values[0].SwatchHex != hexValue {
+			t.Fatalf("expected swatch_hex=%s, got %v", hexValue, option.Values[0].SwatchHex)
+		}
+	}
+}
+
+func TestCreateCustomOptionNullSwatchHex(t *testing.T) {
+	store, cleanup := openCatalogStoreForCustomOptionTests(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	valuePrice := 0.0
+	option, err := store.CreateCustomOption(ctx, CustomOptionUpsertInput{
+		Code:        uniqueCode("null-swatch"),
+		Title:       "Color Option",
+		TypeGroup:   CustomOptionTypeGroupSelect,
+		Type:        "dropdown",
+		DisplayMode: "color_buttons",
+		IsActive:    boolPtr(true),
+		Values: []CustomOptionValueUpsertInput{
+			{
+				Title:      "No Color",
+				SwatchHex:  nil,
+				PriceType:  CustomOptionPriceTypeFixed,
+				PriceValue: &valuePrice,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create option with null swatch_hex: %v", err)
+	}
+	defer deleteOptionByID(t, store.db, option.ID)
+
+	if len(option.Values) == 0 {
+		t.Fatalf("expected at least one value")
+	}
+	if option.Values[0].SwatchHex != nil {
+		t.Fatalf("expected swatch_hex=nil, got %v", option.Values[0].SwatchHex)
+	}
+}
+
 func openCatalogStoreForCustomOptionTests(t *testing.T) (*Store, func()) {
 	t.Helper()
 	dsn := os.Getenv("DATABASE_URL")
