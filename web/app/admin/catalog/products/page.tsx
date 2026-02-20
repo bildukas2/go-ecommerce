@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, isRedirectError } from "next/navigation";
 import {
   applyAdminProductDiscount,
   attachAdminProductCustomOption,
@@ -237,6 +237,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Product created"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -296,6 +297,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Product updated"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -312,6 +314,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Product deleted"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -329,6 +332,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Categories assigned"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -346,6 +350,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Categories removed"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -362,6 +367,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Discount applied"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -399,6 +405,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         ),
       );
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -416,6 +423,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Customizable option detached"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -433,6 +441,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Bulk category assignment complete"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -450,6 +459,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Bulk category removal complete"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -466,6 +476,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/products");
       redirect(messageHref(returnTo, "notice", "Bulk discount applied"));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -492,6 +503,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           : "Bulk custom-option assignment complete";
       redirect(messageHref(returnTo, "notice", message));
     } catch (error) {
+      if (isRedirectError(error)) throw error;
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };

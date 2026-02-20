@@ -53,7 +53,7 @@ func NewRouter(deps Deps) http.Handler {
 	})
 	registerEnabledModules(mux)
 
-	rateLimiter := platformhttp.NewRateLimiter(deps.Redis, 30, time.Minute)
+	rateLimiter := platformhttp.NewRateLimiter(deps.Redis, 120, time.Minute)
 	wrapped := applyAdminMiddleware(mux, rateLimiter)
 	wrapped = platformhttp.CORS(wrapped, platformhttp.ParseAllowedOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")))
 	return wrapped
