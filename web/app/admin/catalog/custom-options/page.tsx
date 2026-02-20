@@ -131,8 +131,12 @@ export default async function AdminCustomOptionsPage({ searchParams }: PageProps
       type_group: typeGroup || undefined,
     });
     items = response.items;
-  } catch {
-    fetchError = "Failed to load customizable options. Please retry.";
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("401")) {
+      fetchError = "Unauthorized. Please check your admin credentials.";
+    } else {
+      fetchError = "Failed to load customizable options. Please retry.";
+    }
   }
 
   return (

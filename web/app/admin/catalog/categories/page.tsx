@@ -185,19 +185,22 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
   };
 
   try {
-    const [categoriesResponse, mediaResponse] = await Promise.all([
-      getAdminCategories(),
-      getAdminMedia({ limit: 100, offset: 0 }),
-    ]);
-    categories = categoriesResponse.items;
-    mediaAssets = mediaResponse.items;
-  } catch {
-    try {
-      const response = await getAdminCategories();
-      categories = response.items;
-      mediaLoadError = "Media library unavailable. You can still use manual image URL.";
-    } catch {
+    const response = await getAdminCategories();
+    categories = response.items;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("401")) {
+      fetchError = "Unauthorized. Please check your admin credentials.";
+    } else {
       fetchError = "Failed to load categories. Please retry.";
+    }
+  }
+
+  if (!fetchError) {
+    try {
+      const response = await getAdminMedia({ limit: 100, offset: 0 });
+      mediaAssets = response.items;
+    } catch {
+      mediaLoadError = "Media library unavailable. You can still use manual image URL.";
     }
   }
 

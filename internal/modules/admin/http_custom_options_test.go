@@ -137,6 +137,48 @@ func TestAdminProductCustomOptionAssignmentsListSuccess(t *testing.T) {
 	}
 }
 
+func TestAdminProductCustomOptionAssignmentsListSkipOrphaned(t *testing.T) {
+	store := &fakeCatalogStore{
+		listAssignmentsFn: func(_ context.Context, productID string) ([]storcat.ProductCustomOptionAssignment, error) {
+			return []storcat.ProductCustomOptionAssignment{
+				{ProductID: productID, OptionID: "opt-exists", SortOrder: 1},
+				{ProductID: productID, OptionID: "opt-orphaned", SortOrder: 2},
+			}, nil
+		},
+		getCustomOptionByIDFn: func(_ context.Context, id string) (storcat.ProductCustomOption, error) {
+			if id == "opt-exists" {
+				return storcat.ProductCustomOption{ID: id, Title: "Existing"}, nil
+			}
+			return storcat.ProductCustomOption{}, storcat.ErrNotFound
+		},
+	}
+	m := &module{catalog: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/products/prod-1/custom-options", nil)
+	req.SetBasicAuth("admin", "pass")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+
+	var payload struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if len(payload.Items) != 1 {
+		t.Fatalf("expected 1 item (orphaned skipped), got %d", len(payload.Items))
+	}
+	if payload.Items[0]["option_id"] != "opt-exists" {
+		t.Fatalf("expected opt-exists, got %v", payload.Items[0]["option_id"])
+	}
+}
+
 func TestAdminProductCustomOptionAttachValidationError(t *testing.T) {
 	m := &module{catalog: &fakeCatalogStore{}, user: "admin", pass: "pass"}
 	mux := http.NewServeMux()

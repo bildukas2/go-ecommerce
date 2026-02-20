@@ -466,21 +466,24 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   const visibleProducts = applyAdminProductsState(products, state);
   if (!fetchError && visibleProducts.length > 0) {
     try {
-      const [optionsResponse, assignments] = await Promise.all([
-        getAdminCustomOptions(),
-        Promise.all(
-          visibleProducts.map(async (product) => {
-            const response = await getAdminProductCustomOptions(product.id);
-            return [product.id, response.items] as const;
-          }),
-        ),
-      ]);
+      const optionsResponse = await getAdminCustomOptions();
       availableCustomOptions = optionsResponse.items;
-      for (const [productID, items] of assignments) {
-        assignmentsByProductID.set(productID, items);
-      }
     } catch {
       customOptionsFetchError = "Customizable options section is temporarily unavailable.";
+    }
+
+    const assignmentsResults = await Promise.allSettled(
+      visibleProducts.map(async (product) => {
+        const response = await getAdminProductCustomOptions(product.id);
+        return [product.id, response.items] as const;
+      }),
+    );
+
+    for (const result of assignmentsResults) {
+      if (result.status === "fulfilled") {
+        const [productID, items] = result.value;
+        assignmentsByProductID.set(productID, items);
+      }
     }
   }
 

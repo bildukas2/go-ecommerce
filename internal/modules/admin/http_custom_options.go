@@ -178,6 +178,9 @@ func (m *module) handleProductCustomOptionAssignments(w http.ResponseWriter, r *
 			for _, assignment := range assignments {
 				option, err := m.catalog.GetCustomOptionByID(r.Context(), assignment.OptionID)
 				if err != nil {
+					if errors.Is(err, storcat.ErrNotFound) {
+						continue
+					}
 					writeCustomOptionStoreError(w, err, "list product custom options error")
 					return
 				}
