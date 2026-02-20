@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, CardBody } from "@heroui/react";
 import { ChevronRight } from "lucide-react";
+import { BackToOptionsButton, NoticeCard } from "@/components/admin/catalog/custom-option-page-ui";
 import { createAdminCustomOption } from "@/lib/api";
 import { CustomOptionForm } from "@/components/admin/catalog/custom-option-form";
 import { parseCustomOptionFormData } from "../form-utils";
@@ -26,21 +26,6 @@ function messageHref(basePath: string, key: "notice" | "error", message: string)
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Request failed";
-}
-
-type NoticeTone = "success" | "danger";
-
-function NoticeCard({ tone, message }: { tone: NoticeTone; message: string }) {
-  const className =
-    tone === "success"
-      ? "rounded-2xl border border-emerald-300/60 bg-emerald-50/80 text-emerald-800"
-      : "rounded-2xl border border-danger-300/60 bg-danger-50/80 text-danger-800";
-
-  return (
-    <Card className={className}>
-      <CardBody className="py-3 text-sm">{message}</CardBody>
-    </Card>
-  );
 }
 
 export default async function AdminCustomOptionCreatePage({ searchParams }: PageProps) {
@@ -85,9 +70,7 @@ export default async function AdminCustomOptionCreatePage({ searchParams }: Page
             <h1 className="text-3xl font-bold tracking-tight">Create Customizable Option</h1>
             <p className="text-sm text-foreground/70">Define option type, requirement behavior, and pricing setup.</p>
           </div>
-          <Button as={Link} href="/admin/catalog/custom-options" variant="bordered">
-            Back to options
-          </Button>
+          <BackToOptionsButton />
         </div>
       </div>
 
