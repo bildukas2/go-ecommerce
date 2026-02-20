@@ -1,28 +1,36 @@
 import Link from "next/link";
 import { getAdminCustomers } from "@/lib/api";
 import { isUnauthorizedAdminError, parsePositiveIntParam } from "@/lib/admin-orders-state";
+import { Button } from "@heroui/react";
+import { ChevronLeft, ChevronRight, User, Calendar, Mail } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
+type PageProps = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export default async function AdminCustomersPage({ searchParams }: PageProps) {
+  const params = await searchParams;
   const user = process.env.ADMIN_USER;
   const pass = process.env.ADMIN_PASS;
 
   if (!user || !pass) {
     return (
-      <div className="mx-auto max-w-5xl p-6">
-        <h1 className="mb-2 text-2xl font-semibold">Admin Not Configured</h1>
-        <p className="text-sm text-gray-600">
-          Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.
-        </p>
+      <div className="mx-auto flex flex-col items-center justify-center min-h-[50vh] text-center">
+        <div className="p-8 glass rounded-2xl border border-surface-border max-w-md">
+          <h1 className="mb-3 text-2xl font-bold tracking-tight">Admin Not Configured</h1>
+          <p className="text-sm text-foreground/70 mb-6">
+            Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.
+          </p>
+          <Button as={Link} href="/admin" variant="bordered">
+            Go to Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
 
-  const page = parsePositiveIntParam(searchParams?.page, 1);
-  const limit = parsePositiveIntParam(searchParams?.limit, 20);
+  const page = parsePositiveIntParam(params.page, 1);
+  const limit = parsePositiveIntParam(params.limit, 20);
 
   let items: Awaited<ReturnType<typeof getAdminCustomers>>["items"] = [];
   let fetchError: string | null = null;
@@ -42,71 +50,131 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
   const hasNext = items.length === limit;
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Customers</h1>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-500">Page</span>
-          <span className="font-medium">{page}</span>
-          <div className="ml-4 flex gap-2">
-            {hasPrev ? (
-              <Link
-                className="rounded border px-3 py-1 hover:bg-gray-50"
-                href={`/admin/customers?page=${page - 1}&limit=${limit}`}
-              >
-                Prev
-              </Link>
-            ) : (
-              <span className="rounded border px-3 py-1 text-gray-400">Prev</span>
-            )}
-            {hasNext ? (
-              <Link
-                className="rounded border px-3 py-1 hover:bg-gray-50"
-                href={`/admin/customers?page=${page + 1}&limit=${limit}`}
-              >
-                Next
-              </Link>
-            ) : (
-              <span className="rounded border px-3 py-1 text-gray-400">Next</span>
-            )}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
+          <p className="text-foreground/70">
+            View and manage your store&apos;s registered customers
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 rounded-full border border-surface-border bg-foreground/[0.03] px-3 py-1 text-sm font-medium">
+            <span className="text-foreground/50">Page</span>
+            <span>{page}</span>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              as={Link}
+              href={hasPrev ? `/admin/customers?page=${page - 1}&limit=${limit}` : "#"}
+              variant="flat"
+              isIconOnly
+              disabled={!hasPrev}
+              className={`rounded-xl border border-surface-border bg-foreground/[0.03] ${!hasPrev ? "opacity-50 pointer-events-none" : ""}`}
+            >
+              <ChevronLeft size={18} />
+            </Button>
+            <Button
+              as={Link}
+              href={hasNext ? `/admin/customers?page=${page + 1}&limit=${limit}` : "#"}
+              variant="flat"
+              isIconOnly
+              disabled={!hasNext}
+              className={`rounded-xl border border-surface-border bg-foreground/[0.03] ${!hasNext ? "opacity-50 pointer-events-none" : ""}`}
+            >
+              <ChevronRight size={18} />
+            </Button>
           </div>
         </div>
       </div>
 
       {fetchError && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
           {fetchError}
         </div>
       )}
 
-      <div className="overflow-x-auto rounded border">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-left">
-            <tr>
-              <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Created</th>
-              <th className="px-4 py-2">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((customer) => (
-              <tr key={customer.id} className="border-t">
-                <td className="px-4 py-2 font-mono">{customer.id}</td>
-                <td className="px-4 py-2">{customer.email}</td>
-                <td className="px-4 py-2">{new Date(customer.created_at).toLocaleString()}</td>
-                <td className="px-4 py-2">{new Date(customer.updated_at).toLocaleString()}</td>
+      <div className="glass overflow-hidden rounded-2xl border text-foreground shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.38)]">
+        <div className="relative w-full overflow-auto">
+          <table className="w-full caption-bottom text-sm">
+            <thead>
+              <tr className="border-b border-surface-border transition-colors">
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Customer</th>
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Email</th>
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Joined</th>
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Last Updated</th>
+                <th className="h-12 px-4 text-right align-middle font-medium text-foreground/70">Actions</th>
               </tr>
-            ))}
-            {items.length === 0 && (
-              <tr>
-                <td className="px-4 py-6 text-center text-gray-500" colSpan={4}>
-                  {fetchError ? "No customers loaded" : "No customers yet"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="[&_tr:last-child]:border-0">
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-12 text-center text-foreground/60">
+                    <div className="flex flex-col items-center gap-2">
+                      <User size={32} className="opacity-20" />
+                      <p>{fetchError ? "Failed to load data" : "No customers found"}</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                items.map((customer) => (
+                  <tr
+                    key={customer.id}
+                    className="border-b border-surface-border transition-colors hover:bg-foreground/[0.04]"
+                  >
+                    <td className="p-4 align-middle">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/14 text-blue-600 dark:text-blue-300">
+                          <User size={18} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold truncate max-w-[150px] md:max-w-xs">{customer.email.split('@')[0]}</span>
+                          <span className="text-xs font-mono text-foreground/50 truncate">ID: {customer.id.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 align-middle">
+                      <div className="flex items-center gap-2 text-foreground/80">
+                        <Mail size={14} className="opacity-50" />
+                        <span>{customer.email}</span>
+                      </div>
+                    </td>
+                    <td className="p-4 align-middle">
+                      <div className="flex items-center gap-2 text-foreground/70">
+                        <Calendar size={14} className="opacity-50" />
+                        <span>
+                          {new Date(customer.created_at).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 align-middle text-foreground/60">
+                      {new Date(customer.updated_at).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="p-4 align-middle text-right">
+                      <Button
+                        variant="light"
+                        size="sm"
+                        className="font-medium text-blue-600 hover:bg-blue-500/12 dark:text-blue-400"
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
