@@ -24,11 +24,8 @@ import {
 import { formatMoney } from "@/lib/money";
 import { selectProductGridImage } from "@/lib/product-images";
 import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/admin-catalog-state";
-import { ProductsBulkTools } from "@/components/admin/catalog/products-bulk-tools";
+import { ProductsTableManager } from "@/components/admin/catalog/products-table-manager";
 import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
-import { ProductsDeleteButton } from "@/components/admin/catalog/products-delete-button";
-import { ProductsEditModal } from "@/components/admin/catalog/products-edit-modal";
-import { ProductsMoreModal } from "@/components/admin/catalog/products-more-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -168,38 +165,6 @@ function parseOptionIDs(formData: FormData): string[] {
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Request failed";
-}
-
-function pickDisplayVariant(product: Product): ProductVariant | null {
-  const inStockVariant = product.variants.find((variant) => variant.stock > 0);
-  return inStockVariant ?? product.variants[0] ?? null;
-}
-
-function totalStock(product: Product): number {
-  return product.variants.reduce((sum, variant) => sum + Math.max(0, variant.stock), 0);
-}
-
-function toProductViewData(product: Product): ProductViewData {
-  const variant = pickDisplayVariant(product);
-  const stockTotal = totalStock(product);
-  const stockState = stockTotal <= 0 ? "out_of_stock" : stockTotal <= 5 ? "low_stock" : "in_stock";
-  const createdTimestamp = Date.parse(product.createdAt ?? "");
-  const createdLabel = Number.isFinite(createdTimestamp)
-    ? new Date(createdTimestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-    : "Unknown";
-
-  const basePriceCents = variant?.compareAtPriceCents ?? variant?.priceCents ?? null;
-  const currency = variant?.currency || "USD";
-
-  return {
-    basePriceCents,
-    priceLabel: variant ? formatMoney(variant.priceCents, currency) : "No active price",
-    stockTotal,
-    stockState,
-    createdLabel,
-    imageUrl: selectProductGridImage(product.images) || "/images/noImage.png",
-    currency,
-  };
 }
 
 export default async function AdminProductsPage({ searchParams }: PageProps) {
@@ -536,6 +501,11 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   const hasPrev = params.page > 1;
   const hasNext = products.length === params.limit;
 
+  const assignmentsByProductIDObj: Record<string, AdminProductCustomOptionAssignment[]> = {};
+  for (const [productID, items] of assignmentsByProductID) {
+    assignmentsByProductIDObj[productID] = items;
+  }
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -634,161 +604,54 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         </form>
       </section>
 
-      <ProductsBulkTools
-        products={visibleProducts.map((product) => {
-          const view = toProductViewData(product);
-          return {
-            id: product.id,
-            title: product.title,
-            slug: product.slug,
-            basePriceCents: view.basePriceCents,
-            currency: view.currency,
-          };
-        })}
-        categories={categories.map((category) => ({ id: category.id, name: category.name }))}
-        bulkAssignAction={bulkAssignCategoriesAction}
-        bulkRemoveAction={bulkRemoveCategoriesAction}
-        bulkDiscountAction={bulkDiscountAction}
-        returnTo={currentHref}
-      />
+      <div className="flex items-center justify-between border-b border-surface-border px-4 py-3 text-sm">
+        <span className="text-foreground/75">
+          Showing {visibleProducts.length} item{visibleProducts.length === 1 ? "" : "s"} on page {params.page}
+        </span>
+        <div className="flex items-center gap-2">
+          {hasPrev ? (
+            <Link href={toHref({ page: params.page - 1 })} className="rounded-lg border border-surface-border px-3 py-1.5 hover:bg-foreground/[0.05]">
+              Prev
+            </Link>
+          ) : (
+            <span className="rounded-lg border border-surface-border px-3 py-1.5 text-foreground/40">Prev</span>
+          )}
+          {hasNext ? (
+            <Link href={toHref({ page: params.page + 1 })} className="rounded-lg border border-surface-border px-3 py-1.5 hover:bg-foreground/[0.05]">
+              Next
+            </Link>
+          ) : (
+            <span className="rounded-lg border border-surface-border px-3 py-1.5 text-foreground/40">Next</span>
+          )}
+        </div>
+      </div>
 
-      <section className="glass rounded-2xl border shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.35)]">
-        <div className="flex items-center justify-between border-b border-surface-border px-4 py-3 text-sm">
-          <span className="text-foreground/75">
-            Showing {visibleProducts.length} item{visibleProducts.length === 1 ? "" : "s"} on page {params.page}
-          </span>
-          <div className="flex items-center gap-2">
-            {hasPrev ? (
-              <Link href={toHref({ page: params.page - 1 })} className="rounded-lg border border-surface-border px-3 py-1.5 hover:bg-foreground/[0.05]">
-                Prev
-              </Link>
-            ) : (
-              <span className="rounded-lg border border-surface-border px-3 py-1.5 text-foreground/40">Prev</span>
-            )}
-            {hasNext ? (
-              <Link href={toHref({ page: params.page + 1 })} className="rounded-lg border border-surface-border px-3 py-1.5 hover:bg-foreground/[0.05]">
-                Next
-              </Link>
-            ) : (
-              <span className="rounded-lg border border-surface-border px-3 py-1.5 text-foreground/40">Next</span>
-            )}
+      {visibleProducts.length === 0 ? (
+        <div className="p-4">
+          <div className="rounded-xl border border-surface-border p-8 text-center text-sm text-foreground/60">
+            {fetchError ? "No products loaded." : "No products match the selected filters."}
           </div>
         </div>
-
-        {visibleProducts.length === 0 ? (
-          <div className="p-4">
-            <div className="rounded-xl border border-surface-border p-8 text-center text-sm text-foreground/60">
-              {fetchError ? "No products loaded." : "No products match the selected filters."}
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-foreground/[0.02] text-left text-xs uppercase tracking-wide text-foreground/70">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Product</th>
-                  <th className="px-3 py-2 font-medium">Slug</th>
-                  <th className="px-3 py-2 font-medium">Price</th>
-                  <th className="px-3 py-2 font-medium">Stock</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Created</th>
-                  <th className="px-3 py-2 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleProducts.map((product) => {
-                  const view = toProductViewData(product);
-                  const displayVariant = pickDisplayVariant(product);
-                  const assignments = assignmentsByProductID.get(product.id) ?? [];
-                  const assignedOptionIDs = new Set(assignments.map((assignment) => assignment.option_id));
-                  const attachableOptions = availableCustomOptions.filter((option) => !assignedOptionIDs.has(option.id));
-                  return (
-                    <tr key={product.id} className="border-t border-surface-border align-top">
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="image-default-bg size-14 shrink-0 overflow-hidden rounded-lg border border-surface-border">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={view.imageUrl} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
-                          </div>
-                          <p className="max-w-[260px] truncate font-semibold">{product.title}</p>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 font-mono text-xs text-foreground/60">/{product.slug}</td>
-                      <td className="px-3 py-3">{view.priceLabel}</td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            view.stockState === "in_stock"
-                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                              : view.stockState === "low_stock"
-                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                                : "bg-red-500/15 text-red-700 dark:text-red-300"
-                          }`}
-                        >
-                          {view.stockTotal}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          product.status === "inactive"
-                            ? "bg-slate-500/20 text-slate-700 dark:text-slate-300"
-                            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                        }`}>
-                          {product.status || "published"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-foreground/75">{view.createdLabel}</td>
-                      <td className="px-3 py-3 text-right">
-                        <div className="inline-flex items-center gap-2">
-                          <ProductsEditModal
-                            updateAction={updateProductAction}
-                            returnTo={currentHref}
-                            categories={categories.map((category) => ({ id: category.id, name: category.name }))}
-                            product={{
-                              id: product.id,
-                              title: product.title,
-                              slug: product.slug,
-                              description: product.description,
-                              status: product.status || "published",
-                              tags: product.tags || [],
-                              seoTitle: product.seoTitle ?? "",
-                              seoDescription: product.seoDescription ?? "",
-                              sku: displayVariant?.sku || "",
-                              stock: displayVariant?.stock ?? 0,
-                              basePrice:
-                                displayVariant && Number.isFinite(displayVariant.priceCents)
-                                  ? (displayVariant.priceCents / 100).toFixed(2)
-                                  : "0.00",
-                            }}
-                          />
-                          <ProductsMoreModal
-                            returnTo={currentHref}
-                            productID={product.id}
-                            categories={categories.map((category) => ({ id: category.id, name: category.name }))}
-                            assignments={assignments}
-                            attachableOptions={attachableOptions}
-                            assignCategoriesAction={assignCategoriesToSingleAction}
-                            removeCategoriesAction={removeCategoriesFromSingleAction}
-                            discountAction={discountSingleProductAction}
-                            attachCustomOptionAction={attachCustomOptionAction}
-                            detachCustomOptionAction={detachCustomOptionAction}
-                          />
-                          <ProductsDeleteButton
-                            deleteAction={deleteProductAction}
-                            productID={product.id}
-                            productTitle={product.title}
-                            returnTo={currentHref}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      ) : (
+        <ProductsTableManager
+          visibleProducts={visibleProducts}
+          categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+          assignmentsByProductID={assignmentsByProductIDObj}
+          availableCustomOptions={availableCustomOptions}
+          currentHref={currentHref}
+          updateProductAction={updateProductAction}
+          deleteProductAction={deleteProductAction}
+          assignCategoriesToSingleAction={assignCategoriesToSingleAction}
+          removeCategoriesFromSingleAction={removeCategoriesFromSingleAction}
+          discountSingleProductAction={discountSingleProductAction}
+          attachCustomOptionAction={attachCustomOptionAction}
+          detachCustomOptionAction={detachCustomOptionAction}
+          bulkAssignCategoriesAction={bulkAssignCategoriesAction}
+          bulkRemoveCategoriesAction={bulkRemoveCategoriesAction}
+          bulkDiscountAction={bulkDiscountAction}
+        />
+      )}
     </div>
   );
+}
 }
