@@ -146,6 +146,10 @@ func (m *module) handleRegister(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "register error")
 		return
 	}
+	infoSeverity := "info"
+	m.writeCustomerActionLog(r, customerActionCreated, &customer.ID, &infoSeverity, map[string]any{
+		"source": "auth.register",
+	})
 	_ = platformhttp.JSON(w, http.StatusCreated, toAuthResponse(customer))
 }
 
@@ -379,6 +383,10 @@ func (m *module) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "password change error")
 		return
 	}
+	infoSeverity := "info"
+	m.writeCustomerActionLog(r, customerActionUpdated, &customer.ID, &infoSeverity, map[string]any{
+		"source": "account.change_password",
+	})
 	clearSessionCookie(w, r)
 	w.WriteHeader(http.StatusNoContent)
 }

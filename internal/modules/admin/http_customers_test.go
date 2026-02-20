@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -12,7 +13,13 @@ import (
 )
 
 type fakeCustomersStore struct {
-	listCustomersFn func(context.Context, int, int) ([]storcustomers.AdminCustomer, error)
+	listCustomersFn      func(context.Context, int, int) ([]storcustomers.AdminCustomer, error)
+	listCustomerLogsFn   func(context.Context, storcustomers.ListCustomerActionLogsParams) (storcustomers.CustomerActionLogsPage, error)
+	insertCustomerLogFn  func(context.Context, storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error)
+	listCustomerGroupsFn func(context.Context) ([]storcustomers.CustomerGroup, error)
+	createGroupFn        func(context.Context, string, string) (storcustomers.CustomerGroup, error)
+	updateGroupFn        func(context.Context, string, string, string) (storcustomers.CustomerGroup, error)
+	deleteGroupFn        func(context.Context, string) error
 }
 
 func (f *fakeCustomersStore) ListCustomers(ctx context.Context, limit, offset int) ([]storcustomers.AdminCustomer, error) {
@@ -20,6 +27,58 @@ func (f *fakeCustomersStore) ListCustomers(ctx context.Context, limit, offset in
 		return []storcustomers.AdminCustomer{}, nil
 	}
 	return f.listCustomersFn(ctx, limit, offset)
+}
+
+func (f *fakeCustomersStore) ListCustomerGroups(ctx context.Context) ([]storcustomers.CustomerGroup, error) {
+	if f.listCustomerGroupsFn == nil {
+		return []storcustomers.CustomerGroup{}, nil
+	}
+	return f.listCustomerGroupsFn(ctx)
+}
+
+func (f *fakeCustomersStore) ListCustomerActionLogs(
+	ctx context.Context,
+	in storcustomers.ListCustomerActionLogsParams,
+) (storcustomers.CustomerActionLogsPage, error) {
+	if f.listCustomerLogsFn == nil {
+		return storcustomers.CustomerActionLogsPage{
+			Items: []storcustomers.CustomerActionLog{},
+			Page:  in.Page,
+			Limit: in.Limit,
+		}, nil
+	}
+	return f.listCustomerLogsFn(ctx, in)
+}
+
+func (f *fakeCustomersStore) InsertCustomerActionLog(
+	ctx context.Context,
+	in storcustomers.CreateCustomerActionLogInput,
+) (storcustomers.CustomerActionLog, error) {
+	if f.insertCustomerLogFn == nil {
+		return storcustomers.CustomerActionLog{}, nil
+	}
+	return f.insertCustomerLogFn(ctx, in)
+}
+
+func (f *fakeCustomersStore) CreateCustomerGroup(ctx context.Context, name, code string) (storcustomers.CustomerGroup, error) {
+	if f.createGroupFn == nil {
+		return storcustomers.CustomerGroup{}, nil
+	}
+	return f.createGroupFn(ctx, name, code)
+}
+
+func (f *fakeCustomersStore) UpdateCustomerGroup(ctx context.Context, id, name, code string) (storcustomers.CustomerGroup, error) {
+	if f.updateGroupFn == nil {
+		return storcustomers.CustomerGroup{}, nil
+	}
+	return f.updateGroupFn(ctx, id, name, code)
+}
+
+func (f *fakeCustomersStore) DeleteCustomerGroup(ctx context.Context, id string) error {
+	if f.deleteGroupFn == nil {
+		return nil
+	}
+	return f.deleteGroupFn(ctx, id)
 }
 
 func TestAdminCustomersListSuccess(t *testing.T) {
@@ -83,5 +142,212 @@ func TestAdminCustomersUnavailableWithoutStore(t *testing.T) {
 
 	if res.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected status %d, got %d", http.StatusServiceUnavailable, res.Code)
+	}
+}
+
+func TestAdminCustomerGroupsListSuccess(t *testing.T) {
+	store := &fakeCustomersStore{
+		listCustomerGroupsFn: func(_ context.Context) ([]storcustomers.CustomerGroup, error) {
+			return []storcustomers.CustomerGroup{
+				{
+					ID:            "grp-1",
+					Name:          "General",
+					Code:          "general",
+					IsDefault:     true,
+					CustomerCount: 2,
+				},
+			}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/customers/groups", nil)
+	req.SetBasicAuth("admin", "pass")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+
+	var payload struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(payload.Items) != 1 {
+		t.Fatalf("expected 1 group, got %d", len(payload.Items))
+	}
+	if payload.Items[0]["code"] != "general" {
+		t.Fatalf("unexpected payload: %#v", payload.Items[0])
+	}
+}
+
+func TestAdminCustomerGroupsCreateConflict(t *testing.T) {
+	store := &fakeCustomersStore{
+		createGroupFn: func(_ context.Context, _, _ string) (storcustomers.CustomerGroup, error) {
+			return storcustomers.CustomerGroup{}, storcustomers.ErrConflict
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/customers/groups", map[string]any{
+		"name": "General",
+		"code": "general",
+	})
+	if res.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, res.Code)
+	}
+}
+
+func TestAdminCustomerGroupsUpdateProtected(t *testing.T) {
+	store := &fakeCustomersStore{
+		updateGroupFn: func(_ context.Context, _, _, _ string) (storcustomers.CustomerGroup, error) {
+			return storcustomers.CustomerGroup{}, storcustomers.ErrProtected
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	res := performAdminJSONRequest(t, mux, http.MethodPatch, "/admin/customers/groups/grp-1", map[string]any{
+		"name": "New Name",
+		"code": "new-name",
+	})
+	if res.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d", http.StatusForbidden, res.Code)
+	}
+}
+
+func TestAdminCustomerGroupsDeleteAssignedConflict(t *testing.T) {
+	store := &fakeCustomersStore{
+		deleteGroupFn: func(_ context.Context, _ string) error {
+			return storcustomers.ErrGroupAssigned
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/customers/groups/grp-1", nil)
+	req.SetBasicAuth("admin", "pass")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, res.Code)
+	}
+}
+
+func TestAdminCustomerActionLogsListFiltersAndPagination(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeCustomersStore{
+		listCustomerLogsFn: func(_ context.Context, in storcustomers.ListCustomerActionLogsParams) (storcustomers.CustomerActionLogsPage, error) {
+			if in.Page != 2 || in.Limit != 15 {
+				t.Fatalf("unexpected pagination: page=%d limit=%d", in.Page, in.Limit)
+			}
+			if in.Query != "10.1.1.1" || in.Action != "customer.created" {
+				t.Fatalf("unexpected filters: %#v", in)
+			}
+			if in.From == nil || in.To == nil {
+				t.Fatalf("expected from/to filters to be parsed")
+			}
+			return storcustomers.CustomerActionLogsPage{
+				Items: []storcustomers.CustomerActionLog{
+					{
+						ID:        "log-1",
+						IP:        "10.1.1.1",
+						Action:    "customer.created",
+						MetaJSON:  []byte(`{"source":"test"}`),
+						CreatedAt: now,
+					},
+				},
+				Total: 1,
+				Page:  in.Page,
+				Limit: in.Limit,
+			}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/admin/customers/logs?page=2&limit=15&q=10.1.1.1&action=customer.created&from=2026-02-01&to=2026-02-19",
+		nil,
+	)
+	req.SetBasicAuth("admin", "pass")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+
+	var payload struct {
+		Items []map[string]any `json:"items"`
+		Total float64          `json:"total"`
+		Page  float64          `json:"page"`
+		Limit float64          `json:"limit"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(payload.Items) != 1 {
+		t.Fatalf("expected 1 log row, got %d", len(payload.Items))
+	}
+	if payload.Items[0]["ip"] != "10.1.1.1" {
+		t.Fatalf("expected IP in row payload, got %#v", payload.Items[0])
+	}
+}
+
+func TestAdminCustomerGroupsCreateWritesActionLogWithIP(t *testing.T) {
+	var captured *storcustomers.CreateCustomerActionLogInput
+	store := &fakeCustomersStore{
+		createGroupFn: func(_ context.Context, name, code string) (storcustomers.CustomerGroup, error) {
+			return storcustomers.CustomerGroup{
+				ID:   "grp-2",
+				Name: name,
+				Code: code,
+			}, nil
+		},
+		insertCustomerLogFn: func(_ context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error) {
+			copy := in
+			captured = &copy
+			return storcustomers.CustomerActionLog{}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	body, err := json.Marshal(map[string]any{
+		"name": "VIP",
+		"code": "vip",
+	})
+	if err != nil {
+		t.Fatalf("marshal body: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/admin/customers/groups", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-For", "198.51.100.42")
+	req.SetBasicAuth("admin", "pass")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, res.Code)
+	}
+	if captured == nil {
+		t.Fatalf("expected log insertion")
+	}
+	if captured.IP != "198.51.100.42" {
+		t.Fatalf("expected captured log IP to match request IP, got %q", captured.IP)
+	}
+	if captured.Action != "customer.group_changed" {
+		t.Fatalf("unexpected captured log action %q", captured.Action)
 	}
 }

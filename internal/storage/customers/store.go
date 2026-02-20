@@ -3,15 +3,24 @@ package customers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var (
-	ErrConflict = errors.New("conflict")
-	ErrNotFound = errors.New("not found")
+	ErrConflict      = errors.New("conflict")
+	ErrNotFound      = errors.New("not found")
+	ErrProtected     = errors.New("protected")
+	ErrGroupAssigned = errors.New("group assigned")
+	ErrInvalid       = errors.New("invalid")
 )
+
+const systemGuestGroupCode = "not-logged-in"
 
 type Customer struct {
 	ID           string
@@ -77,6 +86,53 @@ type AdminCustomer struct {
 	Email     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type CustomerGroup struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Code          string    `json:"code"`
+	IsDefault     bool      `json:"is_default"`
+	CustomerCount int64     `json:"customer_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type CustomerActionLog struct {
+	ID            string          `json:"id"`
+	CustomerID    *string         `json:"customer_id"`
+	CustomerEmail *string         `json:"customer_email"`
+	IP            string          `json:"ip"`
+	UserAgent     *string         `json:"user_agent"`
+	Action        string          `json:"action"`
+	Severity      *string         `json:"severity"`
+	MetaJSON      json.RawMessage `json:"meta_json"`
+	CreatedAt     time.Time       `json:"created_at"`
+}
+
+type CreateCustomerActionLogInput struct {
+	CustomerID *string
+	IP         string
+	UserAgent  *string
+	Action     string
+	Severity   *string
+	MetaJSON   json.RawMessage
+}
+
+type ListCustomerActionLogsParams struct {
+	Page   int
+	Limit  int
+	Query  string
+	Action string
+	From   *time.Time
+	To     *time.Time
+}
+
+type CustomerActionLogsPage struct {
+	Items []CustomerActionLog `json:"items"`
+	Total int                 `json:"total"`
+	Page  int                 `json:"page"`
+	Limit int                 `json:"limit"`
 }
 
 type Store struct {
@@ -426,5 +482,388 @@ func (s *Store) ListCustomers(ctx context.Context, limit, offset int) ([]AdminCu
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	return out, nil
+}
+
+func (s *Store) ListCustomerGroups(ctx context.Context) ([]CustomerGroup, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			cg.id,
+			cg.name,
+			cg.code,
+			cg.is_default,
+			COUNT(c.id)::bigint AS customer_count,
+			cg.created_at,
+			cg.updated_at
+		FROM customer_groups cg
+		LEFT JOIN customers c ON c.group_id = cg.id
+		GROUP BY cg.id, cg.name, cg.code, cg.is_default, cg.created_at, cg.updated_at
+		ORDER BY cg.created_at ASC, cg.name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]CustomerGroup, 0, 8)
+	for rows.Next() {
+		var item CustomerGroup
+		if err := rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.Code,
+			&item.IsDefault,
+			&item.CustomerCount,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *Store) CreateCustomerGroup(ctx context.Context, name, code string) (CustomerGroup, error) {
+	var item CustomerGroup
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO customer_groups (name, code)
+		VALUES ($1, $2)
+		RETURNING id, name, code, is_default, created_at, updated_at
+	`, name, code).Scan(
+		&item.ID,
+		&item.Name,
+		&item.Code,
+		&item.IsDefault,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return CustomerGroup{}, ErrConflict
+		}
+		return CustomerGroup{}, err
+	}
+	item.CustomerCount = 0
+	return item, nil
+}
+
+func (s *Store) UpdateCustomerGroup(ctx context.Context, id, name, code string) (CustomerGroup, error) {
+	var currentCode string
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT code
+		FROM customer_groups
+		WHERE id = $1::uuid
+	`, id).Scan(&currentCode); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return CustomerGroup{}, ErrNotFound
+		}
+		return CustomerGroup{}, err
+	}
+	if currentCode == systemGuestGroupCode {
+		return CustomerGroup{}, ErrProtected
+	}
+
+	var item CustomerGroup
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE customer_groups
+		SET name = $2,
+			code = $3,
+			updated_at = now()
+		WHERE id = $1::uuid
+		RETURNING id, name, code, is_default, created_at, updated_at
+	`, id, name, code).Scan(
+		&item.ID,
+		&item.Name,
+		&item.Code,
+		&item.IsDefault,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return CustomerGroup{}, ErrNotFound
+		}
+		if isUniqueViolation(err) {
+			return CustomerGroup{}, ErrConflict
+		}
+		return CustomerGroup{}, err
+	}
+
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)::bigint
+		FROM customers
+		WHERE group_id = $1::uuid
+	`, id).Scan(&item.CustomerCount); err != nil {
+		return CustomerGroup{}, err
+	}
+	return item, nil
+}
+
+func (s *Store) DeleteCustomerGroup(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var code string
+	if err := tx.QueryRowContext(ctx, `
+		SELECT code
+		FROM customer_groups
+		WHERE id = $1::uuid
+	`, id).Scan(&code); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if code == systemGuestGroupCode {
+		return ErrProtected
+	}
+
+	var assignedCount int64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*)::bigint
+		FROM customers
+		WHERE group_id = $1::uuid
+	`, id).Scan(&assignedCount); err != nil {
+		return err
+	}
+	if assignedCount > 0 {
+		return ErrGroupAssigned
+	}
+
+	res, err := tx.ExecContext(ctx, `
+		DELETE FROM customer_groups
+		WHERE id = $1::uuid
+	`, id)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return tx.Commit()
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+	return pgErr.Code == "23505"
+}
+
+func (s *Store) InsertCustomerActionLog(ctx context.Context, in CreateCustomerActionLogInput) (CustomerActionLog, error) {
+	ip := strings.TrimSpace(in.IP)
+	action := strings.TrimSpace(in.Action)
+	if ip == "" || action == "" {
+		return CustomerActionLog{}, ErrInvalid
+	}
+
+	var customerID string
+	if in.CustomerID != nil {
+		customerID = strings.TrimSpace(*in.CustomerID)
+	}
+	userAgent := ""
+	if in.UserAgent != nil {
+		userAgent = strings.TrimSpace(*in.UserAgent)
+	}
+	severity := ""
+	if in.Severity != nil {
+		severity = strings.TrimSpace(*in.Severity)
+	}
+	metaJSON := in.MetaJSON
+	if len(metaJSON) == 0 {
+		metaJSON = json.RawMessage(`{}`)
+	}
+
+	var item CustomerActionLog
+	var (
+		customerIDOut sql.NullString
+		customerEmail sql.NullString
+		userAgentOut  sql.NullString
+		severityOut   sql.NullString
+		metaRaw       []byte
+	)
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO customer_action_logs (
+			customer_id,
+			ip,
+			user_agent,
+			action,
+			severity,
+			meta_json
+		)
+		VALUES (
+			NULLIF($1, '')::uuid,
+			$2,
+			NULLIF($3, ''),
+			$4,
+			NULLIF($5, ''),
+			$6::jsonb
+		)
+		RETURNING
+			id,
+			customer_id::text,
+			ip,
+			user_agent,
+			action,
+			severity,
+			meta_json,
+			created_at
+	`, customerID, ip, userAgent, action, severity, metaJSON).Scan(
+		&item.ID,
+		&customerIDOut,
+		&item.IP,
+		&userAgentOut,
+		&item.Action,
+		&severityOut,
+		&metaRaw,
+		&item.CreatedAt,
+	)
+	if err != nil {
+		return CustomerActionLog{}, err
+	}
+
+	if customerIDOut.Valid {
+		item.CustomerID = &customerIDOut.String
+		if err := s.db.QueryRowContext(ctx, `
+			SELECT email
+			FROM customers
+			WHERE id = $1::uuid
+		`, customerIDOut.String).Scan(&customerEmail); err == nil && customerEmail.Valid {
+			item.CustomerEmail = &customerEmail.String
+		}
+	}
+	if userAgentOut.Valid {
+		item.UserAgent = &userAgentOut.String
+	}
+	if severityOut.Valid {
+		item.Severity = &severityOut.String
+	}
+	item.MetaJSON = json.RawMessage(metaRaw)
+	return item, nil
+}
+
+func (s *Store) ListCustomerActionLogs(ctx context.Context, in ListCustomerActionLogsParams) (CustomerActionLogsPage, error) {
+	page, limit, offset := sanitizePagination(in.Page, in.Limit)
+	out := CustomerActionLogsPage{
+		Items: []CustomerActionLog{},
+		Page:  page,
+		Limit: limit,
+	}
+
+	conditions := make([]string, 0, 4)
+	args := make([]any, 0, 8)
+	appendArg := func(value any) string {
+		args = append(args, value)
+		return "$" + strconv.Itoa(len(args))
+	}
+
+	query := strings.TrimSpace(in.Query)
+	if query != "" {
+		placeholder := appendArg("%" + query + "%")
+		conditions = append(conditions, "(cal.action ILIKE "+placeholder+" OR cal.ip ILIKE "+placeholder+" OR COALESCE(c.email, '') ILIKE "+placeholder+")")
+	}
+	action := strings.TrimSpace(in.Action)
+	if action != "" {
+		placeholder := appendArg(action)
+		conditions = append(conditions, "cal.action = "+placeholder)
+	}
+	if in.From != nil {
+		placeholder := appendArg(*in.From)
+		conditions = append(conditions, "cal.created_at >= "+placeholder)
+	}
+	if in.To != nil {
+		placeholder := appendArg(*in.To)
+		conditions = append(conditions, "cal.created_at <= "+placeholder)
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM customer_action_logs cal
+		LEFT JOIN customers c ON c.id = cal.customer_id
+	` + where
+	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&out.Total); err != nil {
+		return CustomerActionLogsPage{}, err
+	}
+
+	limitPlaceholder := appendArg(limit)
+	offsetPlaceholder := appendArg(offset)
+	rowsQuery := `
+		SELECT
+			cal.id,
+			cal.customer_id::text,
+			c.email,
+			cal.ip,
+			cal.user_agent,
+			cal.action,
+			cal.severity,
+			cal.meta_json,
+			cal.created_at
+		FROM customer_action_logs cal
+		LEFT JOIN customers c ON c.id = cal.customer_id
+	` + where + `
+		ORDER BY cal.created_at DESC, cal.id DESC
+		LIMIT ` + limitPlaceholder + ` OFFSET ` + offsetPlaceholder
+
+	rows, err := s.db.QueryContext(ctx, rowsQuery, args...)
+	if err != nil {
+		return CustomerActionLogsPage{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item CustomerActionLog
+		var (
+			customerID sql.NullString
+			email      sql.NullString
+			userAgent  sql.NullString
+			severity   sql.NullString
+			metaRaw    []byte
+		)
+		if err := rows.Scan(
+			&item.ID,
+			&customerID,
+			&email,
+			&item.IP,
+			&userAgent,
+			&item.Action,
+			&severity,
+			&metaRaw,
+			&item.CreatedAt,
+		); err != nil {
+			return CustomerActionLogsPage{}, err
+		}
+		if customerID.Valid {
+			item.CustomerID = &customerID.String
+		}
+		if email.Valid {
+			item.CustomerEmail = &email.String
+		}
+		if userAgent.Valid {
+			item.UserAgent = &userAgent.String
+		}
+		if severity.Valid {
+			item.Severity = &severity.String
+		}
+		item.MetaJSON = json.RawMessage(metaRaw)
+		out.Items = append(out.Items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return CustomerActionLogsPage{}, err
+	}
+
 	return out, nil
 }

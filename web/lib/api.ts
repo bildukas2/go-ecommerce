@@ -780,6 +780,33 @@ export type AdminCustomerSummary = {
   updated_at: string;
 };
 
+export type AdminCustomerGroup = {
+  id: string;
+  name: string;
+  code: string;
+  is_default: boolean;
+  customer_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminCustomerGroupMutationInput = {
+  name: string;
+  code?: string;
+};
+
+export type AdminCustomerActionLog = {
+  id: string;
+  customer_id: string | null;
+  customer_email: string | null;
+  ip: string;
+  user_agent: string | null;
+  action: string;
+  severity: string | null;
+  meta_json: Record<string, unknown>;
+  created_at: string;
+};
+
 export type DashboardMetrics = {
   total_orders: number;
   pending_payment: number;
@@ -856,6 +883,141 @@ export async function getAdminCustomers(params: { page?: number; limit?: number 
   });
   if (!res.ok) throw new Error(`Failed to fetch customers: ${res.status}`);
   return res.json();
+}
+
+function normalizeAdminCustomerGroup(raw: unknown): AdminCustomerGroup | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+  return {
+    id,
+    name: asString(obj.name),
+    code: asString(obj.code),
+    is_default: asBoolean(obj.is_default),
+    customer_count: asNumber(obj.customer_count),
+    created_at: asString(obj.created_at),
+    updated_at: asString(obj.updated_at),
+  };
+}
+
+function normalizeMetaJSON(raw: unknown): Record<string, unknown> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  return raw as Record<string, unknown>;
+}
+
+function normalizeAdminCustomerActionLog(raw: unknown): AdminCustomerActionLog | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+  return {
+    id,
+    customer_id: asNullableString(obj.customer_id),
+    customer_email: asNullableString(obj.customer_email),
+    ip: asString(obj.ip),
+    user_agent: asNullableString(obj.user_agent),
+    action: asString(obj.action),
+    severity: asNullableString(obj.severity),
+    meta_json: normalizeMetaJSON(obj.meta_json),
+    created_at: asString(obj.created_at),
+  };
+}
+
+export async function getAdminCustomerGroups(): Promise<{ items: AdminCustomerGroup[] }> {
+  const url = new URL(apiJoin("admin/customers/groups"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch customer groups: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAdminCustomerGroup).filter((item): item is AdminCustomerGroup => item !== null),
+  };
+}
+
+export async function getAdminCustomerActionLogs(params: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  action?: string;
+  from?: string;
+  to?: string;
+} = {}): Promise<{ items: AdminCustomerActionLog[]; total: number; page: number; limit: number }> {
+  const url = new URL(apiJoin("admin/customers/logs"));
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.limit) url.searchParams.set("limit", String(params.limit));
+  if (params.q?.trim()) url.searchParams.set("q", params.q.trim());
+  if (params.action?.trim()) url.searchParams.set("action", params.action.trim());
+  if (params.from?.trim()) url.searchParams.set("from", params.from.trim());
+  if (params.to?.trim()) url.searchParams.set("to", params.to.trim());
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch customer action logs: ${res.status}`));
+
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAdminCustomerActionLog).filter((item): item is AdminCustomerActionLog => item !== null),
+    total: asNumber(payload.total),
+    page: asNumber(payload.page) || 1,
+    limit: asNumber(payload.limit) || 20,
+  };
+}
+
+export async function createAdminCustomerGroup(input: AdminCustomerGroupMutationInput): Promise<AdminCustomerGroup> {
+  const url = new URL(apiJoin("admin/customers/groups"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to create customer group: ${res.status}`));
+  }
+  const normalized = normalizeAdminCustomerGroup(await res.json());
+  if (!normalized) throw new Error("Failed to create customer group: invalid response");
+  return normalized;
+}
+
+export async function updateAdminCustomerGroup(id: string, input: AdminCustomerGroupMutationInput): Promise<AdminCustomerGroup> {
+  const url = new URL(apiJoin(`admin/customers/groups/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "PATCH",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update customer group: ${res.status}`));
+  }
+  const normalized = normalizeAdminCustomerGroup(await res.json());
+  if (!normalized) throw new Error("Failed to update customer group: invalid response");
+  return normalized;
+}
+
+export async function deleteAdminCustomerGroup(id: string): Promise<{ id: string }> {
+  const url = new URL(apiJoin(`admin/customers/groups/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to delete customer group: ${res.status}`));
+  }
+  const payload = asRecord(await res.json());
+  return { id: asString(payload.id) };
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {

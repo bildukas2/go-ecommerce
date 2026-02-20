@@ -3,6 +3,7 @@ package customers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -178,6 +179,222 @@ func TestUpdatePasswordAndRevokeSessions(t *testing.T) {
 	if activeSessions != 0 {
 		t.Fatalf("expected zero active sessions after password change, got %d", activeSessions)
 	}
+}
+
+func TestCustomerGroupsCreateUpdateDeleteAndListCounts(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "customer_groups")
+	assertTableExists(t, ctx, db, "customers")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	seed := time.Now().UnixNano()
+	created, err := store.CreateCustomerGroup(ctx, fmt.Sprintf("VIP %d", seed), fmt.Sprintf("vip-%d", seed))
+	if err != nil {
+		t.Fatalf("create group: %v", err)
+	}
+	if created.CustomerCount != 0 {
+		t.Fatalf("expected empty group count, got %d", created.CustomerCount)
+	}
+
+	customer, err := store.CreateCustomer(ctx, fmt.Sprintf("group-count-%d@example.com", seed), "hash")
+	if err != nil {
+		t.Fatalf("create customer: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE customers SET group_id = $2::uuid WHERE id = $1::uuid`, customer.ID, created.ID); err != nil {
+		t.Fatalf("assign customer to group: %v", err)
+	}
+
+	list, err := store.ListCustomerGroups(ctx)
+	if err != nil {
+		t.Fatalf("list groups: %v", err)
+	}
+	var listed *CustomerGroup
+	for i := range list {
+		if list[i].ID == created.ID {
+			listed = &list[i]
+			break
+		}
+	}
+	if listed == nil {
+		t.Fatalf("created group not present in list")
+	}
+	if listed.CustomerCount != 1 {
+		t.Fatalf("expected group customer count 1, got %d", listed.CustomerCount)
+	}
+
+	updated, err := store.UpdateCustomerGroup(ctx, created.ID, fmt.Sprintf("VIP Updated %d", seed), fmt.Sprintf("vip-updated-%d", seed))
+	if err != nil {
+		t.Fatalf("update group: %v", err)
+	}
+	if updated.Code != fmt.Sprintf("vip-updated-%d", seed) {
+		t.Fatalf("expected updated code, got %s", updated.Code)
+	}
+	if updated.CustomerCount != 1 {
+		t.Fatalf("expected updated group count 1, got %d", updated.CustomerCount)
+	}
+
+	if err := store.DeleteCustomerGroup(ctx, created.ID); !errors.Is(err, ErrGroupAssigned) {
+		t.Fatalf("expected ErrGroupAssigned when deleting assigned group, got %v", err)
+	}
+
+	if _, err := db.ExecContext(ctx, `UPDATE customers SET group_id = NULL WHERE id = $1::uuid`, customer.ID); err != nil {
+		t.Fatalf("clear customer group assignment: %v", err)
+	}
+	if err := store.DeleteCustomerGroup(ctx, created.ID); err != nil {
+		t.Fatalf("delete group after unassign: %v", err)
+	}
+}
+
+func TestCustomerGroupsProtectSystemGuestGroup(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "customer_groups")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	var systemID string
+	if err := db.QueryRowContext(ctx, `SELECT id FROM customer_groups WHERE code = 'not-logged-in'`).Scan(&systemID); err != nil {
+		t.Fatalf("query system group: %v", err)
+	}
+
+	_, err = store.UpdateCustomerGroup(ctx, systemID, "Renamed", "renamed")
+	if !errors.Is(err, ErrProtected) {
+		t.Fatalf("expected ErrProtected on system group update, got %v", err)
+	}
+
+	err = store.DeleteCustomerGroup(ctx, systemID)
+	if !errors.Is(err, ErrProtected) {
+		t.Fatalf("expected ErrProtected on system group delete, got %v", err)
+	}
+}
+
+func TestCustomerGroupsCreateConflict(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "customer_groups")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	seed := time.Now().UnixNano()
+	name := fmt.Sprintf("Wholesale Duplicate %d", seed)
+	code := fmt.Sprintf("dup-group-%d", seed)
+	if _, err := store.CreateCustomerGroup(ctx, name, code); err != nil {
+		t.Fatalf("create first group: %v", err)
+	}
+
+	_, err = store.CreateCustomerGroup(ctx, name, code)
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("expected ErrConflict on duplicate group create, got %v", err)
+	}
+}
+
+func TestCustomerActionLogsInsertAndFilterPagination(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "customer_action_logs")
+	assertTableExists(t, ctx, db, "customers")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	customer, err := store.CreateCustomer(ctx, fmt.Sprintf("log-%d@example.com", time.Now().UnixNano()), "hash")
+	if err != nil {
+		t.Fatalf("create customer: %v", err)
+	}
+
+	created, err := store.InsertCustomerActionLog(ctx, CreateCustomerActionLogInput{
+		CustomerID: &customer.ID,
+		IP:         "203.0.113.5",
+		Action:     "customer.created",
+		Severity:   ptrString("info"),
+		MetaJSON:   []byte(`{"source":"store-test"}`),
+	})
+	if err != nil {
+		t.Fatalf("insert customer action log: %v", err)
+	}
+	if created.IP == "" {
+		t.Fatalf("expected non-empty IP in stored log")
+	}
+
+	if _, err := store.InsertCustomerActionLog(ctx, CreateCustomerActionLogInput{
+		IP:     "203.0.113.6",
+		Action: "ip.blocked",
+	}); err != nil {
+		t.Fatalf("insert security action log: %v", err)
+	}
+
+	from := time.Now().UTC().Add(-time.Hour)
+	to := time.Now().UTC().Add(time.Hour)
+	list, err := store.ListCustomerActionLogs(ctx, ListCustomerActionLogsParams{
+		Page:   1,
+		Limit:  1,
+		Query:  "203.0.113.5",
+		Action: "customer.created",
+		From:   &from,
+		To:     &to,
+	})
+	if err != nil {
+		t.Fatalf("list customer action logs: %v", err)
+	}
+	if len(list.Items) != 1 {
+		t.Fatalf("expected exactly one filtered log row, got %d", len(list.Items))
+	}
+	if list.Items[0].IP != "203.0.113.5" {
+		t.Fatalf("unexpected log IP: %s", list.Items[0].IP)
+	}
+}
+
+func ptrString(v string) *string {
+	return &v
 }
 
 func assertTableExists(t *testing.T, ctx context.Context, db *sql.DB, name string) {

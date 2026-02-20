@@ -107,6 +107,9 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
 	mux.HandleFunc("/admin/orders/status", m.wrapAuth(m.handleUpdateOrderStatus))
 	mux.HandleFunc("/admin/customers", m.wrapAuth(m.handleCustomers))
+	mux.HandleFunc("/admin/customers/logs", m.wrapAuth(m.handleCustomerActionLogs))
+	mux.HandleFunc("/admin/customers/groups", m.wrapAuth(m.handleCustomerGroups))
+	mux.HandleFunc("/admin/customers/groups/", m.wrapAuth(m.handleCustomerGroupDetail))
 	mux.HandleFunc("/admin/media", m.wrapAuth(m.handleMedia))
 	mux.HandleFunc("/admin/media/upload", m.wrapAuth(m.handleMediaUpload))
 	mux.HandleFunc("/admin/media/import-url", m.wrapAuth(m.handleMediaImportURL))
@@ -354,6 +357,12 @@ type ordersStore interface {
 
 type customersStore interface {
 	ListCustomers(ctx context.Context, limit, offset int) ([]storcustomers.AdminCustomer, error)
+	ListCustomerActionLogs(ctx context.Context, in storcustomers.ListCustomerActionLogsParams) (storcustomers.CustomerActionLogsPage, error)
+	InsertCustomerActionLog(ctx context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error)
+	ListCustomerGroups(ctx context.Context) ([]storcustomers.CustomerGroup, error)
+	CreateCustomerGroup(ctx context.Context, name, code string) (storcustomers.CustomerGroup, error)
+	UpdateCustomerGroup(ctx context.Context, id, name, code string) (storcustomers.CustomerGroup, error)
+	DeleteCustomerGroup(ctx context.Context, id string) error
 }
 
 type catalogStore interface {
