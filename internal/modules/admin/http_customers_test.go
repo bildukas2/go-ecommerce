@@ -13,7 +13,10 @@ import (
 )
 
 type fakeCustomersStore struct {
-	listCustomersFn      func(context.Context, int, int) ([]storcustomers.AdminCustomer, error)
+	listCustomersFn      func(context.Context, storcustomers.AdminCustomersListParams) (storcustomers.AdminCustomersPage, error)
+	createCustomerFn     func(context.Context, storcustomers.AdminCustomerUpsertInput) (storcustomers.AdminCustomer, error)
+	updateCustomerFn     func(context.Context, string, storcustomers.AdminCustomerUpsertInput) (storcustomers.AdminCustomer, error)
+	updateStatusFn       func(context.Context, string, string) (storcustomers.AdminCustomer, error)
 	listCustomerLogsFn   func(context.Context, storcustomers.ListCustomerActionLogsParams) (storcustomers.CustomerActionLogsPage, error)
 	insertCustomerLogFn  func(context.Context, storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error)
 	listCustomerGroupsFn func(context.Context) ([]storcustomers.CustomerGroup, error)
@@ -22,11 +25,50 @@ type fakeCustomersStore struct {
 	deleteGroupFn        func(context.Context, string) error
 }
 
-func (f *fakeCustomersStore) ListCustomers(ctx context.Context, limit, offset int) ([]storcustomers.AdminCustomer, error) {
+func (f *fakeCustomersStore) ListCustomers(
+	ctx context.Context,
+	in storcustomers.AdminCustomersListParams,
+) (storcustomers.AdminCustomersPage, error) {
 	if f.listCustomersFn == nil {
-		return []storcustomers.AdminCustomer{}, nil
+		return storcustomers.AdminCustomersPage{
+			Items: []storcustomers.AdminCustomer{},
+			Page:  in.Page,
+			Limit: in.Limit,
+		}, nil
 	}
-	return f.listCustomersFn(ctx, limit, offset)
+	return f.listCustomersFn(ctx, in)
+}
+
+func (f *fakeCustomersStore) CreateAdminCustomer(
+	ctx context.Context,
+	in storcustomers.AdminCustomerUpsertInput,
+) (storcustomers.AdminCustomer, error) {
+	if f.createCustomerFn == nil {
+		return storcustomers.AdminCustomer{}, nil
+	}
+	return f.createCustomerFn(ctx, in)
+}
+
+func (f *fakeCustomersStore) UpdateAdminCustomer(
+	ctx context.Context,
+	id string,
+	in storcustomers.AdminCustomerUpsertInput,
+) (storcustomers.AdminCustomer, error) {
+	if f.updateCustomerFn == nil {
+		return storcustomers.AdminCustomer{}, nil
+	}
+	return f.updateCustomerFn(ctx, id, in)
+}
+
+func (f *fakeCustomersStore) UpdateAdminCustomerStatus(
+	ctx context.Context,
+	id string,
+	status string,
+) (storcustomers.AdminCustomer, error) {
+	if f.updateStatusFn == nil {
+		return storcustomers.AdminCustomer{}, nil
+	}
+	return f.updateStatusFn(ctx, id, status)
 }
 
 func (f *fakeCustomersStore) ListCustomerGroups(ctx context.Context) ([]storcustomers.CustomerGroup, error) {
@@ -83,18 +125,29 @@ func (f *fakeCustomersStore) DeleteCustomerGroup(ctx context.Context, id string)
 
 func TestAdminCustomersListSuccess(t *testing.T) {
 	now := time.Now().UTC().Round(time.Second)
+	email := "customer@example.com"
 	store := &fakeCustomersStore{
-		listCustomersFn: func(_ context.Context, limit, offset int) ([]storcustomers.AdminCustomer, error) {
-			if limit != 10 || offset != 20 {
-				t.Fatalf("unexpected pagination: limit=%d offset=%d", limit, offset)
+		listCustomersFn: func(_ context.Context, in storcustomers.AdminCustomersListParams) (storcustomers.AdminCustomersPage, error) {
+			if in.Page != 3 || in.Limit != 10 {
+				t.Fatalf("unexpected pagination: %#v", in)
 			}
-			return []storcustomers.AdminCustomer{
-				{
-					ID:        "cust-1",
-					Email:     "customer@example.com",
-					CreatedAt: now,
-					UpdatedAt: now,
+			if in.Query != "customer" || in.GroupID != "grp-1" || in.Status != "active" || in.Anonymous != "registered" || in.Sort != "anonymous_desc" {
+				t.Fatalf("unexpected filters/sort: %#v", in)
+			}
+			return storcustomers.AdminCustomersPage{
+				Items: []storcustomers.AdminCustomer{
+					{
+						ID:          "cust-1",
+						Email:       &email,
+						Status:      "active",
+						IsAnonymous: false,
+						CreatedAt:   now,
+						UpdatedAt:   now,
+					},
 				},
+				Total: 1,
+				Page:  in.Page,
+				Limit: in.Limit,
 			}, nil
 		},
 	}
@@ -102,7 +155,11 @@ func TestAdminCustomersListSuccess(t *testing.T) {
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/customers?page=3&limit=10", nil)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/admin/customers?page=3&limit=10&q=customer&group=grp-1&status=active&anonymous=registered&sort=anonymous_desc",
+		nil,
+	)
 	req.SetBasicAuth("admin", "pass")
 	res := httptest.NewRecorder()
 	mux.ServeHTTP(res, req)
@@ -115,11 +172,12 @@ func TestAdminCustomersListSuccess(t *testing.T) {
 		Items []map[string]any `json:"items"`
 		Page  int              `json:"page"`
 		Limit int              `json:"limit"`
+		Total int              `json:"total"`
 	}
 	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if payload.Page != 3 || payload.Limit != 10 {
+	if payload.Page != 3 || payload.Limit != 10 || payload.Total != 1 {
 		t.Fatalf("unexpected pagination response: %#v", payload)
 	}
 	if len(payload.Items) != 1 {
@@ -142,6 +200,83 @@ func TestAdminCustomersUnavailableWithoutStore(t *testing.T) {
 
 	if res.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected status %d, got %d", http.StatusServiceUnavailable, res.Code)
+	}
+}
+
+func TestAdminCustomersCreateSuccess(t *testing.T) {
+	email := "new@example.com"
+	store := &fakeCustomersStore{
+		createCustomerFn: func(_ context.Context, in storcustomers.AdminCustomerUpsertInput) (storcustomers.AdminCustomer, error) {
+			if in.Email == nil || *in.Email != email {
+				t.Fatalf("unexpected create input email: %#v", in.Email)
+			}
+			if in.Status != "active" {
+				t.Fatalf("unexpected create input status: %q", in.Status)
+			}
+			return storcustomers.AdminCustomer{
+				ID:          "cust-new",
+				Email:       &email,
+				Status:      "active",
+				IsAnonymous: false,
+			}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/customers", map[string]any{
+		"email":        email,
+		"first_name":   "New",
+		"last_name":    "Customer",
+		"status":       "active",
+		"is_anonymous": false,
+	})
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, res.Code)
+	}
+}
+
+func TestAdminCustomersUpdateConflict(t *testing.T) {
+	store := &fakeCustomersStore{
+		updateCustomerFn: func(_ context.Context, id string, _ storcustomers.AdminCustomerUpsertInput) (storcustomers.AdminCustomer, error) {
+			if id != "cust-1" {
+				t.Fatalf("unexpected id: %s", id)
+			}
+			return storcustomers.AdminCustomer{}, storcustomers.ErrConflict
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	res := performAdminJSONRequest(t, mux, http.MethodPatch, "/admin/customers/cust-1", map[string]any{
+		"email":        "dup@example.com",
+		"first_name":   "Dup",
+		"last_name":    "Customer",
+		"status":       "active",
+		"is_anonymous": false,
+	})
+	if res.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, res.Code)
+	}
+}
+
+func TestAdminCustomersStatusUpdateValidation(t *testing.T) {
+	store := &fakeCustomersStore{
+		updateStatusFn: func(_ context.Context, _ string, _ string) (storcustomers.AdminCustomer, error) {
+			return storcustomers.AdminCustomer{}, storcustomers.ErrInvalid
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/customers/cust-1/status", map[string]any{
+		"status": "paused",
+	})
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, res.Code)
 	}
 }
 

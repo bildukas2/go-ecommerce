@@ -775,9 +775,66 @@ export type AdminOrderSummary = {
 
 export type AdminCustomerSummary = {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
+  first_name: string;
+  last_name: string;
+  status: "active" | "disabled";
+  group_id: string | null;
+  group_name: string | null;
+  group_code: string | null;
+  is_anonymous: boolean;
+  last_login_at: string | null;
+  shipping_full_name: string;
+  shipping_phone: string;
+  shipping_address1: string;
+  shipping_address2: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postcode: string;
+  shipping_country: string;
+  billing_full_name: string;
+  billing_address1: string;
+  billing_address2: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postcode: string;
+  billing_country: string;
+  company_name: string;
+  company_vat: string;
+  invoice_email: string | null;
+  wants_invoice: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type AdminCustomerMutationInput = {
+  email?: string | null;
+  phone?: string | null;
+  first_name: string;
+  last_name: string;
+  status?: "active" | "disabled";
+  group_id?: string | null;
+  is_anonymous?: boolean;
+  shipping_full_name?: string;
+  shipping_phone?: string;
+  shipping_address1?: string;
+  shipping_address2?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_postcode?: string;
+  shipping_country?: string;
+  billing_full_name?: string;
+  billing_address1?: string;
+  billing_address2?: string;
+  billing_city?: string;
+  billing_state?: string;
+  billing_postcode?: string;
+  billing_country?: string;
+  company_name?: string;
+  company_vat?: string;
+  invoice_email?: string | null;
+  wants_invoice?: boolean;
 };
 
 export type AdminCustomerGroup = {
@@ -873,16 +930,135 @@ export async function getAdminOrders(params: { page?: number; limit?: number } =
   return res.json();
 }
 
-export async function getAdminCustomers(params: { page?: number; limit?: number } = {}): Promise<{ items: AdminCustomerSummary[]; page: number; limit: number; }> {
+function normalizeAdminCustomerSummary(raw: unknown): AdminCustomerSummary | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+  const statusRaw = asString(obj.status).toLowerCase();
+  const status = statusRaw === "disabled" ? "disabled" : "active";
+  return {
+    id,
+    email: asNullableString(obj.email),
+    phone: asNullableString(obj.phone),
+    first_name: asString(obj.first_name),
+    last_name: asString(obj.last_name),
+    status,
+    group_id: asNullableString(obj.group_id),
+    group_name: asNullableString(obj.group_name),
+    group_code: asNullableString(obj.group_code),
+    is_anonymous: asBoolean(obj.is_anonymous),
+    last_login_at: asNullableString(obj.last_login_at),
+    shipping_full_name: asString(obj.shipping_full_name),
+    shipping_phone: asString(obj.shipping_phone),
+    shipping_address1: asString(obj.shipping_address1),
+    shipping_address2: asString(obj.shipping_address2),
+    shipping_city: asString(obj.shipping_city),
+    shipping_state: asString(obj.shipping_state),
+    shipping_postcode: asString(obj.shipping_postcode),
+    shipping_country: asString(obj.shipping_country),
+    billing_full_name: asString(obj.billing_full_name),
+    billing_address1: asString(obj.billing_address1),
+    billing_address2: asString(obj.billing_address2),
+    billing_city: asString(obj.billing_city),
+    billing_state: asString(obj.billing_state),
+    billing_postcode: asString(obj.billing_postcode),
+    billing_country: asString(obj.billing_country),
+    company_name: asString(obj.company_name),
+    company_vat: asString(obj.company_vat),
+    invoice_email: asNullableString(obj.invoice_email),
+    wants_invoice: asBoolean(obj.wants_invoice),
+    created_at: asString(obj.created_at),
+    updated_at: asString(obj.updated_at),
+  };
+}
+
+export async function getAdminCustomers(params: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  group?: string;
+  status?: "active" | "disabled";
+  anonymous?: "anonymous" | "registered";
+  sort?: "created_desc" | "created_asc" | "name_asc" | "name_desc" | "email_asc" | "email_desc" | "anonymous_asc" | "anonymous_desc";
+} = {}): Promise<{ items: AdminCustomerSummary[]; total: number; page: number; limit: number; }> {
   const url = new URL(apiJoin("admin/customers"));
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
+  if (params.q?.trim()) url.searchParams.set("q", params.q.trim());
+  if (params.group?.trim()) url.searchParams.set("group", params.group.trim());
+  if (params.status) url.searchParams.set("status", params.status);
+  if (params.anonymous) url.searchParams.set("anonymous", params.anonymous);
+  if (params.sort) url.searchParams.set("sort", params.sort);
   const res = await fetch(url.toString(), {
     headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Failed to fetch customers: ${res.status}`);
-  return res.json();
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch customers: ${res.status}`));
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAdminCustomerSummary).filter((item): item is AdminCustomerSummary => item !== null),
+    total: asNumber(payload.total),
+    page: asNumber(payload.page) || 1,
+    limit: asNumber(payload.limit) || 20,
+  };
+}
+
+export async function createAdminCustomer(input: AdminCustomerMutationInput): Promise<AdminCustomerSummary> {
+  const url = new URL(apiJoin("admin/customers"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to create customer: ${res.status}`));
+  }
+  const normalized = normalizeAdminCustomerSummary(await res.json());
+  if (!normalized) throw new Error("Failed to create customer: invalid response");
+  return normalized;
+}
+
+export async function updateAdminCustomer(id: string, input: AdminCustomerMutationInput): Promise<AdminCustomerSummary> {
+  const url = new URL(apiJoin(`admin/customers/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "PATCH",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update customer: ${res.status}`));
+  }
+  const normalized = normalizeAdminCustomerSummary(await res.json());
+  if (!normalized) throw new Error("Failed to update customer: invalid response");
+  return normalized;
+}
+
+export async function updateAdminCustomerStatus(id: string, status: "active" | "disabled"): Promise<AdminCustomerSummary> {
+  const url = new URL(apiJoin(`admin/customers/${encodeURIComponent(id)}/status`));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update customer status: ${res.status}`));
+  }
+  const normalized = normalizeAdminCustomerSummary(await res.json());
+  if (!normalized) throw new Error("Failed to update customer status: invalid response");
+  return normalized;
 }
 
 function normalizeAdminCustomerGroup(raw: unknown): AdminCustomerGroup | null {

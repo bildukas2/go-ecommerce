@@ -107,6 +107,7 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
 	mux.HandleFunc("/admin/orders/status", m.wrapAuth(m.handleUpdateOrderStatus))
 	mux.HandleFunc("/admin/customers", m.wrapAuth(m.handleCustomers))
+	mux.HandleFunc("/admin/customers/", m.wrapAuth(m.handleCustomerDetailActions))
 	mux.HandleFunc("/admin/customers/logs", m.wrapAuth(m.handleCustomerActionLogs))
 	mux.HandleFunc("/admin/customers/groups", m.wrapAuth(m.handleCustomerGroups))
 	mux.HandleFunc("/admin/customers/groups/", m.wrapAuth(m.handleCustomerGroupDetail))
@@ -302,44 +303,6 @@ func (m *module) handleUpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (m *module) handleCustomers(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.NotFound(w, r)
-		return
-	}
-	if r.URL.Path != "/admin/customers" {
-		http.NotFound(w, r)
-		return
-	}
-	if m.customers == nil {
-		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
-		return
-	}
-	qp := r.URL.Query()
-	page := atoiDefault(qp.Get("page"), 1)
-	limit := atoiDefault(qp.Get("limit"), 20)
-	offset := (page - 1) * limit
-	items, err := m.customers.ListCustomers(r.Context(), limit, offset)
-	if err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "list error")
-		return
-	}
-	outItems := make([]map[string]any, 0, len(items))
-	for _, customer := range items {
-		outItems = append(outItems, map[string]any{
-			"id":         customer.ID,
-			"email":      customer.Email,
-			"created_at": customer.CreatedAt,
-			"updated_at": customer.UpdatedAt,
-		})
-	}
-	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
-		"items": outItems,
-		"page":  page,
-		"limit": limit,
-	})
-}
-
 func atoiDefault(s string, def int) int {
 	n, err := strconv.Atoi(strings.TrimSpace(s))
 	if err != nil || n == 0 {
@@ -356,7 +319,10 @@ type ordersStore interface {
 }
 
 type customersStore interface {
-	ListCustomers(ctx context.Context, limit, offset int) ([]storcustomers.AdminCustomer, error)
+	ListCustomers(ctx context.Context, in storcustomers.AdminCustomersListParams) (storcustomers.AdminCustomersPage, error)
+	CreateAdminCustomer(ctx context.Context, in storcustomers.AdminCustomerUpsertInput) (storcustomers.AdminCustomer, error)
+	UpdateAdminCustomer(ctx context.Context, id string, in storcustomers.AdminCustomerUpsertInput) (storcustomers.AdminCustomer, error)
+	UpdateAdminCustomerStatus(ctx context.Context, id, status string) (storcustomers.AdminCustomer, error)
 	ListCustomerActionLogs(ctx context.Context, in storcustomers.ListCustomerActionLogsParams) (storcustomers.CustomerActionLogsPage, error)
 	InsertCustomerActionLog(ctx context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error)
 	ListCustomerGroups(ctx context.Context) ([]storcustomers.CustomerGroup, error)

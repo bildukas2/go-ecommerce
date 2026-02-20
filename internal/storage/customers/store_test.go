@@ -393,6 +393,247 @@ func TestCustomerActionLogsInsertAndFilterPagination(t *testing.T) {
 	}
 }
 
+func TestAdminCustomersCRUDAndFiltering(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "customers")
+	assertTableExists(t, ctx, db, "customer_groups")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	seed := time.Now().UnixNano()
+	groupA, err := store.CreateCustomerGroup(ctx, fmt.Sprintf("Admin Test A %d", seed), fmt.Sprintf("admin-test-a-%d", seed))
+	if err != nil {
+		t.Fatalf("create group A: %v", err)
+	}
+	groupB, err := store.CreateCustomerGroup(ctx, fmt.Sprintf("Admin Test B %d", seed), fmt.Sprintf("admin-test-b-%d", seed))
+	if err != nil {
+		t.Fatalf("create group B: %v", err)
+	}
+
+	emailOne := fmt.Sprintf("admin-customer-%d@example.com", seed)
+	customerOne, err := store.CreateAdminCustomer(ctx, AdminCustomerUpsertInput{
+		Email:            &emailOne,
+		Phone:            ptrString("+1 202 555 0101"),
+		FirstName:        "Alice",
+		LastName:         "Admin",
+		Status:           "active",
+		GroupID:          &groupA.ID,
+		IsAnonymous:      false,
+		ShippingFullName: "Alice Admin",
+		ShippingAddress1: "100 Main Street",
+		ShippingCity:     "Austin",
+		ShippingCountry:  "US",
+		BillingFullName:  "Alice Admin",
+		BillingAddress1:  "100 Main Street",
+		BillingCity:      "Austin",
+		BillingCountry:   "US",
+		CompanyName:      "Example LLC",
+		CompanyVAT:       "US-TAX-100",
+		WantsInvoice:     true,
+	})
+	if err != nil {
+		t.Fatalf("create admin customer one: %v", err)
+	}
+	if customerOne.Email == nil || *customerOne.Email != emailOne {
+		t.Fatalf("unexpected customer one email: %#v", customerOne.Email)
+	}
+
+	customerTwo, err := store.CreateAdminCustomer(ctx, AdminCustomerUpsertInput{
+		Status:      "disabled",
+		GroupID:     &groupB.ID,
+		IsAnonymous: true,
+		FirstName:   "Guest",
+		LastName:    "Checkout",
+	})
+	if err != nil {
+		t.Fatalf("create admin customer two: %v", err)
+	}
+	if !customerTwo.IsAnonymous {
+		t.Fatalf("expected second customer to be anonymous")
+	}
+	if customerTwo.Email != nil {
+		t.Fatalf("expected anonymous customer email to be nil")
+	}
+
+	updatedOne, err := store.UpdateAdminCustomer(ctx, customerOne.ID, AdminCustomerUpsertInput{
+		Email:            &emailOne,
+		Phone:            ptrString("+1 202 555 0199"),
+		FirstName:        "Alice",
+		LastName:         "Updated",
+		Status:           "disabled",
+		GroupID:          &groupB.ID,
+		IsAnonymous:      false,
+		ShippingFullName: "Alice Updated",
+		ShippingAddress1: "250 Updated Road",
+		ShippingCity:     "Dallas",
+		ShippingCountry:  "US",
+		BillingFullName:  "Alice Updated",
+		BillingAddress1:  "250 Updated Road",
+		BillingCity:      "Dallas",
+		BillingCountry:   "US",
+		WantsInvoice:     false,
+	})
+	if err != nil {
+		t.Fatalf("update admin customer one: %v", err)
+	}
+	if updatedOne.LastName != "Updated" || updatedOne.Status != "disabled" {
+		t.Fatalf("unexpected updated customer payload: %#v", updatedOne)
+	}
+	if updatedOne.GroupID == nil || *updatedOne.GroupID != groupB.ID {
+		t.Fatalf("expected updated customer group to be group B")
+	}
+
+	reEnabledOne, err := store.UpdateAdminCustomerStatus(ctx, customerOne.ID, "active")
+	if err != nil {
+		t.Fatalf("update admin customer status: %v", err)
+	}
+	if reEnabledOne.Status != "active" {
+		t.Fatalf("expected status active, got %s", reEnabledOne.Status)
+	}
+
+	activeFiltered, err := store.ListCustomers(ctx, AdminCustomersListParams{
+		Page:   1,
+		Limit:  20,
+		Status: "active",
+	})
+	if err != nil {
+		t.Fatalf("list active customers: %v", err)
+	}
+	foundActive := false
+	for _, item := range activeFiltered.Items {
+		if item.ID == customerOne.ID {
+			foundActive = true
+		}
+	}
+	if !foundActive {
+		t.Fatalf("expected active filter to include customer one")
+	}
+
+	anonymousFiltered, err := store.ListCustomers(ctx, AdminCustomersListParams{
+		Page:      1,
+		Limit:     20,
+		Anonymous: "anonymous",
+	})
+	if err != nil {
+		t.Fatalf("list anonymous customers: %v", err)
+	}
+	foundAnonymous := false
+	for _, item := range anonymousFiltered.Items {
+		if item.ID == customerTwo.ID {
+			foundAnonymous = true
+		}
+	}
+	if !foundAnonymous {
+		t.Fatalf("expected anonymous filter to include customer two")
+	}
+
+	queryFiltered, err := store.ListCustomers(ctx, AdminCustomersListParams{
+		Page:  1,
+		Limit: 20,
+		Query: "Alice Updated",
+	})
+	if err != nil {
+		t.Fatalf("list queried customers: %v", err)
+	}
+	foundQuery := false
+	for _, item := range queryFiltered.Items {
+		if item.ID == customerOne.ID {
+			foundQuery = true
+		}
+	}
+	if !foundQuery {
+		t.Fatalf("expected query filter to include customer one")
+	}
+
+	groupFiltered, err := store.ListCustomers(ctx, AdminCustomersListParams{
+		Page:    1,
+		Limit:   20,
+		GroupID: groupB.ID,
+	})
+	if err != nil {
+		t.Fatalf("list grouped customers: %v", err)
+	}
+	foundGroupA := false
+	foundGroupB := false
+	for _, item := range groupFiltered.Items {
+		if item.ID == customerOne.ID {
+			foundGroupA = true
+		}
+		if item.ID == customerTwo.ID {
+			foundGroupB = true
+		}
+	}
+	if !foundGroupA || !foundGroupB {
+		t.Fatalf("expected group filter to include both customers after reassignment")
+	}
+
+	anonSorted, err := store.ListCustomers(ctx, AdminCustomersListParams{
+		Page:  1,
+		Limit: 50,
+		Sort:  "anonymous_desc",
+	})
+	if err != nil {
+		t.Fatalf("list sorted customers: %v", err)
+	}
+	customerOneIndex := -1
+	customerTwoIndex := -1
+	for i, item := range anonSorted.Items {
+		if item.ID == customerOne.ID {
+			customerOneIndex = i
+		}
+		if item.ID == customerTwo.ID {
+			customerTwoIndex = i
+		}
+	}
+	if customerOneIndex == -1 || customerTwoIndex == -1 {
+		t.Fatalf("expected sorted results to include test customers")
+	}
+	if customerTwoIndex >= customerOneIndex {
+		t.Fatalf("expected anonymous_desc sort to place anonymous customer before registered one")
+	}
+}
+
+func TestAdminCustomersCreateRejectsMissingEmailForRegistered(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	_, err = store.CreateAdminCustomer(ctx, AdminCustomerUpsertInput{
+		FirstName:   "No",
+		LastName:    "Email",
+		Status:      "active",
+		IsAnonymous: false,
+	})
+	if !errors.Is(err, ErrInvalid) {
+		t.Fatalf("expected ErrInvalid for registered customer without email, got %v", err)
+	}
+}
+
 func ptrString(v string) *string {
 	return &v
 }
