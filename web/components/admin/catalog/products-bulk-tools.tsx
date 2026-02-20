@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin-catalog-state";
 import { formatMoney } from "@/lib/money";
 import type { AdminCustomOption } from "@/lib/api";
+import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 
 type ProductOption = {
   id: string;
@@ -192,33 +193,14 @@ export function ProductsBulkTools({
                   <div className="rounded-xl border border-surface-border p-3">
                     <p className="text-sm font-medium">Customizable options</p>
                     <div className="mt-2 space-y-2">
-                      <input
-                        name="option_pick"
-                        value={customOptionPick}
-                        onChange={(event) => setCustomOptionPick(event.target.value)}
-                        list="bulk-custom-options-list"
-                        placeholder="Type to search option title or paste ID"
-                        className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                      <CustomOptionAssignmentPicker
+                        options={customOptions}
+                        pickerListID="bulk-custom-options-list"
+                        pickerValue={customOptionPick}
+                        selectedOptionIDs={selectedCustomOptionIDs}
+                        onPickerValueChange={setCustomOptionPick}
+                        onSelectedOptionIDsChange={setSelectedCustomOptionIDs}
                       />
-                      <datalist id="bulk-custom-options-list">
-                        {customOptions.map((option) => (
-                          <option key={`bulk-option-pick-${option.id}`} value={`${option.title} (${option.id})`} />
-                        ))}
-                      </datalist>
-
-                      <select
-                        multiple
-                        name="option_ids"
-                        value={selectedCustomOptionIDs}
-                        onChange={(event) => setSelectedCustomOptionIDs(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))}
-                        className="h-28 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
-                      >
-                        {customOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.title} ({option.type_group}/{option.type})
-                          </option>
-                        ))}
-                      </select>
 
                       <label className="block text-xs text-foreground/70">
                         Sort order

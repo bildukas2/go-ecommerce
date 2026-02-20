@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import type { AdminCustomOption, AdminProductCustomOptionAssignment } from "@/lib/api";
+import { resolveCustomOptionIDs } from "@/lib/admin-catalog-state";
+import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 
 type ActionFn = (formData: FormData) => void | Promise<void>;
 
@@ -32,7 +34,10 @@ export function ProductsMoreModal({
   detachCustomOptionAction,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [customOptionPick, setCustomOptionPick] = useState("");
+  const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
   const optionPickerID = `custom-option-picker-${productID}`;
+  const resolvedCustomOptionIDs = resolveCustomOptionIDs(selectedCustomOptionIDs, customOptionPick);
 
   return (
     <>
@@ -114,31 +119,20 @@ export function ProductsMoreModal({
                   <input type="hidden" name="product_id" value={productID} />
                   <p className="text-sm font-medium">Customizable options</p>
                   <label className="block space-y-1 text-xs">
-                    <span className="text-foreground/70">Search/select option</span>
-                    <input
-                      name="option_pick"
-                      list={optionPickerID}
-                      placeholder="Type title and pick an option"
-                      className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                    <span className="text-foreground/70">Search and add options</span>
+                    <CustomOptionAssignmentPicker
+                      options={attachableOptions}
+                      pickerListID={optionPickerID}
+                      pickerValue={customOptionPick}
+                      selectedOptionIDs={selectedCustomOptionIDs}
+                      onPickerValueChange={setCustomOptionPick}
+                      onSelectedOptionIDsChange={setSelectedCustomOptionIDs}
                     />
                   </label>
-                  <datalist id={optionPickerID}>
-                    {attachableOptions.map((option) => (
-                      <option key={`${productID}-custom-option-${option.id}`} value={`${option.title} (${option.id})`}>
-                        {option.type_group} / {option.type}
-                      </option>
-                    ))}
-                  </datalist>
-                  <label className="block space-y-1 text-xs">
-                    <span className="text-foreground/70">Or select multiple</span>
-                    <select multiple name="option_ids" className="h-28 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm">
-                      {attachableOptions.map((option) => (
-                        <option key={`${productID}-custom-option-multi-${option.id}`} value={option.id}>
-                          {option.title} ({option.type_group} / {option.type})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <input type="hidden" name="option_pick" value={customOptionPick} />
+                  {resolvedCustomOptionIDs.map((optionID) => (
+                    <input key={`${productID}-hidden-option-${optionID}`} type="hidden" name="option_ids" value={optionID} />
+                  ))}
                   <label className="block space-y-1 text-xs">
                     <span className="text-foreground/70">Sort order</span>
                     <input

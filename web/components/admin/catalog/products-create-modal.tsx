@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AdminCustomOption } from "@/lib/api";
+import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 
 type ActionFn = (formData: FormData) => void | Promise<void>;
 
@@ -14,6 +15,8 @@ type Props = {
 
 export function ProductsCreateModal({ createAction, returnTo, categories, customOptions }: Props) {
   const [open, setOpen] = useState(false);
+  const [customOptionPick, setCustomOptionPick] = useState("");
+  const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
 
   return (
     <>
@@ -79,28 +82,19 @@ export function ProductsCreateModal({ createAction, returnTo, categories, custom
                 </select>
               </label>
               <label className="space-y-1 text-sm md:col-span-2">
-                <span>Customizable options (optional)</span>
-                <input
-                  name="option_pick"
-                  list="create-product-custom-options-list"
-                  placeholder="Type to search option title or paste ID"
-                  className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                <span>Customizable options</span>
+                <CustomOptionAssignmentPicker
+                  options={customOptions}
+                  pickerListID="create-product-custom-options-list"
+                  pickerValue={customOptionPick}
+                  selectedOptionIDs={selectedCustomOptionIDs}
+                  onPickerValueChange={setCustomOptionPick}
+                  onSelectedOptionIDsChange={setSelectedCustomOptionIDs}
                 />
-                <datalist id="create-product-custom-options-list">
-                  {customOptions.map((option) => (
-                    <option key={`create-option-pick-${option.id}`} value={`${option.title} (${option.id})`} />
-                  ))}
-                </datalist>
-              </label>
-              <label className="space-y-1 text-sm md:col-span-2">
-                <span>Customizable options (multi-select)</span>
-                <select multiple name="option_ids" className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2">
-                  {customOptions.map((option) => (
-                    <option key={`create-option-${option.id}`} value={option.id}>
-                      {option.title} ({option.type_group}/{option.type})
-                    </option>
-                  ))}
-                </select>
+                <input type="hidden" name="option_pick" value={customOptionPick} />
+                {selectedCustomOptionIDs.map((optionID) => (
+                  <input key={`create-hidden-option-${optionID}`} type="hidden" name="option_ids" value={optionID} />
+                ))}
               </label>
               <label className="space-y-1 text-sm">
                 <span>Custom option sort order</span>
