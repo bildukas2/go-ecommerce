@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAdminCustomers } from "@/lib/api";
 import { isUnauthorizedAdminError, parsePositiveIntParam } from "@/lib/admin-orders-state";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, User, Calendar, Mail } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +21,8 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
           <p className="text-sm text-foreground/70 mb-6">
             Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.
           </p>
-          <Button as={Link} href="/admin" variant="bordered">
-            Go to Dashboard
+          <Button asChild variant="outline">
+            <Link href="/admin">Go to Dashboard</Link>
           </Button>
         </div>
       </div>
@@ -65,24 +65,34 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
           </div>
           <div className="flex gap-2">
             <Button
-              as={Link}
-              href={hasPrev ? `/admin/customers?page=${page - 1}&limit=${limit}` : "#"}
-              variant="flat"
-              isIconOnly
+              asChild
+              variant="secondary"
+              size="icon"
               disabled={!hasPrev}
               className={`rounded-xl border border-surface-border bg-foreground/[0.03] ${!hasPrev ? "opacity-50 pointer-events-none" : ""}`}
             >
-              <ChevronLeft size={18} />
+              {hasPrev ? (
+                <Link href={`/admin/customers?page=${page - 1}&limit=${limit}`} aria-label="Previous page">
+                  <ChevronLeft size={18} />
+                </Link>
+              ) : (
+                <ChevronLeft size={18} />
+              )}
             </Button>
             <Button
-              as={Link}
-              href={hasNext ? `/admin/customers?page=${page + 1}&limit=${limit}` : "#"}
-              variant="flat"
-              isIconOnly
+              asChild
+              variant="secondary"
+              size="icon"
               disabled={!hasNext}
               className={`rounded-xl border border-surface-border bg-foreground/[0.03] ${!hasNext ? "opacity-50 pointer-events-none" : ""}`}
             >
-              <ChevronRight size={18} />
+              {hasNext ? (
+                <Link href={`/admin/customers?page=${page + 1}&limit=${limit}`} aria-label="Next page">
+                  <ChevronRight size={18} />
+                </Link>
+              ) : (
+                <ChevronRight size={18} />
+              )}
             </Button>
           </div>
         </div>
@@ -162,7 +172,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                     </td>
                     <td className="p-4 align-middle text-right">
                       <Button
-                        variant="light"
+                        variant="ghost"
                         size="sm"
                         className="font-medium text-blue-600 hover:bg-blue-500/12 dark:text-blue-400"
                       >
