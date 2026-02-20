@@ -20,6 +20,7 @@ type upsertCustomOptionRequest struct {
 	PriceType  *string                        `json:"price_type"`
 	PriceValue *float64                       `json:"price_value"`
 	IsActive   *bool                          `json:"is_active"`
+	DisplayMode *string                      `json:"display_mode"`
 	Values     []upsertCustomOptionValueInput `json:"values"`
 }
 
@@ -30,6 +31,7 @@ type upsertCustomOptionValueInput struct {
 	PriceType  string   `json:"price_type"`
 	PriceValue *float64 `json:"price_value"`
 	IsDefault  bool     `json:"is_default"`
+	SwatchHex  *string  `json:"swatch_hex"`
 }
 
 type attachProductCustomOptionRequest struct {
@@ -285,18 +287,24 @@ func validateCustomOptionRequest(req upsertCustomOptionRequest) (storcat.CustomO
 		req.PriceType = &priceType
 	}
 
+	displayMode := "default"
+	if req.DisplayMode != nil {
+		displayMode = strings.ToLower(strings.TrimSpace(*req.DisplayMode))
+	}
+
 	return storcat.CustomOptionUpsertInput{
-		StoreID:    normalizeOptionalString(req.StoreID),
-		Code:       code,
-		Title:      title,
-		TypeGroup:  typeGroup,
-		Type:       optionType,
-		Required:   req.Required,
-		SortOrder:  req.SortOrder,
-		PriceType:  req.PriceType,
-		PriceValue: req.PriceValue,
-		IsActive:   req.IsActive,
-		Values:     values,
+		StoreID:     normalizeOptionalString(req.StoreID),
+		Code:        code,
+		Title:       title,
+		TypeGroup:   typeGroup,
+		Type:        optionType,
+		Required:    req.Required,
+		SortOrder:   req.SortOrder,
+		PriceType:   req.PriceType,
+		PriceValue:  req.PriceValue,
+		IsActive:    req.IsActive,
+		DisplayMode: displayMode,
+		Values:      values,
 	}, nil
 }
 
@@ -322,6 +330,7 @@ func validateCustomOptionValueRequest(req upsertCustomOptionValueInput) (storcat
 		PriceType:  priceType,
 		PriceValue: req.PriceValue,
 		IsDefault:  req.IsDefault,
+		SwatchHex:  normalizeOptionalString(req.SwatchHex),
 	}, nil
 }
 
