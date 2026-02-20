@@ -29,7 +29,8 @@ import { ProductsCreateModal } from "@/components/admin/catalog/products-create-
 
 export const dynamic = "force-dynamic";
 
-type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
+type SearchParams = { [key: string]: string | string[] | undefined };
+type PageProps = { searchParams?: Promise<SearchParams> };
 
 const sortOptions = [
   { value: "newest", label: "Newest" },
@@ -158,10 +159,11 @@ function errorMessage(error: unknown): string {
 }
 
 export default async function AdminProductsPage({ searchParams }: PageProps) {
-  const params = parseAdminProductsSearchParams(searchParams);
+  const resolvedSearchParams = await searchParams;
+  const params = parseAdminProductsSearchParams(resolvedSearchParams);
   const state = { sort: params.sort, stock: params.stock };
-  const notice = firstQueryValue(searchParams?.notice);
-  const actionError = firstQueryValue(searchParams?.error);
+  const notice = firstQueryValue(resolvedSearchParams?.notice);
+  const actionError = firstQueryValue(resolvedSearchParams?.error);
 
   const toHref = (patch: Partial<typeof params>): string => {
     const next = { ...params, ...patch };
