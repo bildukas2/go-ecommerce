@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { calculateDiscountPreview, isEveryProductSelected, parseDiscountDraft, toggleProductSelection } from "@/lib/admin-catalog-state";
+import { useState } from "react";
+import { calculateDiscountPreview, parseDiscountDraft } from "@/lib/admin-catalog-state";
 import { formatMoney } from "@/lib/money";
 
 type ProductOption = {
@@ -22,6 +22,8 @@ type ActionFn = (formData: FormData) => void | Promise<void>;
 type Props = {
   products: ProductOption[];
   categories: CategoryOption[];
+  selectedProductIDs: string[];
+  setSelectedProductIDs: (ids: string[] | ((current: string[]) => string[])) => void;
   bulkAssignAction: ActionFn;
   bulkRemoveAction: ActionFn;
   bulkDiscountAction: ActionFn;
@@ -31,19 +33,18 @@ type Props = {
 export function ProductsBulkTools({
   products,
   categories,
+  selectedProductIDs,
+  setSelectedProductIDs,
   bulkAssignAction,
   bulkRemoveAction,
   bulkDiscountAction,
   returnTo,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [selectedProductIDs, setSelectedProductIDs] = useState<string[]>([]);
   const [selectedCategoryIDs, setSelectedCategoryIDs] = useState<string[]>([]);
   const [discountMode, setDiscountMode] = useState<"price" | "percent">("percent");
   const [discountValue, setDiscountValue] = useState<string>("10");
 
-  const allProductIDs = useMemo(() => products.map((item) => item.id), [products]);
-  const allSelected = isEveryProductSelected(allProductIDs, selectedProductIDs);
   const draft = parseDiscountDraft(discountMode, discountValue);
   const previewProduct = products.find((item) => selectedProductIDs.includes(item.id)) ?? null;
   const preview = previewProduct && previewProduct.basePriceCents !== null
@@ -60,29 +61,22 @@ export function ProductsBulkTools({
     <>
       <button
         type="button"
+        disabled={selectedProductIDs.length === 0}
         onClick={() => setOpen(true)}
-        className="w-fit rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
+        className="w-fit rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Open bulk tools
+        Open bulk tools ({selectedProductIDs.length} selected)
       </button>
 
       {open && (
         <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
             <div className="flex flex-wrap items-end justify-between gap-3 border-b border-surface-border px-4 py-3">
               <div>
                 <h2 className="text-lg font-semibold">Bulk tools</h2>
-                <p className="text-sm text-foreground/65">Select products once and run category or discount operations in one action.</p>
+                <p className="text-sm text-foreground/65">Run category or discount operations for the {selectedProductIDs.length} selected products.</p>
               </div>
               <div className="flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={(event) => setSelectedProductIDs(event.target.checked ? allProductIDs : [])}
-                  />
-                  Select all ({products.length})
-                </label>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -94,26 +88,7 @@ export function ProductsBulkTools({
             </div>
 
             <div className="max-h-[calc(90vh-72px)] overflow-auto p-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Products ({selectedProductIDs.length} selected)</p>
-                  <div className="max-h-60 space-y-2 overflow-auto rounded-xl border border-surface-border p-3">
-                    {products.map((product) => (
-                      <label key={product.id} className="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-foreground/[0.03]">
-                        <input
-                          type="checkbox"
-                          checked={selectedProductIDs.includes(product.id)}
-                          onChange={(event) => setSelectedProductIDs((current) => toggleProductSelection(current, product.id, event.target.checked))}
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium">{product.title}</span>
-                          <span className="block truncate font-mono text-xs text-foreground/60">/{product.slug}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
+              <div className="space-y-4">
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <p className="text-sm font-medium">Categories for assign/remove</p>
