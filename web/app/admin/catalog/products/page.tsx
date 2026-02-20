@@ -560,6 +560,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
             createAction={createProductAction}
             returnTo={currentHref}
             categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+            customOptions={availableCustomOptions}
           />
           <Link
             href="/admin/catalog/categories"

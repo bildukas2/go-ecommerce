@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { AdminCustomOption } from "@/lib/api";
 
 type ActionFn = (formData: FormData) => void | Promise<void>;
 
@@ -8,9 +9,10 @@ type Props = {
   createAction: ActionFn;
   returnTo: string;
   categories: Array<{ id: string; name: string }>;
+  customOptions: Array<Pick<AdminCustomOption, "id" | "title" | "type_group" | "type">>;
 };
 
-export function ProductsCreateModal({ createAction, returnTo, categories }: Props) {
+export function ProductsCreateModal({ createAction, returnTo, categories, customOptions }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -75,6 +77,39 @@ export function ProductsCreateModal({ createAction, returnTo, categories }: Prop
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span>Customizable options (optional)</span>
+                <input
+                  name="option_pick"
+                  list="create-product-custom-options-list"
+                  placeholder="Type to search option title or paste ID"
+                  className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                />
+                <datalist id="create-product-custom-options-list">
+                  {customOptions.map((option) => (
+                    <option key={`create-option-pick-${option.id}`} value={`${option.title} (${option.id})`} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span>Customizable options (multi-select)</span>
+                <select multiple name="option_ids" className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2">
+                  {customOptions.map((option) => (
+                    <option key={`create-option-${option.id}`} value={option.id}>
+                      {option.title} ({option.type_group}/{option.type})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Custom option sort order</span>
+                <input
+                  name="sort_order"
+                  type="number"
+                  defaultValue="0"
+                  className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                />
               </label>
               <label className="space-y-1 text-sm md:col-span-2">
                 <span>Description</span>

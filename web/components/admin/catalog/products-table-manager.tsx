@@ -226,6 +226,7 @@ export function ProductsTableManager({
                           updateAction={updateProductAction}
                           returnTo={currentHref}
                           categories={categories}
+                          customOptions={availableCustomOptions}
                           product={{
                             id: product.id,
                             title: product.title,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { AdminCustomOption } from "@/lib/api";
 
 type ActionFn = (formData: FormData) => void | Promise<void>;
 
@@ -22,10 +23,11 @@ type Props = {
   updateAction: ActionFn;
   returnTo: string;
   categories: Array<{ id: string; name: string }>;
+  customOptions: Array<Pick<AdminCustomOption, "id" | "title" | "type_group" | "type">>;
   product: EditableProduct;
 };
 
-export function ProductsEditModal({ updateAction, returnTo, categories, product }: Props) {
+export function ProductsEditModal({ updateAction, returnTo, categories, customOptions, product }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -125,6 +127,39 @@ export function ProductsEditModal({ updateAction, returnTo, categories, product 
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span>Customizable options (optional)</span>
+                <input
+                  name="option_pick"
+                  list={`edit-product-custom-options-list-${product.id}`}
+                  placeholder="Type to search option title or paste ID"
+                  className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                />
+                <datalist id={`edit-product-custom-options-list-${product.id}`}>
+                  {customOptions.map((option) => (
+                    <option key={`edit-option-pick-${product.id}-${option.id}`} value={`${option.title} (${option.id})`} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span>Customizable options (multi-select)</span>
+                <select multiple name="option_ids" className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2">
+                  {customOptions.map((option) => (
+                    <option key={`edit-option-${product.id}-${option.id}`} value={option.id}>
+                      {option.title} ({option.type_group}/{option.type})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Custom option sort order</span>
+                <input
+                  name="sort_order"
+                  type="number"
+                  defaultValue="0"
+                  className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                />
               </label>
               <label className="space-y-1 text-sm md:col-span-2">
                 <span>Description</span>
