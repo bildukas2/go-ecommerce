@@ -23,6 +23,7 @@ type ValueDraft = {
   price_type: PriceType;
   price_value: string;
   is_default: boolean;
+  swatch_hex?: string | null;
 };
 
 const typeGroups: Array<{ label: string; options: Array<{ value: OptionType; label: string }> }> = [
@@ -69,6 +70,7 @@ function defaultValues(initial?: AdminCustomOption): ValueDraft[] {
     price_type: value.price_type,
     price_value: String(value.price_value ?? 0),
     is_default: value.is_default,
+    swatch_hex: value.swatch_hex ?? null,
   }));
 }
 
@@ -80,6 +82,7 @@ function emptyValueDraft(nextSort: number): ValueDraft {
     price_type: "fixed",
     price_value: "0",
     is_default: false,
+    swatch_hex: null,
   };
 }
 
@@ -91,6 +94,7 @@ function normalizeValuesForPayload(values: ValueDraft[]): AdminCustomOptionValue
     price_type: value.price_type,
     price_value: Number.parseFloat(value.price_value),
     is_default: value.is_default,
+    swatch_hex: value.swatch_hex || null,
   }));
 }
 
@@ -104,6 +108,7 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
   const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0));
   const [priceType, setPriceType] = useState<PriceType>(initial?.price_type ?? "fixed");
   const [priceValue, setPriceValue] = useState(String(initial?.price_value ?? 0));
+  const [displayMode, setDisplayMode] = useState(initial?.display_mode ?? "default");
   const [values, setValues] = useState<ValueDraft[]>(defaultValues(initial));
   const [clientError, setClientError] = useState<string>("");
 
@@ -160,6 +165,7 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
     <form action={submitAction} onSubmit={onSubmit} className="space-y-6">
       <input type="hidden" name="type_group" value={typeGroup} />
       <input type="hidden" name="values_json" value={valuesJSON} />
+      <input type="hidden" name="display_mode" value={displayMode} />
 
       <section className="glass rounded-2xl border p-4">
         <h2 className="text-base font-semibold">Basic</h2>
@@ -242,6 +248,61 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
           </label>
         </div>
       </section>
+
+      {typeGroup === "select" && (
+        <section className="glass rounded-2xl border p-4">
+          <h2 className="text-base font-semibold">Display</h2>
+          <p className="mt-1 text-sm text-foreground/70">Choose how to display this select option on the storefront.</p>
+          <fieldset className="mt-4 space-y-3">
+            <legend className="text-sm font-medium text-foreground/70">Display Mode</legend>
+            
+            <label className="flex items-start gap-3 rounded-lg border border-surface-border/50 p-3 cursor-pointer transition-colors hover:bg-foreground/[0.02]">
+              <input
+                type="radio"
+                name="display_mode_radio"
+                value="default"
+                checked={displayMode === "default"}
+                onChange={() => setDisplayMode("default")}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-sm">Default (Dropdown)</div>
+                <p className="text-xs text-foreground/60 mt-0.5">Display as a traditional dropdown menu.</p>
+              </div>
+            </label>
+            
+            <label className="flex items-start gap-3 rounded-lg border border-surface-border/50 p-3 cursor-pointer transition-colors hover:bg-foreground/[0.02]">
+              <input
+                type="radio"
+                name="display_mode_radio"
+                value="buttons"
+                checked={displayMode === "buttons"}
+                onChange={() => setDisplayMode("buttons")}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-sm">Buttons</div>
+                <p className="text-xs text-foreground/60 mt-0.5">Display as interactive chip buttons (like size options).</p>
+              </div>
+            </label>
+            
+            <label className="flex items-start gap-3 rounded-lg border border-surface-border/50 p-3 cursor-pointer transition-colors hover:bg-foreground/[0.02]">
+              <input
+                type="radio"
+                name="display_mode_radio"
+                value="color_buttons"
+                checked={displayMode === "color_buttons"}
+                onChange={() => setDisplayMode("color_buttons")}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-sm">Color Buttons</div>
+                <p className="text-xs text-foreground/60 mt-0.5">Display as chip buttons with color swatches (for colors, materials, etc).</p>
+              </div>
+            </label>
+          </fieldset>
+        </section>
+      )}
 
       {typeGroup !== "select" && (
         <section className="glass rounded-2xl border p-4">
