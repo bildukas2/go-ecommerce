@@ -82,22 +82,6 @@ export function AddToCartButton({
     setSelectionErrors({});
   }, [activeCustomOptions]);
 
-  const allAttributes = React.useMemo(() => {
-    const keys = Array.from(new Set(variants.flatMap((v) => Object.keys(v.attributes || {}))));
-    const values: Record<string, string[]> = {};
-    keys.forEach((key) => {
-      values[key] = Array.from(
-        new Set(
-          variants
-            .map((v) => v.attributes?.[key])
-            .filter((v) => v !== undefined && v !== null)
-            .map(String),
-        ),
-      );
-    });
-    return { keys, values };
-  }, [variants]);
-
   const selectedVariant = React.useMemo(() => {
     if (Object.keys(selectedAttributes).length === 0) return null;
     return (
@@ -236,26 +220,6 @@ export function AddToCartButton({
     }
   }
 
-  const handleAttributeChange = (key: string, value: string) => {
-    setSelectedAttributes((prev) => {
-      const next = { ...prev, [key]: value };
-      const exists = variants.some((v) => {
-        return Object.entries(next).every(([k, val]) => String(v.attributes?.[k]) === val);
-      });
-      if (!exists) {
-        const matchingVariant = variants.find((v) => String(v.attributes?.[key]) === value) || variants[0];
-        if (matchingVariant) {
-          const newAttrs: Record<string, string> = {};
-          Object.entries(matchingVariant.attributes || {}).forEach(([k, v]) => {
-            newAttrs[k] = String(v);
-          });
-          return newAttrs;
-        }
-      }
-      return next;
-    });
-  };
-
   if (variants.length === 0) {
     return (
       <div className="space-y-4">
@@ -301,43 +265,15 @@ export function AddToCartButton({
         )}
       </div>
 
-      <div className="space-y-4">
-        {allAttributes.keys.map((key) => (
-          <div key={key} className="space-y-2">
-            <span className="text-sm font-medium capitalize">{key}</span>
-            <div className="flex flex-wrap gap-2">
-              {allAttributes.values[key].map((value) => {
-                const isSelected = selectedAttributes[key] === value;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => handleAttributeChange(key, value)}
-                    disabled={disableControls}
-                    className={`
-                      rounded-xl border px-4 py-2 text-sm font-medium transition-all
-                      ${isSelected
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
-                    `}
-                  >
-                    {value}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
       {showSelectionMeta && activeCustomOptions.length > 0 && (
-        <div className="space-y-4 rounded-2xl border border-surface-border bg-background/40 p-4">
+        <div className="space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Custom Options</p>
           {activeCustomOptions.map((option) => {
             const selection = customOptionSelections[option.id] ?? normalizeOptionDefaults(option);
             const error = selectionErrors[option.id];
 
             return (
-              <div key={option.id} className="space-y-2">
+              <div key={option.id} className="space-y-2 rounded-xl bg-surface/40 p-3">
                 <div className="text-sm font-medium">
                   {option.title}
                   {option.required ? <span className="ml-1 text-red-500">*</span> : null}
@@ -356,12 +292,11 @@ export function AddToCartButton({
                               [option.id]: { ...selection, valueId: isSelected ? "" : value.id },
                             }));
                           }}
-                          className={`
-                            rounded-xl border px-4 py-2 text-sm font-medium transition-all
-                            ${isSelected
-                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
-                          `}
+                          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? "border-neutral-900 bg-background text-foreground dark:border-neutral-100"
+                              : "border-surface-border bg-background text-neutral-700 hover:border-neutral-400 dark:text-neutral-300 dark:hover:border-neutral-500"
+                          }`}
                         >
                           {value.title}
                         </button>
@@ -384,12 +319,11 @@ export function AddToCartButton({
                               [option.id]: { ...selection, valueId: isSelected ? "" : value.id },
                             }));
                           }}
-                          className={`
-                            flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all
-                            ${isSelected
-                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
-                          `}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? "border-neutral-900 bg-background text-foreground dark:border-neutral-100"
+                              : "border-surface-border bg-background text-neutral-700 hover:border-neutral-400 dark:text-neutral-300 dark:hover:border-neutral-500"
+                          }`}
                         >
                           <div
                             className="h-3 w-3 rounded-full border border-white/30 flex-shrink-0"
@@ -418,12 +352,11 @@ export function AddToCartButton({
                               [option.id]: { ...selection, valueIds: nextIDs },
                             }));
                           }}
-                          className={`
-                            rounded-xl border px-4 py-2 text-sm font-medium transition-all
-                            ${isSelected
-                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
-                          `}
+                          className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? "border-neutral-900 bg-background text-foreground dark:border-neutral-100"
+                              : "border-surface-border bg-background text-neutral-700 hover:border-neutral-400 dark:text-neutral-300 dark:hover:border-neutral-500"
+                          }`}
                         >
                           {value.title}
                         </button>
@@ -449,12 +382,11 @@ export function AddToCartButton({
                               [option.id]: { ...selection, valueIds: nextIDs },
                             }));
                           }}
-                          className={`
-                            flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all
-                            ${isSelected
-                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
-                          `}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? "border-neutral-900 bg-background text-foreground dark:border-neutral-100"
+                              : "border-surface-border bg-background text-neutral-700 hover:border-neutral-400 dark:text-neutral-300 dark:hover:border-neutral-500"
+                          }`}
                         >
                           <div
                             className="h-3 w-3 rounded-full border border-white/30 flex-shrink-0"
