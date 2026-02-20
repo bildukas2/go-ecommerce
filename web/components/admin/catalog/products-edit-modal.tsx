@@ -152,7 +152,7 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
                   <input key={`edit-hidden-option-${product.id}-${optionID}`} type="hidden" name="option_ids" value={optionID} />
                 ))}
                 <div className="rounded-xl border border-surface-border bg-foreground/[0.02] px-3 py-2">
-                  <p className="text-xs font-medium text-foreground/80">Currently attached options</p>
+                  <p className="text-xs font-medium text-purple-800 dark:text-purple-400">Currently attached options</p>
                   {assignments.length === 0 ? (
                     <p className="mt-1 text-xs text-foreground/65">No customizable options attached.</p>
                   ) : (
