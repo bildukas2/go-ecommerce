@@ -8,6 +8,7 @@ import { Button as UIButton } from "@/components/ui/button";
 import { useCart } from "@/components/cart-context";
 import type { AdminCustomOption, CartCustomOptionSelectionInput, ProductVariant } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
+import { getSwatchColor } from "@/lib/color-swatches";
 
 type OptionSelectionState = {
   valueId: string;
@@ -369,6 +370,38 @@ export function AddToCartButton({
                   </div>
                 )}
 
+                {(option.type === "dropdown" || option.type === "radio") && option.display_mode === "color_buttons" && (
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const isSelected = selection.valueId === value.id;
+                      const swatchColor = getSwatchColor(value.swatch_hex, value.title);
+                      return (
+                        <button
+                          key={value.id}
+                          onClick={() => {
+                            setCustomOptionSelections((prev) => ({
+                              ...prev,
+                              [option.id]: { ...selection, valueId: isSelected ? "" : value.id },
+                            }));
+                          }}
+                          className={`
+                            flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all
+                            ${isSelected
+                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
+                          `}
+                        >
+                          <div
+                            className="h-3 w-3 rounded-full border border-white/30 flex-shrink-0"
+                            style={{ backgroundColor: swatchColor }}
+                          />
+                          {value.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {(option.type === "checkbox" || option.type === "multiple") && option.display_mode === "buttons" && (
                   <div className="flex flex-wrap gap-2">
                     {option.values.map((value) => {
@@ -399,7 +432,42 @@ export function AddToCartButton({
                   </div>
                 )}
 
-                {(option.type === "dropdown" || option.type === "radio") && option.display_mode !== "buttons" && (
+                {(option.type === "checkbox" || option.type === "multiple") && option.display_mode === "color_buttons" && (
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const isSelected = selection.valueIds.includes(value.id);
+                      const swatchColor = getSwatchColor(value.swatch_hex, value.title);
+                      return (
+                        <button
+                          key={value.id}
+                          onClick={() => {
+                            const nextIDs = isSelected
+                              ? selection.valueIds.filter((id) => id !== value.id)
+                              : dedupeSorted([...selection.valueIds, value.id]);
+                            setCustomOptionSelections((prev) => ({
+                              ...prev,
+                              [option.id]: { ...selection, valueIds: nextIDs },
+                            }));
+                          }}
+                          className={`
+                            flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all
+                            ${isSelected
+                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                              : "border-surface-border bg-surface text-neutral-600 hover:border-primary/50 dark:text-neutral-300"}
+                          `}
+                        >
+                          <div
+                            className="h-3 w-3 rounded-full border border-white/30 flex-shrink-0"
+                            style={{ backgroundColor: swatchColor }}
+                          />
+                          {value.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(option.type === "dropdown" || option.type === "radio") && option.display_mode !== "buttons" && option.display_mode !== "color_buttons" && (
                   <select
                     className="w-full rounded-xl border border-surface-border bg-background px-3 py-2 text-sm"
                     value={selection.valueId}
@@ -420,7 +488,7 @@ export function AddToCartButton({
                   </select>
                 )}
 
-                {(option.type === "checkbox" || option.type === "multiple") && option.display_mode !== "buttons" && (
+                {(option.type === "checkbox" || option.type === "multiple") && option.display_mode !== "buttons" && option.display_mode !== "color_buttons" && (
                   <div className="space-y-2">
                     {option.values.map((value) => {
                       const checked = selection.valueIds.includes(value.id);
