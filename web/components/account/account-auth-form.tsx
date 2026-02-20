@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { loginAccount, registerAccount } from "@/lib/api";
+import { isBlockedIPError, loginAccount, registerAccount } from "@/lib/api";
 
 type AuthMode = "login" | "register";
 
@@ -39,6 +39,11 @@ export function AccountAuthForm({ mode, nextPath = "/account" }: AccountAuthForm
       router.push(nextPath);
       router.refresh();
     } catch (err) {
+      if (isBlockedIPError(err)) {
+        router.push(err.redirectTo);
+        router.refresh();
+        return;
+      }
       const message = err instanceof Error ? err.message : `${modeLabel[mode]} failed`;
       setError(message);
     } finally {

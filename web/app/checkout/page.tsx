@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { checkout } from "@/lib/api";
+import { checkout, isBlockedIPError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 export default function CheckoutPage() {
@@ -19,6 +19,10 @@ export default function CheckoutPage() {
       }
       setError("No checkout URL returned");
     } catch (e: unknown) {
+      if (isBlockedIPError(e)) {
+        window.location.href = e.redirectTo;
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Checkout failed";
       setError(msg);
     } finally {

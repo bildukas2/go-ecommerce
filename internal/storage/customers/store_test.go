@@ -634,6 +634,100 @@ func TestAdminCustomersCreateRejectsMissingEmailForRegistered(t *testing.T) {
 	}
 }
 
+func TestBlockedIPsCreateDeleteAndLookup(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "blocked_ips")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	seed := time.Now().UnixNano()
+	reason := "integration-block"
+	expiresAt := time.Now().UTC().Add(2 * time.Hour).Round(time.Second)
+	blocked, err := store.CreateBlockedIP(ctx, CreateBlockedIPInput{
+		IP:        fmt.Sprintf("198.51.100.%d", seed%200+1),
+		Reason:    &reason,
+		ExpiresAt: &expiresAt,
+	})
+	if err != nil {
+		t.Fatalf("create blocked ip: %v", err)
+	}
+	if blocked.ID == "" || blocked.IP == "" {
+		t.Fatalf("expected blocked ip payload with id and ip")
+	}
+
+	isBlocked, err := store.IsIPBlocked(ctx, blocked.IP)
+	if err != nil {
+		t.Fatalf("lookup blocked ip: %v", err)
+	}
+	if !isBlocked {
+		t.Fatalf("expected ip to be blocked")
+	}
+
+	deleted, err := store.DeleteBlockedIP(ctx, blocked.ID)
+	if err != nil {
+		t.Fatalf("delete blocked ip: %v", err)
+	}
+	if deleted.ID != blocked.ID {
+		t.Fatalf("expected deleted id %s, got %s", blocked.ID, deleted.ID)
+	}
+
+	isBlocked, err = store.IsIPBlocked(ctx, blocked.IP)
+	if err != nil {
+		t.Fatalf("lookup blocked ip after delete: %v", err)
+	}
+	if isBlocked {
+		t.Fatalf("expected ip to be unblocked after delete")
+	}
+}
+
+func TestBlockedReportsCreate(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping customers integration test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	assertTableExists(t, ctx, db, "blocked_reports")
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("customers store init: %v", err)
+	}
+
+	report, err := store.CreateBlockedReport(ctx, CreateBlockedReportInput{
+		IP:      "203.0.113.44",
+		Email:   fmt.Sprintf("blocked-report-%d@example.com", time.Now().UnixNano()),
+		Message: "Please review this block.",
+	})
+	if err != nil {
+		t.Fatalf("create blocked report: %v", err)
+	}
+	if report.ID == "" {
+		t.Fatalf("expected persisted report id")
+	}
+	if report.IP != "203.0.113.44" {
+		t.Fatalf("unexpected report ip: %s", report.IP)
+	}
+}
+
 func ptrString(v string) *string {
 	return &v
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { addCartItem, checkout as apiCheckout, ensureCart, getCart, removeCartItem, updateCartItem, type Cart } from "@/lib/api";
+import { addCartItem, checkout as apiCheckout, ensureCart, getCart, isBlockedIPError, removeCartItem, updateCartItem, type Cart } from "@/lib/api";
 import { optimisticRemoveItem, optimisticUpdateQuantity } from "@/lib/cart-state";
 
 type CartState = {
@@ -34,6 +34,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const c = await getCart();
       setState((s) => ({ ...s, cart: c, loading: false }));
     } catch (e: unknown) {
+      if (isBlockedIPError(e)) {
+        window.location.href = e.redirectTo;
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Failed to load cart";
       setState((s) => ({ ...s, loading: false, error: msg }));
     }
@@ -56,6 +60,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const c = await addCartItem(variantId, quantity);
       setState((s) => ({ ...s, cart: c, loading: false, open: true }));
     } catch (e: unknown) {
+      if (isBlockedIPError(e)) {
+        window.location.href = e.redirectTo;
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Failed to add item";
       setState((s) => ({ ...s, loading: false, error: msg }));
     }
@@ -72,6 +80,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const c = await updateCartItem(itemId, quantity);
       setState((s) => ({ ...s, cart: c, error: null, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
     } catch (e: unknown) {
+      if (isBlockedIPError(e)) {
+        window.location.href = e.redirectTo;
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Failed to update item";
       setState((s) => ({ ...s, error: msg, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
       await refresh();
@@ -89,6 +101,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const c = await removeCartItem(itemId);
       setState((s) => ({ ...s, cart: c, error: null, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
     } catch (e: unknown) {
+      if (isBlockedIPError(e)) {
+        window.location.href = e.redirectTo;
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Failed to remove item";
       setState((s) => ({ ...s, error: msg, mutatingItemIds: s.mutatingItemIds.filter((id) => id !== itemId) }));
       await refresh();

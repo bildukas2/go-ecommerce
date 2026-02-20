@@ -210,6 +210,36 @@ type CustomerActionLogsPage struct {
 	Limit int                 `json:"limit"`
 }
 
+type BlockedIP struct {
+	ID               string     `json:"id"`
+	IP               string     `json:"ip"`
+	Reason           *string    `json:"reason"`
+	CreatedByAdminID *string    `json:"created_by_admin_id"`
+	ExpiresAt        *time.Time `json:"expires_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+}
+
+type CreateBlockedIPInput struct {
+	IP               string
+	Reason           *string
+	CreatedByAdminID *string
+	ExpiresAt        *time.Time
+}
+
+type BlockedReport struct {
+	ID        string    `json:"id"`
+	IP        string    `json:"ip"`
+	Email     string    `json:"email"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateBlockedReportInput struct {
+	IP      string
+	Email   string
+	Message string
+}
+
 type Store struct {
 	db *sql.DB
 }
@@ -1686,5 +1716,186 @@ func (s *Store) ListCustomerActionLogs(ctx context.Context, in ListCustomerActio
 		return CustomerActionLogsPage{}, err
 	}
 
+	return out, nil
+}
+
+func (s *Store) IsIPBlocked(ctx context.Context, ip string) (bool, error) {
+	normalizedIP := strings.TrimSpace(ip)
+	if normalizedIP == "" {
+		return false, nil
+	}
+
+	var blocked bool
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM blocked_ips
+			WHERE ip = $1
+			  AND (expires_at IS NULL OR expires_at > now())
+		)
+	`, normalizedIP).Scan(&blocked); err != nil {
+		return false, err
+	}
+	return blocked, nil
+}
+
+func (s *Store) CreateBlockedReport(ctx context.Context, in CreateBlockedReportInput) (BlockedReport, error) {
+	ip := strings.TrimSpace(in.IP)
+	email := normalizeEmail(in.Email)
+	message := strings.TrimSpace(in.Message)
+	if ip == "" || email == "" || message == "" {
+		return BlockedReport{}, ErrInvalid
+	}
+
+	var out BlockedReport
+	if err := s.db.QueryRowContext(ctx, `
+		INSERT INTO blocked_reports (ip, email, message)
+		VALUES ($1, $2, $3)
+		RETURNING id, ip, email, message, created_at
+	`, ip, email, message).Scan(
+		&out.ID,
+		&out.IP,
+		&out.Email,
+		&out.Message,
+		&out.CreatedAt,
+	); err != nil {
+		return BlockedReport{}, err
+	}
+	return out, nil
+}
+
+func (s *Store) ListBlockedIPs(ctx context.Context) ([]BlockedIP, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, ip, reason, created_by_admin_id::text, expires_at, created_at
+		FROM blocked_ips
+		ORDER BY created_at DESC, id DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]BlockedIP, 0, 16)
+	for rows.Next() {
+		var (
+			item             BlockedIP
+			reason           sql.NullString
+			createdByAdminID sql.NullString
+			expiresAt        sql.NullTime
+		)
+		if err := rows.Scan(
+			&item.ID,
+			&item.IP,
+			&reason,
+			&createdByAdminID,
+			&expiresAt,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if reason.Valid {
+			item.Reason = &reason.String
+		}
+		if createdByAdminID.Valid {
+			item.CreatedByAdminID = &createdByAdminID.String
+		}
+		if expiresAt.Valid {
+			item.ExpiresAt = &expiresAt.Time
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *Store) CreateBlockedIP(ctx context.Context, in CreateBlockedIPInput) (BlockedIP, error) {
+	ip := strings.TrimSpace(in.IP)
+	if ip == "" {
+		return BlockedIP{}, ErrInvalid
+	}
+	reason := normalizeOptionalString(in.Reason)
+	createdByAdminID := normalizeOptionalString(in.CreatedByAdminID)
+	expiresAt := in.ExpiresAt
+
+	var out BlockedIP
+	var (
+		reasonOut           sql.NullString
+		createdByAdminIDOut sql.NullString
+		expiresAtOut        sql.NullTime
+	)
+	if err := s.db.QueryRowContext(ctx, `
+		INSERT INTO blocked_ips (ip, reason, created_by_admin_id, expires_at)
+		VALUES ($1, $2, NULLIF($3, '')::uuid, $4)
+		RETURNING id, ip, reason, created_by_admin_id::text, expires_at, created_at
+	`, ip, reason, createdByAdminID, expiresAt).Scan(
+		&out.ID,
+		&out.IP,
+		&reasonOut,
+		&createdByAdminIDOut,
+		&expiresAtOut,
+		&out.CreatedAt,
+	); err != nil {
+		if isUniqueViolation(err) {
+			return BlockedIP{}, ErrConflict
+		}
+		if isForeignKeyViolation(err) {
+			return BlockedIP{}, ErrNotFound
+		}
+		return BlockedIP{}, err
+	}
+
+	if reasonOut.Valid {
+		out.Reason = &reasonOut.String
+	}
+	if createdByAdminIDOut.Valid {
+		out.CreatedByAdminID = &createdByAdminIDOut.String
+	}
+	if expiresAtOut.Valid {
+		out.ExpiresAt = &expiresAtOut.Time
+	}
+	return out, nil
+}
+
+func (s *Store) DeleteBlockedIP(ctx context.Context, id string) (BlockedIP, error) {
+	normalizedID := strings.TrimSpace(id)
+	if normalizedID == "" {
+		return BlockedIP{}, ErrInvalid
+	}
+
+	var out BlockedIP
+	var (
+		reasonOut           sql.NullString
+		createdByAdminIDOut sql.NullString
+		expiresAtOut        sql.NullTime
+	)
+	if err := s.db.QueryRowContext(ctx, `
+		DELETE FROM blocked_ips
+		WHERE id = $1::uuid
+		RETURNING id, ip, reason, created_by_admin_id::text, expires_at, created_at
+	`, normalizedID).Scan(
+		&out.ID,
+		&out.IP,
+		&reasonOut,
+		&createdByAdminIDOut,
+		&expiresAtOut,
+		&out.CreatedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return BlockedIP{}, ErrNotFound
+		}
+		return BlockedIP{}, err
+	}
+
+	if reasonOut.Valid {
+		out.Reason = &reasonOut.String
+	}
+	if createdByAdminIDOut.Valid {
+		out.CreatedByAdminID = &createdByAdminIDOut.String
+	}
+	if expiresAtOut.Valid {
+		out.ExpiresAt = &expiresAtOut.Time
+	}
 	return out, nil
 }

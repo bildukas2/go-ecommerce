@@ -23,6 +23,9 @@ type fakeCustomersStore struct {
 	createGroupFn        func(context.Context, string, string) (storcustomers.CustomerGroup, error)
 	updateGroupFn        func(context.Context, string, string, string) (storcustomers.CustomerGroup, error)
 	deleteGroupFn        func(context.Context, string) error
+	listBlockedIPsFn     func(context.Context) ([]storcustomers.BlockedIP, error)
+	createBlockedIPFn    func(context.Context, storcustomers.CreateBlockedIPInput) (storcustomers.BlockedIP, error)
+	deleteBlockedIPFn    func(context.Context, string) (storcustomers.BlockedIP, error)
 }
 
 func (f *fakeCustomersStore) ListCustomers(
@@ -121,6 +124,27 @@ func (f *fakeCustomersStore) DeleteCustomerGroup(ctx context.Context, id string)
 		return nil
 	}
 	return f.deleteGroupFn(ctx, id)
+}
+
+func (f *fakeCustomersStore) ListBlockedIPs(ctx context.Context) ([]storcustomers.BlockedIP, error) {
+	if f.listBlockedIPsFn == nil {
+		return []storcustomers.BlockedIP{}, nil
+	}
+	return f.listBlockedIPsFn(ctx)
+}
+
+func (f *fakeCustomersStore) CreateBlockedIP(ctx context.Context, in storcustomers.CreateBlockedIPInput) (storcustomers.BlockedIP, error) {
+	if f.createBlockedIPFn == nil {
+		return storcustomers.BlockedIP{}, nil
+	}
+	return f.createBlockedIPFn(ctx, in)
+}
+
+func (f *fakeCustomersStore) DeleteBlockedIP(ctx context.Context, id string) (storcustomers.BlockedIP, error) {
+	if f.deleteBlockedIPFn == nil {
+		return storcustomers.BlockedIP{}, nil
+	}
+	return f.deleteBlockedIPFn(ctx, id)
 }
 
 func TestAdminCustomersListSuccess(t *testing.T) {
@@ -484,5 +508,133 @@ func TestAdminCustomerGroupsCreateWritesActionLogWithIP(t *testing.T) {
 	}
 	if captured.Action != "customer.group_changed" {
 		t.Fatalf("unexpected captured log action %q", captured.Action)
+	}
+}
+
+func TestAdminBlockedIPsListSuccess(t *testing.T) {
+	expiresAt := time.Now().UTC().Add(24 * time.Hour).Round(time.Second)
+	store := &fakeCustomersStore{
+		listBlockedIPsFn: func(_ context.Context) ([]storcustomers.BlockedIP, error) {
+			return []storcustomers.BlockedIP{
+				{
+					ID:        "block-1",
+					IP:        "203.0.113.5",
+					ExpiresAt: &expiresAt,
+				},
+			}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/security/blocked-ips", nil)
+	req.SetBasicAuth("admin", "pass")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+}
+
+func TestAdminBlockedIPsCreateLogsSecurityAction(t *testing.T) {
+	var (
+		capturedInput *storcustomers.CreateBlockedIPInput
+		capturedLog   *storcustomers.CreateCustomerActionLogInput
+	)
+	store := &fakeCustomersStore{
+		createBlockedIPFn: func(_ context.Context, in storcustomers.CreateBlockedIPInput) (storcustomers.BlockedIP, error) {
+			copy := in
+			capturedInput = &copy
+			return storcustomers.BlockedIP{
+				ID: "block-2",
+				IP: in.IP,
+			}, nil
+		},
+		insertCustomerLogFn: func(_ context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error) {
+			copy := in
+			capturedLog = &copy
+			return storcustomers.CustomerActionLog{}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	body, err := json.Marshal(map[string]any{
+		"ip":     "203.0.113.40",
+		"reason": "abuse",
+	})
+	if err != nil {
+		t.Fatalf("marshal body: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/admin/security/blocked-ips", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("admin", "pass")
+	req.Header.Set("X-Forwarded-For", "198.51.100.1")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, res.Code)
+	}
+	if capturedInput == nil || capturedInput.IP != "203.0.113.40" {
+		t.Fatalf("expected create blocked ip input capture, got %#v", capturedInput)
+	}
+	if capturedLog == nil {
+		t.Fatalf("expected action log insertion")
+	}
+	if capturedLog.Action != "ip.blocked" {
+		t.Fatalf("unexpected action %q", capturedLog.Action)
+	}
+}
+
+func TestAdminBlockedIPsDeleteLogsSecurityAction(t *testing.T) {
+	var capturedLog *storcustomers.CreateCustomerActionLogInput
+	store := &fakeCustomersStore{
+		deleteBlockedIPFn: func(_ context.Context, id string) (storcustomers.BlockedIP, error) {
+			if id != "block-3" {
+				t.Fatalf("unexpected delete id %q", id)
+			}
+			return storcustomers.BlockedIP{
+				ID: "block-3",
+				IP: "203.0.113.99",
+			}, nil
+		},
+		insertCustomerLogFn: func(_ context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error) {
+			copy := in
+			capturedLog = &copy
+			return storcustomers.CustomerActionLog{}, nil
+		},
+	}
+	m := &module{customers: store, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodDelete, "/admin/security/blocked-ips/block-3", nil)
+	req.SetBasicAuth("admin", "pass")
+	req.Header.Set("X-Forwarded-For", "198.51.100.2")
+	res := httptest.NewRecorder()
+	mux.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, res.Code)
+	}
+	if capturedLog == nil {
+		t.Fatalf("expected action log insertion")
+	}
+	if capturedLog.Action != "ip.unblocked" {
+		t.Fatalf("unexpected action %q", capturedLog.Action)
+	}
+}
+
+func TestAdminBlockedIPsCreateValidation(t *testing.T) {
+	m := &module{customers: &fakeCustomersStore{}, user: "admin", pass: "pass"}
+	mux := http.NewServeMux()
+	m.RegisterRoutes(mux)
+
+	res := performAdminJSONRequest(t, mux, http.MethodPost, "/admin/security/blocked-ips", map[string]any{
+		"ip": "not-an-ip",
+	})
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, res.Code)
 	}
 }

@@ -83,6 +83,7 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/account/favorites/", m.handleFavorites)
 	mux.HandleFunc("/account/orders", m.handleOrders)
 	mux.HandleFunc("/account/change-password", m.handleChangePassword)
+	mux.HandleFunc("/support/blocked-report", m.handleBlockedReport)
 }
 
 type credentialsRequest struct {

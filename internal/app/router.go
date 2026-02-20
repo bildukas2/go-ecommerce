@@ -10,6 +10,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	platformhttp "goecommerce/internal/platform/http"
+	storcustomers "goecommerce/internal/storage/customers"
 )
 
 type readyResp struct {
@@ -54,7 +55,14 @@ func NewRouter(deps Deps) http.Handler {
 	registerEnabledModules(mux)
 
 	rateLimiter := platformhttp.NewRateLimiter(deps.Redis, 120, time.Minute)
+	var ipBlockChecker platformhttp.IPBlockChecker
+	if deps.DB != nil {
+		if customerStore, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
+			ipBlockChecker = customerStore
+		}
+	}
 	wrapped := applyAdminMiddleware(mux, rateLimiter)
+	wrapped = platformhttp.IPBlockMiddleware(wrapped, ipBlockChecker)
 	wrapped = platformhttp.CORS(wrapped, platformhttp.ParseAllowedOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")))
 	return wrapped
 }

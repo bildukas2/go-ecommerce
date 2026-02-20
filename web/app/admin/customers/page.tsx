@@ -515,10 +515,20 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-col items-end gap-2">
-                        <details className="w-full rounded-lg border border-surface-border bg-foreground/[0.02] p-2 text-left">
-                          <summary className="cursor-pointer text-xs font-medium text-cyan-700 dark:text-cyan-300">View / Edit</summary>
-                          <div className="mt-3">
-                            <CustomerUpsertForm customer={customer} groups={groups} submitText="Save customer" action={updateCustomerAction} returnTo={current} />
+                        <details className="group relative w-full">
+                          <summary className="list-none">
+                            <span className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-cyan-500/35 bg-cyan-500/12 px-3 py-1.5 text-xs font-medium text-cyan-700 transition-colors hover:bg-cyan-500/18 dark:text-cyan-300">
+                              View / Edit
+                            </span>
+                          </summary>
+                          <div className="invisible absolute right-0 top-9 z-20 w-[min(56rem,90vw)] rounded-xl border border-surface-border bg-background p-3 opacity-0 shadow-2xl transition-all duration-150 group-open:visible group-open:opacity-100">
+                            <div className="mb-2 flex items-center justify-between">
+                              <p className="text-xs font-semibold text-foreground/70">Edit customer</p>
+                              <p className="text-xs text-foreground/60">{customerName(customer)}</p>
+                            </div>
+                            <div className="max-h-[70vh] overflow-auto pr-1">
+                              <CustomerUpsertForm customer={customer} groups={groups} submitText="Save customer" action={updateCustomerAction} returnTo={current} />
+                            </div>
                           </div>
                         </details>
                         <form action={updateStatusAction}>

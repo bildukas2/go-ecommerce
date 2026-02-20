@@ -377,6 +377,35 @@ async function apiErrorMessage(res: Response, fallback: string): Promise<string>
   return fallback;
 }
 
+export class BlockedIPError extends Error {
+  redirectTo: string;
+
+  constructor(message: string, redirectTo = "/blocked") {
+    super(message);
+    this.name = "BlockedIPError";
+    this.redirectTo = redirectTo;
+  }
+}
+
+export function isBlockedIPError(error: unknown): error is BlockedIPError {
+  return error instanceof BlockedIPError;
+}
+
+async function throwBlockedIPErrorIfNeeded(res: Response): Promise<void> {
+  if (res.status !== 403) return;
+
+  let redirectTo = res.headers.get("X-Blocked-Redirect") || "/blocked";
+  let message = "IP blocked";
+  try {
+    const payload = asRecord(await res.clone().json());
+    const maybeRedirect = asString(payload.redirect_to).trim();
+    if (maybeRedirect.startsWith("/")) redirectTo = maybeRedirect;
+    const maybeMessage = asString(payload.error).trim();
+    if (maybeMessage) message = maybeMessage;
+  } catch {}
+  throw new BlockedIPError(message, redirectTo);
+}
+
 export async function getAdminCategories(): Promise<{ items: AdminCategory[] }> {
   const url = new URL(apiJoin("admin/catalog/categories"));
   const res = await fetch(url.toString(), {
@@ -424,7 +453,10 @@ export async function ensureCart(): Promise<Cart> {
     method: "POST",
     credentials: "include",
   });
-  if (!res.ok) throw new Error(`Failed to initialize cart: ${res.status}`);
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(`Failed to initialize cart: ${res.status}`);
+  }
   return res.json();
 }
 
@@ -443,7 +475,10 @@ export async function addCartItem(variantId: string, quantity: number): Promise<
     credentials: "include",
     body: JSON.stringify({ variant_id: variantId, quantity }),
   });
-  if (!res.ok) throw new Error(`Failed to add item: ${res.status}`);
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(`Failed to add item: ${res.status}`);
+  }
   return res.json();
 }
 
@@ -455,21 +490,30 @@ export async function updateCartItem(itemId: string, quantity: number): Promise<
     credentials: "include",
     body: JSON.stringify({ quantity }),
   });
-  if (!res.ok) throw new Error(`Failed to update item: ${res.status}`);
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(`Failed to update item: ${res.status}`);
+  }
   return res.json();
 }
 
 export async function removeCartItem(itemId: string): Promise<Cart> {
   const url = new URL(apiJoin(`cart/items/${encodeURIComponent(itemId)}`));
   const res = await fetch(url.toString(), { method: "DELETE", credentials: "include" });
-  if (!res.ok) throw new Error(`Failed to remove item: ${res.status}`);
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(`Failed to remove item: ${res.status}`);
+  }
   return res.json();
 }
 
 export async function checkout(): Promise<{ order_id: string; checkout_url: string; status: string }> {
   const url = new URL(apiJoin("checkout"));
   const res = await fetch(url.toString(), { method: "POST", credentials: "include" });
-  if (!res.ok) throw new Error(`Failed to checkout: ${res.status}`);
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(`Failed to checkout: ${res.status}`);
+  }
   const payload: unknown = await res.json();
   return parseCheckoutResponse(payload);
 }
@@ -615,7 +659,10 @@ export async function registerAccount(email: string, password: string, options?:
       options,
     ),
   );
-  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to register: ${res.status}`));
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to register: ${res.status}`));
+  }
   return normalizeAccountCustomer(await res.json());
 }
 
@@ -631,7 +678,10 @@ export async function loginAccount(email: string, password: string, options?: Ac
       options,
     ),
   );
-  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to login: ${res.status}`));
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to login: ${res.status}`));
+  }
   return normalizeAccountCustomer(await res.json());
 }
 
@@ -645,7 +695,10 @@ export async function logoutAccount(options?: AccountRequestOptions): Promise<vo
       options,
     ),
   );
-  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to logout: ${res.status}`));
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to logout: ${res.status}`));
+  }
 }
 
 export async function getCurrentAccount(options?: AccountRequestOptions): Promise<AccountCustomer> {
@@ -702,7 +755,10 @@ export async function addAccountFavorite(productID: string, options?: AccountReq
       options,
     ),
   );
-  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to add favorite: ${res.status}`));
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to add favorite: ${res.status}`));
+  }
   const payload = asRecord(await res.json());
   return { product_id: asString(payload.product_id) };
 }
@@ -717,7 +773,10 @@ export async function removeAccountFavorite(productID: string, options?: Account
       options,
     ),
   );
-  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to remove favorite: ${res.status}`));
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to remove favorite: ${res.status}`));
+  }
 }
 
 export async function getAccountOrders(
@@ -760,7 +819,24 @@ export async function changeAccountPassword(currentPassword: string, newPassword
       options,
     ),
   );
-  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to change password: ${res.status}`));
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to change password: ${res.status}`));
+  }
+}
+
+export async function submitBlockedReport(input: BlockedReportInput): Promise<void> {
+  const url = new URL(apiJoin("support/blocked-report"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    await throwBlockedIPErrorIfNeeded(res);
+    throw new Error(await apiErrorMessage(res, `Failed to submit blocked report: ${res.status}`));
+  }
 }
 
 // Admin API (server-side only)
@@ -862,6 +938,26 @@ export type AdminCustomerActionLog = {
   severity: string | null;
   meta_json: Record<string, unknown>;
   created_at: string;
+};
+
+export type AdminBlockedIP = {
+  id: string;
+  ip: string;
+  reason: string | null;
+  created_by_admin_id: string | null;
+  expires_at: string | null;
+  created_at: string;
+};
+
+export type AdminBlockedIPMutationInput = {
+  ip: string;
+  reason?: string | null;
+  expires_at?: string | null;
+};
+
+export type BlockedReportInput = {
+  email: string;
+  message: string;
 };
 
 export type DashboardMetrics = {
@@ -1098,6 +1194,21 @@ function normalizeAdminCustomerActionLog(raw: unknown): AdminCustomerActionLog |
   };
 }
 
+function normalizeAdminBlockedIP(raw: unknown): AdminBlockedIP | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const ip = asString(obj.ip);
+  if (!id || !ip) return null;
+  return {
+    id,
+    ip,
+    reason: asNullableString(obj.reason),
+    created_by_admin_id: asNullableString(obj.created_by_admin_id),
+    expires_at: asNullableString(obj.expires_at),
+    created_at: asString(obj.created_at),
+  };
+}
+
 export async function getAdminCustomerGroups(): Promise<{ items: AdminCustomerGroup[] }> {
   const url = new URL(apiJoin("admin/customers/groups"));
   const res = await fetch(url.toString(), {
@@ -1141,6 +1252,52 @@ export async function getAdminCustomerActionLogs(params: {
     total: asNumber(payload.total),
     page: asNumber(payload.page) || 1,
     limit: asNumber(payload.limit) || 20,
+  };
+}
+
+export async function getAdminBlockedIPs(): Promise<{ items: AdminBlockedIP[] }> {
+  const url = new URL(apiJoin("admin/security/blocked-ips"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch blocked IPs: ${res.status}`));
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return {
+    items: itemsRaw.map(normalizeAdminBlockedIP).filter((item): item is AdminBlockedIP => item !== null),
+  };
+}
+
+export async function createAdminBlockedIP(input: AdminBlockedIPMutationInput): Promise<AdminBlockedIP> {
+  const url = new URL(apiJoin("admin/security/blocked-ips"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to block IP: ${res.status}`));
+  const normalized = normalizeAdminBlockedIP(await res.json());
+  if (!normalized) throw new Error("Failed to block IP: invalid response");
+  return normalized;
+}
+
+export async function deleteAdminBlockedIP(id: string): Promise<{ id: string; ip: string }> {
+  const url = new URL(apiJoin(`admin/security/blocked-ips/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to unblock IP: ${res.status}`));
+  const payload = asRecord(await res.json());
+  return {
+    id: asString(payload.id),
+    ip: asString(payload.ip),
   };
 }
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, FolderTree, LayoutDashboard, List, Menu, Search, ShoppingCart, SlidersHorizontal, Users, UsersRound, X } from "lucide-react";
+import { ChevronDown, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Users, UsersRound, X } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -20,6 +20,7 @@ const DESKTOP_COLLAPSED_WIDTH = 88;
 const navItems: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
   { href: "/admin/orders", label: "Orders", icon: <ShoppingCart size={18} /> },
+  { href: "/admin/security/blocked-ips", label: "Security", icon: <ShieldAlert size={18} /> },
 ];
 
 const catalogItems: NavItem[] = [

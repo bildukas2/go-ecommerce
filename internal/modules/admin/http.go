@@ -111,6 +111,8 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/customers/logs", m.wrapAuth(m.handleCustomerActionLogs))
 	mux.HandleFunc("/admin/customers/groups", m.wrapAuth(m.handleCustomerGroups))
 	mux.HandleFunc("/admin/customers/groups/", m.wrapAuth(m.handleCustomerGroupDetail))
+	mux.HandleFunc("/admin/security/blocked-ips", m.wrapAuth(m.handleBlockedIPs))
+	mux.HandleFunc("/admin/security/blocked-ips/", m.wrapAuth(m.handleBlockedIPDetail))
 	mux.HandleFunc("/admin/media", m.wrapAuth(m.handleMedia))
 	mux.HandleFunc("/admin/media/upload", m.wrapAuth(m.handleMediaUpload))
 	mux.HandleFunc("/admin/media/import-url", m.wrapAuth(m.handleMediaImportURL))
@@ -329,6 +331,9 @@ type customersStore interface {
 	CreateCustomerGroup(ctx context.Context, name, code string) (storcustomers.CustomerGroup, error)
 	UpdateCustomerGroup(ctx context.Context, id, name, code string) (storcustomers.CustomerGroup, error)
 	DeleteCustomerGroup(ctx context.Context, id string) error
+	ListBlockedIPs(ctx context.Context) ([]storcustomers.BlockedIP, error)
+	CreateBlockedIP(ctx context.Context, in storcustomers.CreateBlockedIPInput) (storcustomers.BlockedIP, error)
+	DeleteBlockedIP(ctx context.Context, id string) (storcustomers.BlockedIP, error)
 }
 
 type catalogStore interface {

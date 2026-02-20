@@ -6,6 +6,7 @@ import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { isBlockedIPError } from "@/lib/api";
 
 function formatCents(cents: number, currency: string) {
   try {
@@ -181,6 +182,10 @@ export function CartDrawer() {
                     }
                     window.location.href = res.checkout_url;
                   } catch (e: unknown) {
+                    if (isBlockedIPError(e)) {
+                      window.location.href = e.redirectTo;
+                      return;
+                    }
                     const message = e instanceof Error ? e.message : "Checkout failed";
                     setCheckoutError(message);
                   } finally {
