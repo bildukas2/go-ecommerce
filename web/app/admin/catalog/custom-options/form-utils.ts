@@ -62,6 +62,7 @@ function parseValuesJSON(raw: FormDataEntryValue | null): AdminCustomOptionMutat
       price_type: asString(row.price_type).trim().toLowerCase() === "percent" ? "percent" : "fixed",
       price_value: asNumber(row.price_value),
       is_default: Boolean(row.is_default),
+      swatch_hex: asString(row.swatch_hex).trim() || null,
     };
   });
 }
@@ -74,6 +75,7 @@ export function parseCustomOptionFormData(formData: FormData): AdminCustomOption
   const required = asBooleanFromForm(formData, "required");
   const isActive = asBooleanFromForm(formData, "is_active");
   const sortOrder = parseOptionalInteger(formData.get("sort_order"));
+  const displayMode = asString(formData.get("display_mode")).trim().toLowerCase() || "default";
   const values = parseValuesJSON(formData.get("values_json"));
 
   const payload: AdminCustomOptionMutationInput = {
@@ -84,6 +86,7 @@ export function parseCustomOptionFormData(formData: FormData): AdminCustomOption
     required,
     is_active: isActive,
     sort_order: sortOrder ?? 0,
+    display_mode: displayMode as AdminCustomOptionMutationInput["display_mode"],
     values,
   };
 
