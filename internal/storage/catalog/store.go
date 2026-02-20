@@ -358,7 +358,7 @@ func (s *Store) GetProductBySlug(ctx context.Context, slug string) (Product, err
 
 func (s *Store) listActiveCustomOptionsForProduct(ctx context.Context, productID string) ([]ProductCustomOption, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT o.id, o.store_id, o.code, o.title, o.type_group, o.type, o.required, o.sort_order, o.price_type, o.price_value, o.is_active, o.created_at, o.updated_at
+		SELECT o.id, o.store_id, o.code, o.title, o.type_group, o.type, o.required, o.sort_order, o.display_mode, o.price_type, o.price_value, o.is_active, o.created_at, o.updated_at
 		FROM product_custom_option_assignments a
 		JOIN product_custom_options o ON o.id = a.option_id
 		WHERE a.product_id = $1::uuid
