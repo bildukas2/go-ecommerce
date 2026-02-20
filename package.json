@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/bildukas2/go-ecommerce/issues"
   },
-  "homepage": "https://github.com/bildukas2/go-ecommerce#readme"
+  "homepage": "https://github.com/bildukas2/go-ecommerce#readme",
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
 }
