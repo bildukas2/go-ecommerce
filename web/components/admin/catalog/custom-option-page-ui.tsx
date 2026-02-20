@@ -1,27 +1,23 @@
-"use client";
-
 import Link from "next/link";
-import { Button, Card, CardBody } from "@heroui/react";
 
 type NoticeTone = "success" | "danger";
 
 export function NoticeCard({ tone, message }: { tone: NoticeTone; message: string }) {
   const className =
     tone === "success"
-      ? "rounded-2xl border border-emerald-300/60 bg-emerald-50/80 text-emerald-800"
-      : "rounded-2xl border border-danger-300/60 bg-danger-50/80 text-danger-800";
+      ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
+      : "rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700";
 
-  return (
-    <Card className={className}>
-      <CardBody className="py-3 text-sm">{message}</CardBody>
-    </Card>
-  );
+  return <div className={className}>{message}</div>;
 }
 
 export function BackToOptionsButton() {
   return (
-    <Button as={Link} href="/admin/catalog/custom-options" variant="bordered">
+    <Link
+      href="/admin/catalog/custom-options"
+      className="rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
+    >
       Back to options
-    </Button>
+    </Link>
   );
 }
