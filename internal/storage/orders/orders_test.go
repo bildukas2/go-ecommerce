@@ -49,7 +49,7 @@ func TestCheckoutCreatesOrderPendingPayment(t *testing.T) {
 		}
 		t.Fatalf("query variant: %v", err)
 	}
-	if _, err := cartStore.AddItem(ctx, c.ID, variantID, 2); err != nil {
+	if _, err := cartStore.AddItem(ctx, c.ID, variantID, 2, nil); err != nil {
 		t.Fatalf("add item: %v", err)
 	}
 	c2, err := cartStore.GetCart(ctx, c.ID)
@@ -154,7 +154,7 @@ func TestCreateFromCartForCustomerPersistsCustomerID(t *testing.T) {
 		}
 		t.Fatalf("query variant: %v", err)
 	}
-	if _, err := cartStore.AddItem(ctx, c.ID, variantID, 1); err != nil {
+	if _, err := cartStore.AddItem(ctx, c.ID, variantID, 1, nil); err != nil {
 		t.Fatalf("add item: %v", err)
 	}
 	c2, err := cartStore.GetCart(ctx, c.ID)

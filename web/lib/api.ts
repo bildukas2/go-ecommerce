@@ -429,8 +429,29 @@ export type CartItem = {
   Quantity: number;
   ProductTitle: string;
   ImageURL: string;
+  CustomOptions?: CartItemCustomOption[];
   CreatedAt?: string;
   UpdatedAt?: string;
+};
+
+export type CartItemCustomOption = {
+  OptionID: string;
+  Title: string;
+  Type: string;
+  ValueID?: string;
+  ValueIDs?: string[];
+  ValueText?: string;
+  ValueTitle?: string;
+  ValueTitles?: string[];
+  PriceDeltaCents?: number;
+};
+
+export type CartCustomOptionSelectionInput = {
+  option_id: string;
+  type: "field" | "area" | "file" | "dropdown" | "radio" | "checkbox" | "multiple" | "date" | "datetime" | "time";
+  value_id?: string;
+  value_ids?: string[];
+  value_text?: string;
 };
 
 export type Totals = {
@@ -467,13 +488,17 @@ export async function getCart(): Promise<Cart> {
   return res.json();
 }
 
-export async function addCartItem(variantId: string, quantity: number): Promise<Cart> {
+export async function addCartItem(
+  variantId: string,
+  quantity: number,
+  customOptions: CartCustomOptionSelectionInput[] = [],
+): Promise<Cart> {
   const url = new URL(apiJoin("cart/items"));
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ variant_id: variantId, quantity }),
+    body: JSON.stringify({ variant_id: variantId, quantity, custom_options: customOptions }),
   });
   if (!res.ok) {
     await throwBlockedIPErrorIfNeeded(res);

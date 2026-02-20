@@ -31,7 +31,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
 
           <div className="pt-2">
-            <AddToCartButton variants={product.variants} />
+            <AddToCartButton variants={product.variants} customOptions={product.customOptions ?? []} />
           </div>
           <div className="pt-1">
             <FavoriteToggleButton productID={product.id} nextPathOnLogin={`/products/${encodeURIComponent(product.slug)}`} />

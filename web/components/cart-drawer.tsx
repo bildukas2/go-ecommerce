@@ -114,6 +114,22 @@ export function CartDrawer() {
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-medium">{it.ProductTitle || `Variant ${it.ProductVariantID.slice(0, 8)}`}</div>
                               <div className="text-xs text-neutral-600 dark:text-neutral-400">{formatCents(it.UnitPriceCents, it.Currency)} each</div>
+                              {Array.isArray(it.CustomOptions) && it.CustomOptions.length > 0 ? (
+                                <div className="mt-1 space-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+                                  {it.CustomOptions.map((option) => {
+                                    const label =
+                                      option.ValueTitle ||
+                                      (Array.isArray(option.ValueTitles) && option.ValueTitles.length > 0
+                                        ? option.ValueTitles.join(", ")
+                                        : option.ValueText || "");
+                                    return (
+                                      <div key={option.OptionID}>
+                                        {option.Title}: {label || "Selected"}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
                               <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
                                 {formatCents(lineTotal, it.Currency)}
                               </div>

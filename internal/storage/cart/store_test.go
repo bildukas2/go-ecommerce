@@ -45,7 +45,7 @@ func TestResolveCustomerCartMergesGuestCartAdditivelyAndIdempotently(t *testing.
 	if err != nil {
 		t.Fatalf("create guest cart: %v", err)
 	}
-	if _, err := store.AddItem(ctx, guestCart.ID, variantID, 2); err != nil {
+	if _, err := store.AddItem(ctx, guestCart.ID, variantID, 2, nil); err != nil {
 		t.Fatalf("add guest item: %v", err)
 	}
 
@@ -53,7 +53,7 @@ func TestResolveCustomerCartMergesGuestCartAdditivelyAndIdempotently(t *testing.
 	if err != nil {
 		t.Fatalf("create customer cart: %v", err)
 	}
-	if _, err := store.AddItem(ctx, customerCart.ID, variantID, 1); err != nil {
+	if _, err := store.AddItem(ctx, customerCart.ID, variantID, 1, nil); err != nil {
 		t.Fatalf("add customer item: %v", err)
 	}
 

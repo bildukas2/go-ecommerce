@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { addCartItem, checkout as apiCheckout, ensureCart, getCart, isBlockedIPError, removeCartItem, updateCartItem, type Cart } from "@/lib/api";
+import {
+  addCartItem,
+  checkout as apiCheckout,
+  ensureCart,
+  getCart,
+  isBlockedIPError,
+  removeCartItem,
+  updateCartItem,
+  type Cart,
+  type CartCustomOptionSelectionInput,
+} from "@/lib/api";
 import { optimisticRemoveItem, optimisticUpdateQuantity } from "@/lib/cart-state";
 
 type CartState = {
@@ -16,7 +26,7 @@ type CartContextType = CartState & {
   openDrawer: () => void;
   closeDrawer: () => void;
   refresh: () => Promise<void>;
-  add: (variantId: string, quantity?: number) => Promise<void>;
+  add: (variantId: string, quantity?: number, customOptions?: CartCustomOptionSelectionInput[]) => Promise<void>;
   update: (itemId: string, quantity: number) => Promise<void>;
   remove: (itemId: string) => Promise<void>;
   checkout: () => Promise<{ order_id: string; checkout_url: string; status: string }>;
@@ -53,11 +63,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
   const closeDrawer = React.useCallback(() => setState((s) => ({ ...s, open: false })), []);
 
-  const add = React.useCallback(async (variantId: string, quantity = 1) => {
+  const add = React.useCallback(async (variantId: string, quantity = 1, customOptions: CartCustomOptionSelectionInput[] = []) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       await ensureCart();
-      const c = await addCartItem(variantId, quantity);
+      const c = await addCartItem(variantId, quantity, customOptions);
       setState((s) => ({ ...s, cart: c, loading: false, open: true }));
     } catch (e: unknown) {
       if (isBlockedIPError(e)) {

@@ -193,8 +193,9 @@ func (m *module) handleCartItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		VariantID string `json:"variant_id"`
-		Quantity  int    `json:"quantity"`
+		VariantID     string                              `json:"variant_id"`
+		Quantity      int                                 `json:"quantity"`
+		CustomOptions []storcart.AddItemCustomOptionInput `json:"custom_options"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		platformhttp.Error(w, http.StatusBadRequest, "invalid body")
@@ -205,10 +206,15 @@ func (m *module) handleCartItems(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusBadRequest, "invalid input")
 		return
 	}
-	c, err := m.store.AddItem(r.Context(), cartID, body.VariantID, body.Quantity)
+	c, err := m.store.AddItem(r.Context(), cartID, body.VariantID, body.Quantity, body.CustomOptions)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			platformhttp.Error(w, http.StatusNotFound, "not found")
+			return
+		}
+		if errors.Is(err, storcart.ErrInvalidCustomOptions) {
+			msg := strings.TrimPrefix(err.Error(), storcart.ErrInvalidCustomOptions.Error()+": ")
+			platformhttp.Error(w, http.StatusBadRequest, msg)
 			return
 		}
 		platformhttp.Error(w, http.StatusInternalServerError, "add error")

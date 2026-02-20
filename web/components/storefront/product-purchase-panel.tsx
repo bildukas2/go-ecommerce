@@ -2,16 +2,17 @@
 
 import * as React from "react";
 import { AddToCartButton } from "@/components/add-to-cart";
-import type { ProductVariant } from "@/lib/api";
+import type { AdminCustomOption, ProductVariant } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
 type ProductPurchasePanelProps = {
   title: string;
   description: string;
   variants: ProductVariant[];
+  customOptions?: AdminCustomOption[];
 };
 
-export function ProductPurchasePanel({ title, description, variants }: ProductPurchasePanelProps) {
+export function ProductPurchasePanel({ title, description, variants, customOptions = [] }: ProductPurchasePanelProps) {
   const defaultVariant = variants.find((variant) => variant.stock > 0) ?? variants[0] ?? null;
   const [selectedVariantID, setSelectedVariantID] = React.useState<string>(defaultVariant?.id ?? "");
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantID) ?? defaultVariant;
@@ -93,6 +94,7 @@ export function ProductPurchasePanel({ title, description, variants }: ProductPu
       <div className="pt-2">
         <AddToCartButton
           variants={variants}
+          customOptions={customOptions}
           selectedVariantID={selectedVariantID}
           onSelectedVariantIDChange={setSelectedVariantID}
           showSelectionMeta={false}
