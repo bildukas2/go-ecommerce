@@ -372,6 +372,7 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
                   <th className="px-3 py-2 font-medium">Title</th>
                   <th className="px-3 py-2 font-medium">Price Type</th>
                   <th className="px-3 py-2 font-medium">Price Value</th>
+                  <th className="px-3 py-2 font-medium">Swatch Color</th>
                   <th className="px-3 py-2 font-medium">Sort</th>
                   <th className="px-3 py-2 font-medium">Default</th>
                   <th className="px-3 py-2 text-right font-medium">Delete</th>
@@ -380,7 +381,7 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
               <tbody>
                 {values.length === 0 ? (
                   <tr>
-                    <td className="px-3 py-4 text-foreground/60" colSpan={6}>
+                    <td className="px-3 py-4 text-foreground/60" colSpan={7}>
                       No values yet. Add at least one value for select options.
                     </td>
                   </tr>
@@ -414,6 +415,14 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
                           min="0"
                           required
                           className="w-full rounded-lg border border-surface-border bg-background px-2 py-1.5"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          value={value.swatch_hex ?? "#0072F5"}
+                          onChange={(event) => updateValue(index, { swatch_hex: event.target.value || null })}
+                          type="color"
+                          className="w-full h-10 rounded-lg border border-surface-border bg-background cursor-pointer"
                         />
                       </td>
                       <td className="px-3 py-2">
