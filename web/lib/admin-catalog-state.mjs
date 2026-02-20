@@ -176,6 +176,45 @@ export function isUnauthorizedAdminError(error) {
   return hasStatusCode(error, 401);
 }
 
+export function isConflictAdminError(error) {
+  return hasStatusCode(error, 409);
+}
+
+export async function attachCustomOptionsIgnoringConflicts(input) {
+  const attach = input?.attach;
+  if (typeof attach !== "function") {
+    throw new Error("attach callback is required");
+  }
+
+  const productIDs = normalizeSelectedProductIDs(input?.productIDs ?? []);
+  const optionIDs = normalizeSelectedProductIDs(input?.optionIDs ?? []);
+  const sortOrder = Number.isFinite(Number(input?.sortOrder)) ? Number(input.sortOrder) : 0;
+
+  let attached = 0;
+  let ignored = 0;
+
+  for (const productID of productIDs) {
+    for (const optionID of optionIDs) {
+      try {
+        await attach(productID, { option_id: optionID, sort_order: sortOrder });
+        attached += 1;
+      } catch (error) {
+        if (isConflictAdminError(error)) {
+          ignored += 1;
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  return {
+    attached,
+    ignored,
+    attempted: productIDs.length * optionIDs.length,
+  };
+}
+
 function hasStatusCode(error, statusCode) {
   if (!(error instanceof Error)) return false;
   return new RegExp(`\\b${statusCode}\\b`).test(error.message);

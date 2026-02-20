@@ -19,7 +19,11 @@ import {
   updateAdminProduct,
   type AdminProductCustomOptionAssignment,
 } from "@/lib/api";
-import { applyAdminProductsState, parseAdminProductsSearchParams } from "@/lib/admin-catalog-state";
+import {
+  applyAdminProductsState,
+  attachCustomOptionsIgnoringConflicts,
+  parseAdminProductsSearchParams,
+} from "@/lib/admin-catalog-state";
 import { ProductsTableManager } from "@/components/admin/catalog/products-table-manager";
 import { ProductsCreateModal } from "@/components/admin/catalog/products-create-modal";
 
@@ -201,6 +205,15 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       if (categoryIDs.length > 0) {
         await bulkAssignAdminProductCategories({ product_ids: [created.id], category_ids: categoryIDs });
       }
+      const optionIDs = parseOptionIDs(formData);
+      if (optionIDs.length > 0) {
+        await attachCustomOptionsIgnoringConflicts({
+          productIDs: [created.id],
+          optionIDs,
+          sortOrder: parseSortOrderInput(formData.get("sort_order")),
+          attach: attachAdminProductCustomOption,
+        });
+      }
 
       const discountType = String(formData.get("discount_type") ?? "none").trim().toLowerCase();
       const discountRaw = String(formData.get("discount_value") ?? "").trim();
@@ -246,6 +259,15 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       const categoryIDs = cleanIDs(formData.getAll("category_ids"));
       if (categoryIDs.length > 0) {
         await setAdminProductCategories(productID, categoryIDs);
+      }
+      const optionIDs = parseOptionIDs(formData);
+      if (optionIDs.length > 0) {
+        await attachCustomOptionsIgnoringConflicts({
+          productIDs: [productID],
+          optionIDs,
+          sortOrder: parseSortOrderInput(formData.get("sort_order")),
+          attach: attachAdminProductCustomOption,
+        });
       }
 
       const discountType = String(formData.get("discount_type") ?? "none").trim().toLowerCase();
@@ -354,19 +376,24 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       redirect(messageHref(returnTo, "error", "Choose at least one customizable option"));
     }
     try {
-      const sortOrder = parseSortOrderInput(formData.get("sort_order"));
-      for (const optionID of optionIDs) {
-        await attachAdminProductCustomOption(productID, {
-          option_id: optionID,
-          sort_order: sortOrder,
-        });
-      }
+      const result = await attachCustomOptionsIgnoringConflicts({
+        productIDs: [productID],
+        optionIDs,
+        sortOrder: parseSortOrderInput(formData.get("sort_order")),
+        attach: attachAdminProductCustomOption,
+      });
       revalidatePath("/admin/catalog/products");
+      const notice =
+        result.ignored > 0
+          ? `${result.attached} attached, ${result.ignored} already assigned`
+          : optionIDs.length === 1
+            ? "Customizable option attached"
+            : `${optionIDs.length} customizable options attached`;
       redirect(
         messageHref(
           returnTo,
           "notice",
-          optionIDs.length === 1 ? "Customizable option attached" : `${optionIDs.length} customizable options attached`,
+          notice,
         ),
       );
     } catch (error) {
@@ -440,6 +467,33 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
+
+  const bulkAttachCustomOptionsAction = async (formData: FormData) => {
+    "use server";
+    const returnTo = safeReturnTo(formData.get("return_to"));
+    const productIDs = cleanIDs(formData.getAll("product_ids"));
+    const optionIDs = parseOptionIDs(formData);
+    if (productIDs.length === 0 || optionIDs.length === 0) {
+      redirect(messageHref(returnTo, "error", "Select products and customizable options"));
+    }
+    try {
+      const result = await attachCustomOptionsIgnoringConflicts({
+        productIDs,
+        optionIDs,
+        sortOrder: parseSortOrderInput(formData.get("sort_order")),
+        attach: attachAdminProductCustomOption,
+      });
+      revalidatePath("/admin/catalog/products");
+      const message =
+        result.ignored > 0
+          ? `Bulk custom-option assignment complete (${result.attached} attached, ${result.ignored} already assigned)`
+          : "Bulk custom-option assignment complete";
+      redirect(messageHref(returnTo, "notice", message));
+    } catch (error) {
+      redirect(messageHref(returnTo, "error", errorMessage(error)));
+    }
+  };
+  void bulkAttachCustomOptionsAction;
 
   let categories: Awaited<ReturnType<typeof getCategories>>["items"] = [];
   let products: Awaited<ReturnType<typeof getProducts>>["items"] = [];

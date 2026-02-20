@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyAdminProductsState,
+  attachCustomOptionsIgnoringConflicts,
   calculateDiscountPreview,
+  isConflictAdminError,
   isEveryProductSelected,
   isUnauthorizedAdminError,
   normalizeSelectedProductIDs,
@@ -76,6 +78,12 @@ test("isUnauthorizedAdminError detects 401 responses", () => {
   assert.equal(isUnauthorizedAdminError({ message: "401" }), false);
 });
 
+test("isConflictAdminError detects 409 responses", () => {
+  assert.equal(isConflictAdminError(new Error("Admin custom option assignment request failed: 409 (conflict)")), true);
+  assert.equal(isConflictAdminError(new Error("Admin custom option assignment request failed: 400")), false);
+  assert.equal(isConflictAdminError({ message: "409" }), false);
+});
+
 test("normalizeSelectedProductIDs trims and deduplicates ids", () => {
   assert.deepEqual(normalizeSelectedProductIDs([" a ", "b", "a", "", "   "]), ["a", "b"]);
 });
@@ -114,4 +122,40 @@ test("calculateDiscountPreview rejects invalid static prices", () => {
     savingsCents: null,
     percentOff: null,
   });
+});
+
+test("attachCustomOptionsIgnoringConflicts ignores conflict errors and continues", async () => {
+  const calls = [];
+  const result = await attachCustomOptionsIgnoringConflicts({
+    productIDs: ["prod-1", "prod-1", "prod-2"],
+    optionIDs: ["opt-a", "opt-b", "opt-a"],
+    sortOrder: 7,
+    attach: async (productID, payload) => {
+      calls.push([productID, payload.option_id, payload.sort_order]);
+      if (productID === "prod-1" && payload.option_id === "opt-b") {
+        throw new Error("Admin custom option assignment request failed: 409 (conflict)");
+      }
+    },
+  });
+
+  assert.deepEqual(calls, [
+    ["prod-1", "opt-a", 7],
+    ["prod-1", "opt-b", 7],
+    ["prod-2", "opt-a", 7],
+    ["prod-2", "opt-b", 7],
+  ]);
+  assert.deepEqual(result, { attached: 3, ignored: 1, attempted: 4 });
+});
+
+test("attachCustomOptionsIgnoringConflicts throws non-conflict errors", async () => {
+  await assert.rejects(
+    attachCustomOptionsIgnoringConflicts({
+      productIDs: ["prod-1"],
+      optionIDs: ["opt-a"],
+      attach: async () => {
+        throw new Error("Admin custom option assignment request failed: 500");
+      },
+    }),
+    /500/,
+  );
 });
