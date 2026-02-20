@@ -498,6 +498,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   let products: Awaited<ReturnType<typeof getProducts>>["items"] = [];
   let availableCustomOptions: Awaited<ReturnType<typeof getAdminCustomOptions>>["items"] = [];
   const assignmentsByProductID = new Map<string, AdminProductCustomOptionAssignment[]>();
+  const customOptionsByID = new Map<string, Awaited<ReturnType<typeof getAdminCustomOptions>>["items"][number]>();
   let fetchError: string | null = null;
   let customOptionsFetchError: string | null = null;
 
@@ -517,26 +518,50 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   }
 
   const visibleProducts = applyAdminProductsState(products, state);
-  if (!fetchError && visibleProducts.length > 0) {
+  if (!fetchError) {
     try {
       const optionsResponse = await getAdminCustomOptions();
       availableCustomOptions = optionsResponse.items;
     } catch {
-      customOptionsFetchError = "Customizable options section is temporarily unavailable.";
+      try {
+        const retryResponse = await getAdminCustomOptions();
+        availableCustomOptions = retryResponse.items;
+      } catch {
+        customOptionsFetchError = "Customizable options section is temporarily unavailable.";
+      }
     }
 
-    const assignmentsResults = await Promise.allSettled(
-      visibleProducts.map(async (product) => {
-        const response = await getAdminProductCustomOptions(product.id);
-        return [product.id, response.items] as const;
-      }),
-    );
+    for (const option of availableCustomOptions) {
+      customOptionsByID.set(option.id, option);
+    }
 
-    for (const result of assignmentsResults) {
-      if (result.status === "fulfilled") {
-        const [productID, items] = result.value;
-        assignmentsByProductID.set(productID, items);
+    if (visibleProducts.length > 0) {
+      const assignmentsResults = await Promise.allSettled(
+        visibleProducts.map(async (product) => {
+          const response = await getAdminProductCustomOptions(product.id);
+          return [product.id, response.items] as const;
+        }),
+      );
+
+      for (const result of assignmentsResults) {
+        if (result.status === "fulfilled") {
+          const [productID, items] = result.value;
+          assignmentsByProductID.set(productID, items);
+          for (const assignment of items) {
+            if (assignment.option?.id) {
+              customOptionsByID.set(assignment.option.id, assignment.option);
+            }
+          }
+        }
       }
+    }
+
+    if (availableCustomOptions.length === 0 && customOptionsByID.size > 0) {
+      availableCustomOptions = Array.from(customOptionsByID.values());
+    }
+
+    if (availableCustomOptions.length > 0) {
+      customOptionsFetchError = null;
     }
   }
 
