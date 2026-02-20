@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { UserRound, UserX2 } from "lucide-react";
+import { UserRound } from "lucide-react";
 import {
   createAdminCustomer,
   getAdminCustomerGroups,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { isUnauthorizedAdminError, parsePositiveIntParam } from "@/lib/admin-orders-state";
 import { Button } from "@/components/ui/button";
+import { CustomerStatusConfirmButton } from "@/components/admin/customer-status-confirm-button";
 
 export const dynamic = "force-dynamic";
 
@@ -531,15 +532,12 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                             </div>
                           </div>
                         </details>
-                        <form action={updateStatusAction}>
-                          <input type="hidden" name="return_to" value={current} />
-                          <input type="hidden" name="customer_id" value={customer.id} />
-                          <input type="hidden" name="next_status" value={nextStatus} />
-                          <button type="submit" className="inline-flex items-center gap-1 rounded-lg border border-surface-border bg-foreground/[0.03] px-3 py-1.5 text-xs font-medium text-foreground/80 hover:bg-foreground/[0.07]">
-                            <UserX2 size={14} />
-                            {nextStatus === "disabled" ? "Disable" : "Enable"}
-                          </button>
-                        </form>
+                        <CustomerStatusConfirmButton
+                          action={updateStatusAction}
+                          customerID={customer.id}
+                          nextStatus={nextStatus}
+                          returnTo={current}
+                        />
                       </div>
                     </td>
                   </tr>
