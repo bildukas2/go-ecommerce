@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Chip } from "@heroui/react";
-import { Button } from "@/components/ui/button";
+import { Button as HeroButton, Chip } from "@heroui/react";
+import { ShoppingCart } from "lucide-react";
+import { Button as UIButton } from "@/components/ui/button";
 import { useCart } from "@/components/cart-context";
 import type { AdminCustomOption, CartCustomOptionSelectionInput, ProductVariant } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
@@ -264,9 +265,9 @@ export function AddToCartButton({
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
             This product is not available for purchase yet. Check back soon.
           </p>
-          <Button asChild variant="outline" className="mt-3 rounded-xl">
+          <UIButton asChild variant="outline" className="mt-3 rounded-xl">
             <Link href="/products">Back to products</Link>
-          </Button>
+          </UIButton>
         </div>
       </div>
     );
@@ -424,14 +425,19 @@ export function AddToCartButton({
       )}
 
       <div className="flex flex-col gap-3">
-        <Button
-          onClick={onClick}
+        <HeroButton
+          onPress={onClick}
           size="lg"
-          className="h-12 rounded-xl text-base font-semibold"
-          disabled={status === "loading" || !canAdd || disableControls}
+          radius="lg"
+          color="primary"
+          variant="solid"
+          className="h-12 w-full text-base font-semibold transition-transform data-[hover=true]:scale-[1.01]"
+          isLoading={status === "loading"}
+          isDisabled={status === "loading" || !canAdd || disableControls}
+          startContent={status === "loading" ? null : <ShoppingCart size={18} aria-hidden />}
         >
-          {status === "loading" ? "Adding..." : !hasPurchasableVariant ? "Out of Stock" : "Add to Cart"}
-        </Button>
+          {!hasPurchasableVariant ? "Out of Stock" : "Add to Cart"}
+        </HeroButton>
 
         {selectedVariant && selectedVariant.stock > 0 && selectedVariant.stock <= 5 && (
           <p className="text-center text-xs font-medium text-orange-600 dark:text-orange-400">Only {selectedVariant.stock} left in stock!</p>
@@ -450,9 +456,9 @@ export function AddToCartButton({
             Out of stock
           </Chip>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">All variants are currently out of stock.</p>
-          <Button asChild variant="outline" className="mt-3 w-full rounded-xl">
+          <UIButton asChild variant="outline" className="mt-3 w-full rounded-xl">
             <Link href="/products">Back to products</Link>
-          </Button>
+          </UIButton>
         </div>
       )}
     </div>

@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button } from "@heroui/react";
+import { Heart } from "lucide-react";
 import { addAccountFavorite } from "@/lib/api";
 
 type FavoriteToggleButtonProps = {
@@ -38,7 +39,15 @@ export function FavoriteToggleButton({ productID, nextPathOnLogin = "/" }: Favor
 
   return (
     <div className="space-y-2">
-      <Button type="button" variant="secondary" className="w-full" onClick={onFavorite} disabled={loading}>
+      <Button
+        type="button"
+        variant="bordered"
+        radius="lg"
+        className="w-full border-surface-border bg-background/40 font-medium"
+        onPress={onFavorite}
+        isDisabled={loading}
+        startContent={<Heart size={17} aria-hidden />}
+      >
         {loading ? "Saving..." : "Save to Favorites"}
       </Button>
       {status ? <p className="text-sm text-emerald-600 dark:text-emerald-400">{status}</p> : null}
