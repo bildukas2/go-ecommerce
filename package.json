@@ -1,0 +1,24 @@
+{
+  "name": "go-ecommerce",
+  "version": "1.0.0",
+  "description": "Simple, fast ecommerce starter:\r - Go API + Postgres + Redis\r - Next.js storefront (Tailwind + shadcn/ui + JolyUI)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bildukas2/go-ecommerce.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bildukas2/go-ecommerce/issues"
+  },
+  "homepage": "https://github.com/bildukas2/go-ecommerce#readme"
+}
