@@ -24,20 +24,21 @@ const (
 var ErrInvalidInput = errors.New("catalog invalid input")
 
 type ProductCustomOption struct {
-	ID         string                     `json:"id"`
-	StoreID    *string                    `json:"store_id"`
-	Code       string                     `json:"code"`
-	Title      string                     `json:"title"`
-	TypeGroup  string                     `json:"type_group"`
-	Type       string                     `json:"type"`
-	Required   bool                       `json:"required"`
-	SortOrder  int                        `json:"sort_order"`
-	PriceType  *string                    `json:"price_type"`
-	PriceValue *float64                   `json:"price_value"`
-	IsActive   bool                       `json:"is_active"`
-	CreatedAt  time.Time                  `json:"created_at"`
-	UpdatedAt  time.Time                  `json:"updated_at"`
-	Values     []ProductCustomOptionValue `json:"values"`
+	ID          string                     `json:"id"`
+	StoreID     *string                    `json:"store_id"`
+	Code        string                     `json:"code"`
+	Title       string                     `json:"title"`
+	TypeGroup   string                     `json:"type_group"`
+	Type        string                     `json:"type"`
+	Required    bool                       `json:"required"`
+	SortOrder   int                        `json:"sort_order"`
+	DisplayMode string                     `json:"display_mode"`
+	PriceType   *string                    `json:"price_type"`
+	PriceValue  *float64                   `json:"price_value"`
+	IsActive    bool                       `json:"is_active"`
+	CreatedAt   time.Time                  `json:"created_at"`
+	UpdatedAt   time.Time                  `json:"updated_at"`
+	Values      []ProductCustomOptionValue `json:"values"`
 }
 
 type ProductCustomOptionValue struct {
@@ -46,6 +47,7 @@ type ProductCustomOptionValue struct {
 	Title      string    `json:"title"`
 	SKU        *string   `json:"sku"`
 	SortOrder  int       `json:"sort_order"`
+	SwatchHex  *string   `json:"swatch_hex"`
 	PriceType  string    `json:"price_type"`
 	PriceValue float64   `json:"price_value"`
 	IsDefault  bool      `json:"is_default"`
@@ -68,28 +70,30 @@ type CustomOptionValueUpsertInput struct {
 	Title      string
 	SKU        *string
 	SortOrder  *int
+	SwatchHex  *string
 	PriceType  string
 	PriceValue *float64
 	IsDefault  bool
 }
 
 type CustomOptionUpsertInput struct {
-	StoreID    *string
-	Code       string
-	Title      string
-	TypeGroup  string
-	Type       string
-	Required   bool
-	SortOrder  *int
-	PriceType  *string
-	PriceValue *float64
-	IsActive   *bool
-	Values     []CustomOptionValueUpsertInput
+	StoreID     *string
+	Code        string
+	Title       string
+	TypeGroup   string
+	Type        string
+	Required    bool
+	SortOrder   *int
+	DisplayMode string
+	PriceType   *string
+	PriceValue  *float64
+	IsActive    *bool
+	Values      []CustomOptionValueUpsertInput
 }
 
 func (s *Store) ListCustomOptions(ctx context.Context, in ListCustomOptionsParams) ([]ProductCustomOption, error) {
 	query := `
-		SELECT id, store_id, code, title, type_group, type, required, sort_order, price_type, price_value, is_active, created_at, updated_at
+		SELECT id, store_id, code, title, type_group, type, required, sort_order, display_mode, price_type, price_value, is_active, created_at, updated_at
 		FROM product_custom_options
 		WHERE 1=1`
 	args := make([]any, 0, 2)
@@ -147,9 +151,9 @@ func (s *Store) CreateCustomOption(ctx context.Context, in CustomOptionUpsertInp
 	)
 	err = tx.QueryRowContext(ctx, `
 		INSERT INTO product_custom_options (
-			store_id, code, title, type_group, type, required, sort_order, price_type, price_value, is_active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING id, store_id, code, title, type_group, type, required, sort_order, price_type, price_value, is_active, created_at, updated_at
+			store_id, code, title, type_group, type, required, sort_order, display_mode, price_type, price_value, is_active
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		RETURNING id, store_id, code, title, type_group, type, required, sort_order, display_mode, price_type, price_value, is_active, created_at, updated_at
 	`,
 		toNullString(normalized.StoreID),
 		normalized.Code,
@@ -158,6 +162,7 @@ func (s *Store) CreateCustomOption(ctx context.Context, in CustomOptionUpsertInp
 		normalized.Type,
 		normalized.Required,
 		normalized.SortOrder,
+		normalized.DisplayMode,
 		toNullString(normalized.PriceType),
 		toNullFloat64(normalized.PriceValue),
 		normalized.IsActive,
@@ -170,6 +175,7 @@ func (s *Store) CreateCustomOption(ctx context.Context, in CustomOptionUpsertInp
 		&item.Type,
 		&item.Required,
 		&item.SortOrder,
+		&item.DisplayMode,
 		&priceType,
 		&priceVal,
 		&item.IsActive,
@@ -200,7 +206,7 @@ func (s *Store) CreateCustomOption(ctx context.Context, in CustomOptionUpsertInp
 
 func (s *Store) GetCustomOptionByID(ctx context.Context, id string) (ProductCustomOption, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, store_id, code, title, type_group, type, required, sort_order, price_type, price_value, is_active, created_at, updated_at
+		SELECT id, store_id, code, title, type_group, type, required, sort_order, display_mode, price_type, price_value, is_active, created_at, updated_at
 		FROM product_custom_options
 		WHERE id = $1::uuid
 	`, id)
@@ -247,12 +253,13 @@ func (s *Store) UpdateCustomOption(ctx context.Context, id string, in CustomOpti
 			type = $6,
 			required = $7,
 			sort_order = $8,
-			price_type = $9,
-			price_value = $10,
-			is_active = $11,
+			display_mode = $9,
+			price_type = $10,
+			price_value = $11,
+			is_active = $12,
 			updated_at = now()
 		WHERE id = $1::uuid
-		RETURNING id, store_id, code, title, type_group, type, required, sort_order, price_type, price_value, is_active, created_at, updated_at
+		RETURNING id, store_id, code, title, type_group, type, required, sort_order, display_mode, price_type, price_value, is_active, created_at, updated_at
 	`,
 		id,
 		toNullString(normalized.StoreID),
@@ -262,6 +269,7 @@ func (s *Store) UpdateCustomOption(ctx context.Context, id string, in CustomOpti
 		normalized.Type,
 		normalized.Required,
 		normalized.SortOrder,
+		normalized.DisplayMode,
 		toNullString(normalized.PriceType),
 		toNullFloat64(normalized.PriceValue),
 		normalized.IsActive,
@@ -274,6 +282,7 @@ func (s *Store) UpdateCustomOption(ctx context.Context, id string, in CustomOpti
 		&item.Type,
 		&item.Required,
 		&item.SortOrder,
+		&item.DisplayMode,
 		&priceType,
 		&priceVal,
 		&item.IsActive,
@@ -402,23 +411,25 @@ func (s *Store) DetachProductCustomOption(ctx context.Context, productID, option
 }
 
 type normalizedCustomOptionInput struct {
-	StoreID    *string
-	Code       string
-	Title      string
-	TypeGroup  string
-	Type       string
-	Required   bool
-	SortOrder  int
-	PriceType  *string
-	PriceValue *float64
-	IsActive   bool
-	Values     []normalizedCustomOptionValueInput
+	StoreID     *string
+	Code        string
+	Title       string
+	TypeGroup   string
+	Type        string
+	Required    bool
+	SortOrder   int
+	DisplayMode string
+	PriceType   *string
+	PriceValue  *float64
+	IsActive    bool
+	Values      []normalizedCustomOptionValueInput
 }
 
 type normalizedCustomOptionValueInput struct {
 	Title      string
 	SKU        *string
 	SortOrder  int
+	SwatchHex  *string
 	PriceType  string
 	PriceValue float64
 	IsDefault  bool
@@ -455,15 +466,21 @@ func validateAndNormalizeCustomOptionInput(in CustomOptionUpsertInput) (normaliz
 		isActive = *in.IsActive
 	}
 
+	displayMode := strings.TrimSpace(strings.ToLower(in.DisplayMode))
+	if displayMode == "" {
+		displayMode = "default"
+	}
+	
 	out := normalizedCustomOptionInput{
-		StoreID:   normalizeOptionalTrimmedString(in.StoreID),
-		Code:      code,
-		Title:     title,
-		TypeGroup: typeGroup,
-		Type:      optionType,
-		Required:  in.Required,
-		SortOrder: sortOrder,
-		IsActive:  isActive,
+		StoreID:     normalizeOptionalTrimmedString(in.StoreID),
+		Code:        code,
+		Title:       title,
+		TypeGroup:   typeGroup,
+		Type:        optionType,
+		Required:    in.Required,
+		SortOrder:   sortOrder,
+		DisplayMode: displayMode,
+		IsActive:    isActive,
 	}
 
 	if typeGroup == CustomOptionTypeGroupSelect {
@@ -522,10 +539,12 @@ func normalizeCustomOptionValueInput(in CustomOptionValueUpsertInput) (normalize
 		sortOrder = *in.SortOrder
 	}
 	sku := normalizeOptionalTrimmedString(in.SKU)
+	swatchHex := normalizeOptionalTrimmedString(in.SwatchHex)
 	return normalizedCustomOptionValueInput{
 		Title:      title,
 		SKU:        sku,
 		SortOrder:  sortOrder,
+		SwatchHex:  swatchHex,
 		PriceType:  priceType,
 		PriceValue: *in.PriceValue,
 		IsDefault:  in.IsDefault,
@@ -586,15 +605,17 @@ func replaceCustomOptionValuesTx(ctx context.Context, tx *sql.Tx, optionID strin
 	for _, value := range in.Values {
 		var item ProductCustomOptionValue
 		var sku sql.NullString
+		var swatchHex sql.NullString
 		err := tx.QueryRowContext(ctx, `
-			INSERT INTO product_custom_option_values (option_id, title, sku, sort_order, price_type, price_value, is_default)
-			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
-			RETURNING id, option_id, title, sku, sort_order, price_type, price_value, is_default, created_at, updated_at
+			INSERT INTO product_custom_option_values (option_id, title, sku, sort_order, swatch_hex, price_type, price_value, is_default)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+			RETURNING id, option_id, title, sku, sort_order, swatch_hex, price_type, price_value, is_default, created_at, updated_at
 		`,
 			optionID,
 			value.Title,
 			toNullString(value.SKU),
 			value.SortOrder,
+			toNullString(value.SwatchHex),
 			value.PriceType,
 			value.PriceValue,
 			value.IsDefault,
@@ -604,6 +625,7 @@ func replaceCustomOptionValuesTx(ctx context.Context, tx *sql.Tx, optionID strin
 			&item.Title,
 			&sku,
 			&item.SortOrder,
+			&swatchHex,
 			&item.PriceType,
 			&item.PriceValue,
 			&item.IsDefault,
@@ -614,6 +636,7 @@ func replaceCustomOptionValuesTx(ctx context.Context, tx *sql.Tx, optionID strin
 			return nil, err
 		}
 		item.SKU = fromNullString(sku)
+		item.SwatchHex = fromNullString(swatchHex)
 		values = append(values, item)
 	}
 	return values, nil
@@ -621,7 +644,7 @@ func replaceCustomOptionValuesTx(ctx context.Context, tx *sql.Tx, optionID strin
 
 func listCustomOptionValues(ctx context.Context, q queryable, optionID string) ([]ProductCustomOptionValue, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT id, option_id, title, sku, sort_order, price_type, price_value, is_default, created_at, updated_at
+		SELECT id, option_id, title, sku, sort_order, swatch_hex, price_type, price_value, is_default, created_at, updated_at
 		FROM product_custom_option_values
 		WHERE option_id = $1::uuid
 		ORDER BY sort_order ASC, id ASC
@@ -635,12 +658,14 @@ func listCustomOptionValues(ctx context.Context, q queryable, optionID string) (
 	for rows.Next() {
 		var item ProductCustomOptionValue
 		var sku sql.NullString
+		var swatchHex sql.NullString
 		if err := rows.Scan(
 			&item.ID,
 			&item.OptionID,
 			&item.Title,
 			&sku,
 			&item.SortOrder,
+			&swatchHex,
 			&item.PriceType,
 			&item.PriceValue,
 			&item.IsDefault,
@@ -650,6 +675,7 @@ func listCustomOptionValues(ctx context.Context, q queryable, optionID string) (
 			return nil, err
 		}
 		item.SKU = fromNullString(sku)
+		item.SwatchHex = fromNullString(swatchHex)
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -682,6 +708,7 @@ func scanCustomOption(scanner customOptionScanner) (ProductCustomOption, error) 
 		&item.Type,
 		&item.Required,
 		&item.SortOrder,
+		&item.DisplayMode,
 		&priceType,
 		&priceVal,
 		&item.IsActive,
