@@ -84,7 +84,7 @@ function parseOptionPickerValue(raw) {
   if (typeof raw !== "string") return "";
   const trimmed = raw.trim();
   if (!trimmed) return "";
-  const match = trimmed.match(/\(([0-9a-fA-F-]{36})\)$/);
+  const match = trimmed.match(/\(([^()]+)\)\s*$/);
   if (match?.[1]) return match[1];
   return trimmed;
 }

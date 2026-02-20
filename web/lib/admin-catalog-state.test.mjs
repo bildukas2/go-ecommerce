@@ -120,6 +120,7 @@ test("resolveCustomOptionIDs falls back to parsed picker value", () => {
     resolveCustomOptionIDs([], "Gift Wrap (7e6e2f80-1306-4d48-b740-15068f2e7f77)"),
     ["7e6e2f80-1306-4d48-b740-15068f2e7f77"],
   );
+  assert.deepEqual(resolveCustomOptionIDs([], "Gift Wrap (opt_123abc)"), ["opt_123abc"]);
   assert.deepEqual(resolveCustomOptionIDs([], "opt-direct-id"), ["opt-direct-id"]);
 });
 
