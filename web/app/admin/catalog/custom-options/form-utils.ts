@@ -20,8 +20,8 @@ function asNumber(value: unknown): number {
   return 0;
 }
 
-function asBooleanFromForm(value: FormDataEntryValue | null): boolean {
-  return String(value ?? "").trim().toLowerCase() === "true";
+function asBooleanFromForm(formData: FormData, name: string): boolean {
+  return formData.getAll(name).some((v) => String(v).trim().toLowerCase() === "true");
 }
 
 function parseOptionalNumber(value: FormDataEntryValue | null): number | null {
@@ -71,8 +71,8 @@ export function parseCustomOptionFormData(formData: FormData): AdminCustomOption
   const title = String(formData.get("title") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim().toLowerCase();
   const typeGroup = String(formData.get("type_group") ?? "").trim().toLowerCase();
-  const required = asBooleanFromForm(formData.get("required"));
-  const isActive = asBooleanFromForm(formData.get("is_active"));
+  const required = asBooleanFromForm(formData, "required");
+  const isActive = asBooleanFromForm(formData, "is_active");
   const sortOrder = parseOptionalInteger(formData.get("sort_order"));
   const values = parseValuesJSON(formData.get("values_json"));
 

@@ -199,7 +199,6 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
             />
           </label>
           <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-sm">
-            <input type="hidden" name="required" value="false" />
             <input
               name="required"
               type="checkbox"
@@ -208,10 +207,10 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
               onChange={(event) => setRequired(event.target.checked)}
               className="h-4 w-4 rounded border-surface-border"
             />
+            <input type="hidden" name="required" value="false" />
             <span>Required</span>
           </label>
           <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-sm">
-            <input type="hidden" name="is_active" value="false" />
             <input
               name="is_active"
               type="checkbox"
@@ -220,6 +219,7 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
               onChange={(event) => setIsActive(event.target.checked)}
               className="h-4 w-4 rounded border-surface-border"
             />
+            <input type="hidden" name="is_active" value="false" />
             <span>Active</span>
           </label>
         </div>
