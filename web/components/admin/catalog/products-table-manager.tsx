@@ -227,6 +227,7 @@ export function ProductsTableManager({
                           returnTo={currentHref}
                           categories={categories}
                           customOptions={availableCustomOptions}
+                          assignments={assignments}
                           product={{
                             id: product.id,
                             title: product.title,

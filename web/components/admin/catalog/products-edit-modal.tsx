@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AdminCustomOption } from "@/lib/api";
+import type { AdminCustomOption, AdminProductCustomOptionAssignment } from "@/lib/api";
 import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 
 type ActionFn = (formData: FormData) => void | Promise<void>;
@@ -25,10 +25,11 @@ type Props = {
   returnTo: string;
   categories: Array<{ id: string; name: string }>;
   customOptions: Array<Pick<AdminCustomOption, "id" | "title" | "type_group" | "type">>;
+  assignments: AdminProductCustomOptionAssignment[];
   product: EditableProduct;
 };
 
-export function ProductsEditModal({ updateAction, returnTo, categories, customOptions, product }: Props) {
+export function ProductsEditModal({ updateAction, returnTo, categories, customOptions, assignments, product }: Props) {
   const [open, setOpen] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
@@ -145,6 +146,21 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
                 {selectedCustomOptionIDs.map((optionID) => (
                   <input key={`edit-hidden-option-${product.id}-${optionID}`} type="hidden" name="option_ids" value={optionID} />
                 ))}
+                <div className="rounded-xl border border-surface-border bg-foreground/[0.02] px-3 py-2">
+                  <p className="text-xs font-medium text-foreground/80">Currently attached options</p>
+                  {assignments.length === 0 ? (
+                    <p className="mt-1 text-xs text-foreground/65">No customizable options attached.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1 text-xs text-foreground/75">
+                      {assignments.map((assignment) => (
+                        <li key={`${product.id}-attached-${assignment.option_id}`}>
+                          {assignment.option?.title || assignment.option_id} ({assignment.option?.type_group || "unknown"}/
+                          {assignment.option?.type || "unknown"})
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </label>
               <label className="space-y-1 text-sm">
                 <span>Custom option sort order</span>

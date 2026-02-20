@@ -27,6 +27,7 @@ test("ProductsEditModal includes custom-option fields for form submission", asyn
   const source = await read(EDIT_MODAL_PATH);
   expectCustomOptionFields(source);
   assert.match(source, /customOptions/);
+  assert.match(source, /Currently attached options/);
 });
 
 test("Custom option picker includes add, customize, and remove actions", async () => {
