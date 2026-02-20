@@ -26,6 +26,7 @@ type Customer struct {
 	ID           string
 	Email        string
 	PasswordHash string
+	Status       string
 	CreatedAt    time.Time
 }
 
@@ -248,10 +249,10 @@ func (s *Store) GetCustomerByEmail(ctx context.Context, email string) (Customer,
 	normalizedEmail := normalizeEmail(email)
 	var c Customer
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, email, password_hash, created_at
+		SELECT id, email, password_hash, status, created_at
 		FROM customers
 		WHERE email = $1`, normalizedEmail).
-		Scan(&c.ID, &c.Email, &c.PasswordHash, &c.CreatedAt)
+		Scan(&c.ID, &c.Email, &c.PasswordHash, &c.Status, &c.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Customer{}, ErrNotFound
@@ -277,13 +278,14 @@ func (s *Store) CreateSession(ctx context.Context, customerID, tokenHash string,
 func (s *Store) GetCustomerBySessionTokenHash(ctx context.Context, tokenHash string) (Customer, error) {
 	var c Customer
 	err := s.db.QueryRowContext(ctx, `
-		SELECT c.id, c.email, c.password_hash, c.created_at
+		SELECT c.id, c.email, c.password_hash, c.status, c.created_at
 		FROM customer_sessions cs
 		JOIN customers c ON c.id = cs.customer_id
 		WHERE cs.token_hash = $1
 		AND cs.revoked_at IS NULL
-		AND cs.expires_at > now()`, tokenHash).
-		Scan(&c.ID, &c.Email, &c.PasswordHash, &c.CreatedAt)
+		AND cs.expires_at > now()
+		AND c.status = 'active'`, tokenHash).
+		Scan(&c.ID, &c.Email, &c.PasswordHash, &c.Status, &c.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Customer{}, ErrNotFound

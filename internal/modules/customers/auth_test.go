@@ -114,6 +114,20 @@ func TestResolveAuthenticatedCustomer(t *testing.T) {
 			t.Fatalf("expected unauthenticated error, got: %v", err)
 		}
 	})
+
+	t.Run("disabled customer", func(t *testing.T) {
+		disabledStore := &fakeCustomerStore{
+			customerByToken: map[string]storcustomers.Customer{
+				hashSessionToken("disabled-token"): {ID: "cust_disabled", Email: "disabled@example.com", Status: "disabled"},
+			},
+		}
+		req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "disabled-token"})
+		_, _, err := ResolveAuthenticatedCustomer(req.Context(), req, disabledStore)
+		if !errors.Is(err, ErrUnauthenticated) {
+			t.Fatalf("expected unauthenticated for disabled customer, got: %v", err)
+		}
+	})
 }
 
 func TestHandleMeAuthBehavior(t *testing.T) {
@@ -218,6 +232,7 @@ func TestHandleLoginMergesGuestCartAndSetsCanonicalCookie(t *testing.T) {
 			ID:           "cust_1",
 			Email:        "user@example.com",
 			PasswordHash: passwordHash,
+			Status:       "active",
 			CreatedAt:    time.Unix(1700000000, 0).UTC(),
 		},
 	}
@@ -257,5 +272,37 @@ func TestHandleLoginMergesGuestCartAndSetsCanonicalCookie(t *testing.T) {
 	}
 	if !foundCartCookie {
 		t.Fatalf("expected canonical cart cookie to be set")
+	}
+}
+
+func TestHandleLoginRejectsDisabledCustomer(t *testing.T) {
+	passwordHash, err := hashPassword("supersecret")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	loginStore := &fakeLoginStore{
+		customer: storcustomers.Customer{
+			ID:           "cust_disabled",
+			Email:        "disabled@example.com",
+			PasswordHash: passwordHash,
+			Status:       "disabled",
+			CreatedAt:    time.Unix(1700000000, 0).UTC(),
+		},
+	}
+
+	m := &module{store: loginStore, sessionTTL: defaultSessionTTL, now: time.Now}
+	body, _ := json.Marshal(credentialsRequest{Email: "disabled@example.com", Password: "supersecret"})
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	m.handleLogin(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rr.Code)
+	}
+	for _, raw := range rr.Result().Header.Values("Set-Cookie") {
+		if strings.HasPrefix(raw, sessionCookieName+"=") {
+			t.Fatalf("session cookie should not be set for disabled customer")
+		}
 	}
 }

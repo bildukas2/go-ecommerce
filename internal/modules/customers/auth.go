@@ -108,5 +108,8 @@ func ResolveAuthenticatedCustomer(ctx context.Context, r *http.Request, store Se
 		}
 		return storcustomers.Customer{}, "", err
 	}
+	if strings.EqualFold(customer.Status, "disabled") {
+		return storcustomers.Customer{}, "", ErrUnauthenticated
+	}
 	return customer, hashed, nil
 }

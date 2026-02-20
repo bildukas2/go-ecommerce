@@ -177,6 +177,10 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
+	if strings.EqualFold(customer.Status, "disabled") {
+		platformhttp.Error(w, http.StatusForbidden, "account disabled")
+		return
+	}
 	if err := m.startSession(w, r, customer.ID); err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "login error")
 		return
