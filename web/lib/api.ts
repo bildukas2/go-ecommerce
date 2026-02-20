@@ -51,6 +51,7 @@ export type AdminCustomOptionValue = {
   price_type: "fixed" | "percent";
   price_value: number;
   is_default: boolean;
+  swatch_hex?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -67,6 +68,7 @@ export type AdminCustomOption = {
   price_type?: "fixed" | "percent" | null;
   price_value?: number | null;
   is_active: boolean;
+  display_mode?: "default" | "buttons" | "color_buttons";
   created_at?: string;
   updated_at?: string;
   values: AdminCustomOptionValue[];
@@ -209,6 +211,7 @@ function normalizeCustomOptionValue(raw: unknown): AdminCustomOptionValue | null
     price_type: priceType,
     price_value: asNumber(obj.price_value),
     is_default: asBoolean(obj.is_default),
+    swatch_hex: asNullableString(obj.swatch_hex),
     created_at: asString(obj.created_at) || undefined,
     updated_at: asString(obj.updated_at) || undefined,
   };
@@ -235,6 +238,12 @@ function normalizeCustomOption(raw: unknown): AdminCustomOption | null {
     priceType = normalized;
   }
 
+  const rawDisplayMode = asString(obj.display_mode || "default").toLowerCase();
+  let displayMode: AdminCustomOption["display_mode"] = "default";
+  if (["default", "buttons", "color_buttons"].includes(rawDisplayMode)) {
+    displayMode = rawDisplayMode as AdminCustomOption["display_mode"];
+  }
+
   const valuesRaw = Array.isArray(obj.values) ? obj.values : [];
   return {
     id,
@@ -251,6 +260,7 @@ function normalizeCustomOption(raw: unknown): AdminCustomOption | null {
         ? null
         : asNumber(obj.price_value),
     is_active: asBoolean(obj.is_active),
+    display_mode: displayMode,
     created_at: asString(obj.created_at) || undefined,
     updated_at: asString(obj.updated_at) || undefined,
     values: valuesRaw.map(normalizeCustomOptionValue).filter((item): item is AdminCustomOptionValue => item !== null),
@@ -1594,6 +1604,7 @@ export type AdminCustomOptionValueMutationInput = {
   price_type: "fixed" | "percent";
   price_value: number;
   is_default?: boolean;
+  swatch_hex?: string | null;
 };
 
 export type AdminCustomOptionMutationInput = {
@@ -1607,6 +1618,7 @@ export type AdminCustomOptionMutationInput = {
   price_type?: "fixed" | "percent" | null;
   price_value?: number | null;
   is_active?: boolean;
+  display_mode?: "default" | "buttons" | "color_buttons";
   values?: AdminCustomOptionValueMutationInput[];
 };
 
