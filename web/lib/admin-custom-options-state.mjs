@@ -1,4 +1,5 @@
 const SELECT_TYPES = new Set(["dropdown", "radio", "checkbox", "multiple"]);
+const DEFAULT_SWATCH_HEX = "#0072F5";
 
 export function typeGroupFromType(type) {
   const normalized = String(type ?? "").trim().toLowerCase();
@@ -11,7 +12,8 @@ export function typeGroupFromType(type) {
 export function buildCustomOptionPayload(input) {
   const type = String(input?.type ?? "").trim().toLowerCase();
   const typeGroup = typeGroupFromType(type);
-  const values = parseValues(input?.values_json);
+  const displayMode = String(input?.display_mode ?? "").trim().toLowerCase() || "default";
+  const values = normalizeValuesForDisplayMode(parseValues(input?.values_json), displayMode);
 
   const payload = {
     code: String(input?.code ?? "").trim().toLowerCase(),
@@ -21,6 +23,7 @@ export function buildCustomOptionPayload(input) {
     required: String(input?.required ?? "").trim().toLowerCase() === "true",
     is_active: String(input?.is_active ?? "").trim().toLowerCase() === "true",
     sort_order: parseInteger(input?.sort_order),
+    display_mode: displayMode,
     values,
   };
 
@@ -58,10 +61,19 @@ function parseValues(raw) {
       price_type: String(row?.price_type ?? "").trim().toLowerCase() === "percent" ? "percent" : "fixed",
       price_value: parseFloatSafe(row?.price_value),
       is_default: Boolean(row?.is_default),
+      swatch_hex: String(row?.swatch_hex ?? "").trim() || null,
     }));
   } catch {
     return [];
   }
+}
+
+function normalizeValuesForDisplayMode(values, displayMode) {
+  if (displayMode !== "color_buttons") return values;
+  return values.map((value) => ({
+    ...value,
+    swatch_hex: value?.swatch_hex ?? DEFAULT_SWATCH_HEX,
+  }));
 }
 
 function parseInteger(value) {

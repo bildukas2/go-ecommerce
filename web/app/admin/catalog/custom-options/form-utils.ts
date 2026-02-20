@@ -1,6 +1,7 @@
 import type { AdminCustomOptionMutationInput } from "@/lib/api";
 
 type UnknownRecord = Record<string, unknown>;
+const DEFAULT_SWATCH_HEX = "#0072F5";
 
 function asRecord(value: unknown): UnknownRecord {
   if (typeof value !== "object" || value === null) return {};
@@ -76,7 +77,14 @@ export function parseCustomOptionFormData(formData: FormData): AdminCustomOption
   const isActive = asBooleanFromForm(formData, "is_active");
   const sortOrder = parseOptionalInteger(formData.get("sort_order"));
   const displayMode = asString(formData.get("display_mode")).trim().toLowerCase() || "default";
-  const values = parseValuesJSON(formData.get("values_json"));
+  const values = parseValuesJSON(formData.get("values_json")) ?? [];
+  const normalizedValues =
+    displayMode === "color_buttons"
+      ? values.map((value) => ({
+          ...value,
+          swatch_hex: value.swatch_hex ?? DEFAULT_SWATCH_HEX,
+        }))
+      : values;
 
   const payload: AdminCustomOptionMutationInput = {
     code,
@@ -87,7 +95,7 @@ export function parseCustomOptionFormData(formData: FormData): AdminCustomOption
     is_active: isActive,
     sort_order: sortOrder ?? 0,
     display_mode: displayMode as AdminCustomOptionMutationInput["display_mode"],
-    values,
+    values: normalizedValues,
   };
 
   if (typeGroup === "select") {
