@@ -25,6 +25,7 @@ type ValueDraft = {
   is_default: boolean;
   swatch_hex?: string | null;
 };
+const DEFAULT_SWATCH_HEX = "#0072F5";
 
 const typeGroups: Array<{ label: string; options: Array<{ value: OptionType; label: string }> }> = [
   { label: "Text", options: [{ value: "field", label: "Field" }, { value: "area", label: "Area" }] },
@@ -70,7 +71,7 @@ function defaultValues(initial?: AdminCustomOption): ValueDraft[] {
     price_type: value.price_type,
     price_value: String(value.price_value ?? 0),
     is_default: value.is_default,
-    swatch_hex: value.swatch_hex ?? null,
+    swatch_hex: value.swatch_hex ?? DEFAULT_SWATCH_HEX,
   }));
 }
 
@@ -82,7 +83,7 @@ function emptyValueDraft(nextSort: number): ValueDraft {
     price_type: "fixed",
     price_value: "0",
     is_default: false,
-    swatch_hex: null,
+    swatch_hex: DEFAULT_SWATCH_HEX,
   };
 }
 
@@ -94,7 +95,7 @@ function normalizeValuesForPayload(values: ValueDraft[]): AdminCustomOptionValue
     price_type: value.price_type,
     price_value: Number.parseFloat(value.price_value),
     is_default: value.is_default,
-    swatch_hex: value.swatch_hex || null,
+    swatch_hex: value.swatch_hex?.trim() || DEFAULT_SWATCH_HEX,
   }));
 }
 
@@ -419,8 +420,13 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
                       </td>
                       <td className="px-3 py-2">
                         <input
-                          value={value.swatch_hex ?? "#0072F5"}
-                          onChange={(event) => updateValue(index, { swatch_hex: event.target.value || null })}
+                          value={value.swatch_hex ?? DEFAULT_SWATCH_HEX}
+                          onInput={(event) =>
+                            updateValue(index, { swatch_hex: (event.target as HTMLInputElement).value || DEFAULT_SWATCH_HEX })
+                          }
+                          onChange={(event) =>
+                            updateValue(index, { swatch_hex: (event.target as HTMLInputElement).value || DEFAULT_SWATCH_HEX })
+                          }
                           type="color"
                           className="w-full h-10 rounded-lg border border-surface-border bg-background cursor-pointer"
                         />

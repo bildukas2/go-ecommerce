@@ -40,6 +40,20 @@ test("buildCustomOptionPayload sets default swatch color for color_buttons value
   assert.equal(payload.values[0].swatch_hex, "#0072F5");
 });
 
+test("buildCustomOptionPayload sets default swatch color for default display mode values", () => {
+  const payload = buildCustomOptionPayload({
+    code: "color",
+    title: "Color",
+    type: "dropdown",
+    display_mode: "default",
+    values_json: JSON.stringify([{ title: "Blue", price_type: "fixed", price_value: 0, swatch_hex: null }]),
+  });
+
+  assert.equal(payload.display_mode, "default");
+  assert.equal(payload.values.length, 1);
+  assert.equal(payload.values[0].swatch_hex, "#0072F5");
+});
+
 test("validateSelectValues enforces title and non-negative price", () => {
   assert.equal(validateSelectValues([]), false);
   assert.equal(validateSelectValues([{ title: " ", price_value: 1 }]), false);

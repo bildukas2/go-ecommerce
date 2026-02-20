@@ -13,7 +13,7 @@ export function buildCustomOptionPayload(input) {
   const type = String(input?.type ?? "").trim().toLowerCase();
   const typeGroup = typeGroupFromType(type);
   const displayMode = String(input?.display_mode ?? "").trim().toLowerCase() || "default";
-  const values = normalizeValuesForDisplayMode(parseValues(input?.values_json), displayMode);
+  const values = normalizeValues(parseValues(input?.values_json));
 
   const payload = {
     code: String(input?.code ?? "").trim().toLowerCase(),
@@ -68,8 +68,7 @@ function parseValues(raw) {
   }
 }
 
-function normalizeValuesForDisplayMode(values, displayMode) {
-  if (displayMode !== "color_buttons") return values;
+function normalizeValues(values) {
   return values.map((value) => ({
     ...value,
     swatch_hex: value?.swatch_hex ?? DEFAULT_SWATCH_HEX,

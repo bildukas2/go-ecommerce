@@ -78,13 +78,10 @@ export function parseCustomOptionFormData(formData: FormData): AdminCustomOption
   const sortOrder = parseOptionalInteger(formData.get("sort_order"));
   const displayMode = asString(formData.get("display_mode")).trim().toLowerCase() || "default";
   const values = parseValuesJSON(formData.get("values_json")) ?? [];
-  const normalizedValues =
-    displayMode === "color_buttons"
-      ? values.map((value) => ({
-          ...value,
-          swatch_hex: value.swatch_hex ?? DEFAULT_SWATCH_HEX,
-        }))
-      : values;
+  const normalizedValues = values.map((value) => ({
+    ...value,
+    swatch_hex: value.swatch_hex ?? DEFAULT_SWATCH_HEX,
+  }));
 
   const payload: AdminCustomOptionMutationInput = {
     code,
