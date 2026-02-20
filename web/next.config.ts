@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 function buildRemotePatterns() {
   const patterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [
@@ -38,6 +39,9 @@ function buildRemotePatterns() {
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: buildRemotePatterns(),
+  },
+  turbopack: {
+    root: path.resolve(__dirname),
   },
 };
 
