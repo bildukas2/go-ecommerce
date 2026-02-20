@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Button, Card, CardBody } from "@heroui/react";
+import { ChevronRight } from "lucide-react";
 import { getAdminCustomOption, updateAdminCustomOption } from "@/lib/api";
 import { CustomOptionForm } from "@/components/admin/catalog/custom-option-form";
 import { parseCustomOptionFormData } from "../form-utils";
@@ -27,6 +29,21 @@ function messageHref(basePath: string, key: "notice" | "error", message: string)
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Request failed";
+}
+
+type NoticeTone = "success" | "danger";
+
+function NoticeCard({ tone, message }: { tone: NoticeTone; message: string }) {
+  const className =
+    tone === "success"
+      ? "rounded-2xl border border-emerald-300/60 bg-emerald-50/80 text-emerald-800"
+      : "rounded-2xl border border-danger-300/60 bg-danger-50/80 text-danger-800";
+
+  return (
+    <Card className={className}>
+      <CardBody className="py-3 text-sm">{message}</CardBody>
+    </Card>
+  );
 }
 
 export default async function AdminCustomOptionEditPage({ params, searchParams }: PageProps) {
@@ -60,30 +77,70 @@ export default async function AdminCustomOptionEditPage({ params, searchParams }
   if (!option) {
     return (
       <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Customizable Option</h1>
-          <p className="text-sm text-foreground/70">Load an existing option and update its behavior.</p>
+        <div className="space-y-4">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+            <Link href="/admin" className="transition-colors hover:text-foreground">
+              Admin
+            </Link>
+            <ChevronRight size={14} />
+            <Link href="/admin/catalog" className="transition-colors hover:text-foreground">
+              Catalog
+            </Link>
+            <ChevronRight size={14} />
+            <Link href="/admin/catalog/custom-options" className="transition-colors hover:text-foreground">
+              Customizable Options
+            </Link>
+            <ChevronRight size={14} />
+            <span className="text-foreground">Edit</span>
+          </nav>
+
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Edit Customizable Option</h1>
+              <p className="text-sm text-foreground/70">Load an existing option and update its behavior.</p>
+            </div>
+            <Button as={Link} href="/admin/catalog/custom-options" variant="bordered">
+              Back to options
+            </Button>
+          </div>
         </div>
-        {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
-        <Link
-          href="/admin/catalog/custom-options"
-          className="inline-flex w-fit rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
-        >
-          Back to options
-        </Link>
+        {fetchError && <NoticeCard tone="danger" message={fetchError} />}
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Edit Customizable Option</h1>
-        <p className="text-sm text-foreground/70">Update option type, values, and pricing behavior.</p>
+      <div className="space-y-4">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+          <Link href="/admin" className="transition-colors hover:text-foreground">
+            Admin
+          </Link>
+          <ChevronRight size={14} />
+          <Link href="/admin/catalog" className="transition-colors hover:text-foreground">
+            Catalog
+          </Link>
+          <ChevronRight size={14} />
+          <Link href="/admin/catalog/custom-options" className="transition-colors hover:text-foreground">
+            Customizable Options
+          </Link>
+          <ChevronRight size={14} />
+          <span className="text-foreground">Edit</span>
+        </nav>
+
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Edit Customizable Option</h1>
+            <p className="text-sm text-foreground/70">Update option type, values, and pricing behavior.</p>
+          </div>
+          <Button as={Link} href="/admin/catalog/custom-options" variant="bordered">
+            Back to options
+          </Button>
+        </div>
       </div>
 
-      {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</div>}
-      {actionError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</div>}
+      {notice && <NoticeCard tone="success" message={notice} />}
+      {actionError && <NoticeCard tone="danger" message={actionError} />}
 
       <CustomOptionForm mode="edit" initial={option} submitAction={updateAction} cancelHref="/admin/catalog/custom-options" />
     </div>

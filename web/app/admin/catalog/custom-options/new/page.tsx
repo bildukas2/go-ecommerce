@@ -1,5 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button, Card, CardBody } from "@heroui/react";
+import { ChevronRight } from "lucide-react";
 import { createAdminCustomOption } from "@/lib/api";
 import { CustomOptionForm } from "@/components/admin/catalog/custom-option-form";
 import { parseCustomOptionFormData } from "../form-utils";
@@ -25,6 +28,21 @@ function errorMessage(error: unknown): string {
   return "Request failed";
 }
 
+type NoticeTone = "success" | "danger";
+
+function NoticeCard({ tone, message }: { tone: NoticeTone; message: string }) {
+  const className =
+    tone === "success"
+      ? "rounded-2xl border border-emerald-300/60 bg-emerald-50/80 text-emerald-800"
+      : "rounded-2xl border border-danger-300/60 bg-danger-50/80 text-danger-800";
+
+  return (
+    <Card className={className}>
+      <CardBody className="py-3 text-sm">{message}</CardBody>
+    </Card>
+  );
+}
+
 export default async function AdminCustomOptionCreatePage({ searchParams }: PageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams ?? {});
   const notice = firstQueryValue(resolvedSearchParams.notice);
@@ -45,13 +63,36 @@ export default async function AdminCustomOptionCreatePage({ searchParams }: Page
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Create Customizable Option</h1>
-        <p className="text-sm text-foreground/70">Define option type, requirement behavior, and pricing setup.</p>
+      <div className="space-y-4">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+          <Link href="/admin" className="transition-colors hover:text-foreground">
+            Admin
+          </Link>
+          <ChevronRight size={14} />
+          <Link href="/admin/catalog" className="transition-colors hover:text-foreground">
+            Catalog
+          </Link>
+          <ChevronRight size={14} />
+          <Link href="/admin/catalog/custom-options" className="transition-colors hover:text-foreground">
+            Customizable Options
+          </Link>
+          <ChevronRight size={14} />
+          <span className="text-foreground">Create</span>
+        </nav>
+
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Create Customizable Option</h1>
+            <p className="text-sm text-foreground/70">Define option type, requirement behavior, and pricing setup.</p>
+          </div>
+          <Button as={Link} href="/admin/catalog/custom-options" variant="bordered">
+            Back to options
+          </Button>
+        </div>
       </div>
 
-      {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</div>}
-      {actionError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</div>}
+      {notice && <NoticeCard tone="success" message={notice} />}
+      {actionError && <NoticeCard tone="danger" message={actionError} />}
 
       <CustomOptionForm mode="create" submitAction={createAction} cancelHref="/admin/catalog/custom-options" />
     </div>
