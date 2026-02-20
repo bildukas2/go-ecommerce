@@ -82,7 +82,6 @@ func TestDeleteCustomOptionBlockedWhenAssigned(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create option: %v", err)
 	}
-	defer deleteOptionByID(t, store.db, option.ID)
 
 	if _, err := store.AttachProductCustomOption(ctx, productID, option.ID, nil); err != nil {
 		t.Fatalf("attach option: %v", err)
@@ -118,7 +117,6 @@ func TestAttachProductCustomOptionUniqueness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create option: %v", err)
 	}
-	defer deleteOptionByID(t, store.db, option.ID)
 
 	if _, err := store.AttachProductCustomOption(ctx, productID, option.ID, nil); err != nil {
 		t.Fatalf("first attach: %v", err)
