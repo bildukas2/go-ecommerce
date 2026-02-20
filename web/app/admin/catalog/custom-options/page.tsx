@@ -2,6 +2,23 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  Button,
+  Card,
+  CardBody,
+  Chip,
+  Input,
+  Select,
+  SelectItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/react";
+import { Layers3 } from "lucide-react";
+import { CustomOptionDeleteButton } from "@/components/admin/catalog/custom-option-delete-button";
+import {
   createAdminCustomOption,
   deleteAdminCustomOption,
   getAdminCustomOption,
@@ -45,9 +62,8 @@ function errorMessage(error: unknown): string {
   return "Request failed";
 }
 
-function typeLabel(option: AdminCustomOption): string {
-  const typeGroupLabel = option.type_group.slice(0, 1).toUpperCase() + option.type_group.slice(1);
-  return `${typeGroupLabel} / ${option.type}`;
+function typeGroupLabel(typeGroup: AdminCustomOption["type_group"]): string {
+  return typeGroup.slice(0, 1).toUpperCase() + typeGroup.slice(1);
 }
 
 function updatedLabel(value?: string): string {
@@ -158,114 +174,131 @@ export default async function AdminCustomOptionsPage({ searchParams }: PageProps
       {actionError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</div>}
       {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
 
-      <section className="glass rounded-2xl border p-4">
-        <form method="get" action="/admin/catalog/custom-options" className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
-          <label className="space-y-1 text-sm">
-            <span className="text-foreground/70">Search by title</span>
-            <input
+      <Card className="glass rounded-2xl border border-surface-border/80">
+        <CardBody className="p-4">
+          <form method="get" action="/admin/catalog/custom-options" className="grid gap-3 md:grid-cols-[1fr_240px_auto]">
+            <Input
               name="q"
+              label="Search"
               defaultValue={query}
               placeholder="Gift wrap"
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+              variant="bordered"
+              classNames={{ inputWrapper: "border-surface-border bg-background/60" }}
             />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-foreground/70">Type group</span>
-            <select
+            <Select
               name="type_group"
-              defaultValue={typeGroup}
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+              label="Type group"
+              defaultSelectedKeys={new Set([typeGroup || ""])}
+              variant="bordered"
+              classNames={{ trigger: "border-surface-border bg-background/60" }}
             >
               {typeGroupOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+                <SelectItem key={option.value}>{option.label}</SelectItem>
               ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            className="mt-6 rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
-          >
-            Apply
-          </button>
-        </form>
-      </section>
+            </Select>
+            <Button type="submit" color="primary" variant="flat" className="md:self-end">
+              Apply
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
 
-      <section className="glass overflow-x-auto rounded-2xl border shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.35)]">
-        <table className="min-w-full text-sm">
-          <thead className="bg-foreground/[0.02] text-left text-xs uppercase tracking-wide text-foreground/70">
-            <tr>
-              <th className="px-3 py-2 font-medium">Title</th>
-              <th className="px-3 py-2 font-medium">Type</th>
-              <th className="px-3 py-2 font-medium">Required</th>
-              <th className="px-3 py-2 font-medium">Updated</th>
-              <th className="px-3 py-2 font-medium">Active</th>
-              <th className="px-3 py-2 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-foreground/60">
-                  {fetchError ? "No options loaded." : "No customizable options match the current filters."}
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t border-surface-border align-top">
-                  <td className="px-3 py-3">
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="font-mono text-xs text-foreground/60">{item.code}</p>
-                  </td>
-                  <td className="px-3 py-3">{typeLabel(item)}</td>
-                  <td className="px-3 py-3">{item.required ? "Yes" : "No"}</td>
-                  <td className="px-3 py-3 text-foreground/75">{updatedLabel(item.updated_at)}</td>
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      item.is_active
-                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                        : "bg-slate-500/20 text-slate-700 dark:text-slate-300"
-                    }`}>
-                      {item.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/admin/catalog/custom-options/${item.id}`}
-                        className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium hover:bg-foreground/[0.05]"
-                      >
-                        Edit
-                      </Link>
-                      <form action={duplicateAction}>
-                        <input type="hidden" name="option_id" value={item.id} />
-                        <input type="hidden" name="return_to" value={currentHref} />
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-blue-500/35 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-500/16 dark:text-blue-300"
+      {items.length === 0 ? (
+        <Card className="glass rounded-2xl border border-surface-border/80 shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.35)]">
+          <CardBody className="flex min-h-[280px] items-center justify-center p-8">
+            <div className="mx-auto max-w-md space-y-4 text-center">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-cyan-400/35 bg-cyan-400/10 text-cyan-700 dark:text-cyan-300">
+                <Layers3 size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">No customizable options yet</h2>
+                <p className="mt-1 text-sm text-foreground/70">
+                  {fetchError ? "No options loaded right now." : "No customizable options match the current filters."}
+                </p>
+              </div>
+              <Button as={Link} href="/admin/catalog/custom-options/new" color="primary" variant="flat">
+                Create option
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      ) : (
+        <Card className="glass rounded-2xl border border-surface-border/80 shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.35)]">
+          <CardBody className="overflow-x-auto p-0">
+            <Table
+              aria-label="Customizable options table"
+              removeWrapper
+              classNames={{
+                table: "min-w-[980px]",
+                th: "bg-foreground/[0.02] text-foreground/65",
+                td: "align-top",
+              }}
+            >
+              <TableHeader>
+                <TableColumn>Title</TableColumn>
+                <TableColumn>Type</TableColumn>
+                <TableColumn>Required</TableColumn>
+                <TableColumn>Updated</TableColumn>
+                <TableColumn>Active</TableColumn>
+                <TableColumn align="end">Actions</TableColumn>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <p className="font-semibold">{item.title}</p>
+                      <p className="font-mono text-xs text-foreground/60">{item.code}</p>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        <Chip size="sm" variant="flat" color="primary">
+                          {typeGroupLabel(item.type_group)}
+                        </Chip>
+                        <Chip size="sm" variant="flat" color="default">
+                          {item.type}
+                        </Chip>
+                      </div>
+                    </TableCell>
+                    <TableCell>{item.required ? "Yes" : "No"}</TableCell>
+                    <TableCell className="text-foreground/75">{updatedLabel(item.updated_at)}</TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" color={item.is_active ? "success" : "default"}>
+                        {item.is_active ? "Active" : "Inactive"}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          as={Link}
+                          href={`/admin/catalog/custom-options/${item.id}`}
+                          size="sm"
+                          color="primary"
+                          variant="flat"
                         >
-                          Duplicate
-                        </button>
-                      </form>
-                      <form action={deleteAction}>
-                        <input type="hidden" name="option_id" value={item.id} />
-                        <input type="hidden" name="return_to" value={currentHref} />
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-red-500/35 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-500/16 dark:text-red-300"
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
+                          Edit
+                        </Button>
+                        <form action={duplicateAction}>
+                          <input type="hidden" name="option_id" value={item.id} />
+                          <input type="hidden" name="return_to" value={currentHref} />
+                          <Button type="submit" size="sm" variant="bordered">
+                            Duplicate
+                          </Button>
+                        </form>
+                        <CustomOptionDeleteButton
+                          action={deleteAction}
+                          optionID={item.id}
+                          returnTo={currentHref}
+                          optionTitle={item.title}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }
