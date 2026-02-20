@@ -42,6 +42,7 @@ type Props = {
   bulkAssignCategoriesAction: ActionFn;
   bulkRemoveCategoriesAction: ActionFn;
   bulkDiscountAction: ActionFn;
+  bulkAttachCustomOptionsAction: ActionFn;
 };
 
 type ProductViewData = {
@@ -102,6 +103,7 @@ export function ProductsTableManager({
   bulkAssignCategoriesAction,
   bulkRemoveCategoriesAction,
   bulkDiscountAction,
+  bulkAttachCustomOptionsAction,
 }: Props) {
   const [selectedProductIDs, setSelectedProductIDs] = useState<string[]>([]);
 
@@ -134,10 +136,12 @@ export function ProductsTableManager({
           };
         })}
         categories={categories}
+        customOptions={availableCustomOptions}
         selectedProductIDs={selectedProductIDs}
         bulkAssignAction={bulkAssignCategoriesAction}
         bulkRemoveAction={bulkRemoveCategoriesAction}
         bulkDiscountAction={bulkDiscountAction}
+        bulkAttachCustomOptionsAction={bulkAttachCustomOptionsAction}
         returnTo={currentHref}
       />
 

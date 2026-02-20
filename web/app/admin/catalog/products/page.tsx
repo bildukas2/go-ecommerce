@@ -493,7 +493,6 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
-  void bulkAttachCustomOptionsAction;
 
   let categories: Awaited<ReturnType<typeof getCategories>>["items"] = [];
   let products: Awaited<ReturnType<typeof getProducts>>["items"] = [];
@@ -692,6 +691,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           bulkAssignCategoriesAction={bulkAssignCategoriesAction}
           bulkRemoveCategoriesAction={bulkRemoveCategoriesAction}
           bulkDiscountAction={bulkDiscountAction}
+          bulkAttachCustomOptionsAction={bulkAttachCustomOptionsAction}
         />
       )}
     </div>

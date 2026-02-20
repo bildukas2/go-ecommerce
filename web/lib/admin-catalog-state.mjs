@@ -80,6 +80,26 @@ export function parseDiscountDraft(inputMode, inputValue) {
   return { mode, value };
 }
 
+function parseOptionPickerValue(raw) {
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const match = trimmed.match(/\(([0-9a-fA-F-]{36})\)$/);
+  if (match?.[1]) return match[1];
+  return trimmed;
+}
+
+export function resolveCustomOptionIDs(optionIDs, optionPick) {
+  const selected = normalizeSelectedProductIDs(optionIDs);
+  if (selected.length > 0) return selected;
+  const single = parseOptionPickerValue(optionPick);
+  return single ? [single] : [];
+}
+
+export function hasBulkCustomOptionPayload(productIDs, optionIDs, optionPick) {
+  return normalizeSelectedProductIDs(productIDs).length > 0 && resolveCustomOptionIDs(optionIDs, optionPick).length > 0;
+}
+
 export function calculateDiscountPreview(basePriceCents, mode, value) {
   const base = Number(basePriceCents);
   if (!Number.isFinite(base) || base <= 0) {

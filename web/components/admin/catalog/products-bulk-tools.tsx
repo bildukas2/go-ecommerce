@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { calculateDiscountPreview, parseDiscountDraft } from "@/lib/admin-catalog-state";
+import {
+  calculateDiscountPreview,
+  hasBulkCustomOptionPayload,
+  parseDiscountDraft,
+  resolveCustomOptionIDs,
+} from "@/lib/admin-catalog-state";
 import { formatMoney } from "@/lib/money";
+import type { AdminCustomOption } from "@/lib/api";
 
 type ProductOption = {
   id: string;
@@ -17,33 +23,43 @@ type CategoryOption = {
   name: string;
 };
 
+type CustomOption = Pick<AdminCustomOption, "id" | "title" | "type_group" | "type">;
+
 type ActionFn = (formData: FormData) => void | Promise<void>;
 
 type Props = {
   products: ProductOption[];
   categories: CategoryOption[];
+  customOptions: CustomOption[];
   selectedProductIDs: string[];
   bulkAssignAction: ActionFn;
   bulkRemoveAction: ActionFn;
   bulkDiscountAction: ActionFn;
+  bulkAttachCustomOptionsAction: ActionFn;
   returnTo: string;
 };
 
 export function ProductsBulkTools({
   products,
   categories,
+  customOptions,
   selectedProductIDs,
   bulkAssignAction,
   bulkRemoveAction,
   bulkDiscountAction,
+  bulkAttachCustomOptionsAction,
   returnTo,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedCategoryIDs, setSelectedCategoryIDs] = useState<string[]>([]);
   const [discountMode, setDiscountMode] = useState<"price" | "percent">("percent");
   const [discountValue, setDiscountValue] = useState<string>("10");
+  const [customOptionPick, setCustomOptionPick] = useState<string>("");
+  const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
+  const [customOptionSortOrder, setCustomOptionSortOrder] = useState<string>("0");
 
   const draft = parseDiscountDraft(discountMode, discountValue);
+  const resolvedCustomOptionIDs = resolveCustomOptionIDs(selectedCustomOptionIDs, customOptionPick);
   const previewProduct = products.find((item) => selectedProductIDs.includes(item.id)) ?? null;
   const preview = previewProduct && previewProduct.basePriceCents !== null
     ? calculateDiscountPreview(previewProduct.basePriceCents, draft.mode, draft.value)
@@ -54,6 +70,7 @@ export function ProductsBulkTools({
 
   const hasBulkCategoryPayload = selectedProductIDs.length > 0 && selectedCategoryIDs.length > 0;
   const hasBulkDiscountPayload = selectedProductIDs.length > 0 && preview.valid;
+  const hasBulkCustomOptions = hasBulkCustomOptionPayload(selectedProductIDs, selectedCustomOptionIDs, customOptionPick);
 
   return (
     <>
@@ -168,6 +185,64 @@ export function ProductsBulkTools({
                         className="w-full rounded-xl border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-300"
                       >
                         Apply bulk discount
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="rounded-xl border border-surface-border p-3">
+                    <p className="text-sm font-medium">Customizable options</p>
+                    <div className="mt-2 space-y-2">
+                      <input
+                        name="option_pick"
+                        value={customOptionPick}
+                        onChange={(event) => setCustomOptionPick(event.target.value)}
+                        list="bulk-custom-options-list"
+                        placeholder="Type to search option title or paste ID"
+                        className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                      />
+                      <datalist id="bulk-custom-options-list">
+                        {customOptions.map((option) => (
+                          <option key={`bulk-option-pick-${option.id}`} value={`${option.title} (${option.id})`} />
+                        ))}
+                      </datalist>
+
+                      <select
+                        multiple
+                        name="option_ids"
+                        value={selectedCustomOptionIDs}
+                        onChange={(event) => setSelectedCustomOptionIDs(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))}
+                        className="h-28 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                      >
+                        {customOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.title} ({option.type_group}/{option.type})
+                          </option>
+                        ))}
+                      </select>
+
+                      <label className="block text-xs text-foreground/70">
+                        Sort order
+                        <input
+                          type="number"
+                          name="sort_order"
+                          value={customOptionSortOrder}
+                          onChange={(event) => setCustomOptionSortOrder(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
+                        />
+                      </label>
+                    </div>
+                    <form action={bulkAttachCustomOptionsAction} className="mt-3">
+                      <input type="hidden" name="return_to" value={returnTo} />
+                      {selectedProductIDs.map((id) => <input key={`option-p-${id}`} type="hidden" name="product_ids" value={id} />)}
+                      {resolvedCustomOptionIDs.map((id) => <input key={`option-o-${id}`} type="hidden" name="option_ids" value={id} />)}
+                      <input type="hidden" name="sort_order" value={customOptionSortOrder} />
+                      <input type="hidden" name="option_pick" value={customOptionPick} />
+                      <button
+                        type="submit"
+                        disabled={!hasBulkCustomOptions}
+                        className="w-full rounded-xl border border-fuchsia-500/35 bg-fuchsia-500/12 px-3 py-2 text-sm font-medium text-fuchsia-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-fuchsia-300"
+                      >
+                        Bulk assign customizable options
                       </button>
                     </form>
                   </div>

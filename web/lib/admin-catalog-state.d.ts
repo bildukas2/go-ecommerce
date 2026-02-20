@@ -38,6 +38,8 @@ export function isConflictAdminError(error: unknown): boolean;
 export function normalizeSelectedProductIDs(productIDs: string[]): string[];
 export function isEveryProductSelected(productIDs: string[], selectedProductIDs: string[]): boolean;
 export function toggleProductSelection(selectedProductIDs: string[], productID: string, checked: boolean): string[];
+export function resolveCustomOptionIDs(optionIDs: string[], optionPick: string): string[];
+export function hasBulkCustomOptionPayload(productIDs: string[], optionIDs: string[], optionPick: string): boolean;
 export function attachCustomOptionsIgnoringConflicts(input: {
   productIDs: string[];
   optionIDs: string[];

@@ -4,12 +4,14 @@ import {
   applyAdminProductsState,
   attachCustomOptionsIgnoringConflicts,
   calculateDiscountPreview,
+  hasBulkCustomOptionPayload,
   isConflictAdminError,
   isEveryProductSelected,
   isUnauthorizedAdminError,
   normalizeSelectedProductIDs,
   parseAdminProductsSearchParams,
   parseDiscountDraft,
+  resolveCustomOptionIDs,
   toggleProductSelection,
 } from "./admin-catalog-state.mjs";
 
@@ -104,6 +106,27 @@ test("isEveryProductSelected returns true only when all ids are present", () => 
 test("parseDiscountDraft normalizes discount mode and numeric value", () => {
   assert.deepEqual(parseDiscountDraft("price", "1299.2"), { mode: "price", value: 1299.2 });
   assert.deepEqual(parseDiscountDraft("wat", "abc"), { mode: "percent", value: 0 });
+});
+
+test("resolveCustomOptionIDs prefers explicit multi-select ids", () => {
+  assert.deepEqual(
+    resolveCustomOptionIDs([" opt-1 ", "opt-1", "opt-2"], "ignored (7e6e2f80-1306-4d48-b740-15068f2e7f77)"),
+    ["opt-1", "opt-2"],
+  );
+});
+
+test("resolveCustomOptionIDs falls back to parsed picker value", () => {
+  assert.deepEqual(
+    resolveCustomOptionIDs([], "Gift Wrap (7e6e2f80-1306-4d48-b740-15068f2e7f77)"),
+    ["7e6e2f80-1306-4d48-b740-15068f2e7f77"],
+  );
+  assert.deepEqual(resolveCustomOptionIDs([], "opt-direct-id"), ["opt-direct-id"]);
+});
+
+test("hasBulkCustomOptionPayload validates both products and options", () => {
+  assert.equal(hasBulkCustomOptionPayload([], ["opt-1"], ""), false);
+  assert.equal(hasBulkCustomOptionPayload(["prod-1"], [], ""), false);
+  assert.equal(hasBulkCustomOptionPayload(["prod-1"], [], "Gift Wrap (7e6e2f80-1306-4d48-b740-15068f2e7f77)"), true);
 });
 
 test("calculateDiscountPreview computes valid percent discounts", () => {
