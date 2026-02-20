@@ -468,6 +468,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
             <tr>
               <th className="px-3 py-2 font-medium">Name</th>
               <th className="px-3 py-2 font-medium">Email</th>
+              <th className="px-3 py-2 font-medium">Latest IP</th>
               <th className="px-3 py-2 font-medium">Group</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Anonymous</th>
@@ -478,7 +479,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-foreground/60">
+                <td colSpan={8} className="px-4 py-12 text-center text-foreground/60">
                   <div className="flex flex-col items-center gap-2">
                     <UserRound size={30} className="opacity-25" />
                     <p>{fetchError ? "No customers loaded." : "No customers found for current filters."}</p>
@@ -492,6 +493,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
                   <tr key={customer.id} className="border-t border-surface-border align-top">
                     <td className="px-3 py-3 font-medium">{customerName(customer)}</td>
                     <td className="px-3 py-3">{customer.email ?? "-"}</td>
+                    <td className="px-3 py-3 font-mono text-xs">{customer.latest_ip ?? "-"}</td>
                     <td className="px-3 py-3">{customer.group_name ?? "-"}</td>
                     <td className="px-3 py-3">
                       <span

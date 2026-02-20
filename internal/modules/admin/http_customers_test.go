@@ -150,6 +150,7 @@ func (f *fakeCustomersStore) DeleteBlockedIP(ctx context.Context, id string) (st
 func TestAdminCustomersListSuccess(t *testing.T) {
 	now := time.Now().UTC().Round(time.Second)
 	email := "customer@example.com"
+	latestIP := "198.51.100.10"
 	store := &fakeCustomersStore{
 		listCustomersFn: func(_ context.Context, in storcustomers.AdminCustomersListParams) (storcustomers.AdminCustomersPage, error) {
 			if in.Page != 3 || in.Limit != 10 {
@@ -165,6 +166,7 @@ func TestAdminCustomersListSuccess(t *testing.T) {
 						Email:       &email,
 						Status:      "active",
 						IsAnonymous: false,
+						LatestIP:    &latestIP,
 						CreatedAt:   now,
 						UpdatedAt:   now,
 					},
@@ -209,6 +211,9 @@ func TestAdminCustomersListSuccess(t *testing.T) {
 	}
 	if payload.Items[0]["email"] != "customer@example.com" {
 		t.Fatalf("unexpected customer payload: %#v", payload.Items[0])
+	}
+	if payload.Items[0]["latest_ip"] != latestIP {
+		t.Fatalf("expected latest_ip in customer payload, got %#v", payload.Items[0]["latest_ip"])
 	}
 }
 

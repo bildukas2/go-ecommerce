@@ -93,6 +93,7 @@ type AdminCustomer struct {
 	GroupName        *string    `json:"group_name"`
 	GroupCode        *string    `json:"group_code"`
 	IsAnonymous      bool       `json:"is_anonymous"`
+	LatestIP         *string    `json:"latest_ip"`
 	LastLoginAt      *time.Time `json:"last_login_at"`
 	ShippingFullName string     `json:"shipping_full_name"`
 	ShippingPhone    string     `json:"shipping_phone"`
@@ -644,6 +645,7 @@ func (s *Store) ListCustomers(ctx context.Context, in AdminCustomersListParams) 
 			cg.name,
 			cg.code,
 			c.is_anonymous,
+			latest_log.ip,
 			c.last_login_at,
 			c.shipping_full_name,
 			c.shipping_phone,
@@ -668,6 +670,13 @@ func (s *Store) ListCustomers(ctx context.Context, in AdminCustomersListParams) 
 			c.updated_at
 		FROM customers c
 		LEFT JOIN customer_groups cg ON cg.id = c.group_id
+		LEFT JOIN LATERAL (
+			SELECT cal.ip
+			FROM customer_action_logs cal
+			WHERE cal.customer_id = c.id
+			ORDER BY cal.created_at DESC, cal.id DESC
+			LIMIT 1
+		) latest_log ON true
 	` + where + `
 		ORDER BY ` + orderBy + `
 		LIMIT ` + limitPlaceholder + ` OFFSET ` + offsetPlaceholder
@@ -686,6 +695,7 @@ func (s *Store) ListCustomers(ctx context.Context, in AdminCustomersListParams) 
 			groupIDOut   sql.NullString
 			groupName    sql.NullString
 			groupCode    sql.NullString
+			latestIP     sql.NullString
 			lastLoginAt  sql.NullTime
 			invoiceEmail sql.NullString
 		)
@@ -700,6 +710,7 @@ func (s *Store) ListCustomers(ctx context.Context, in AdminCustomersListParams) 
 			&groupName,
 			&groupCode,
 			&item.IsAnonymous,
+			&latestIP,
 			&lastLoginAt,
 			&item.ShippingFullName,
 			&item.ShippingPhone,
@@ -739,6 +750,9 @@ func (s *Store) ListCustomers(ctx context.Context, in AdminCustomersListParams) 
 		}
 		if groupCode.Valid {
 			item.GroupCode = &groupCode.String
+		}
+		if latestIP.Valid {
+			item.LatestIP = &latestIP.String
 		}
 		if lastLoginAt.Valid {
 			item.LastLoginAt = &lastLoginAt.Time

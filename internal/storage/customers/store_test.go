@@ -503,6 +503,20 @@ func TestAdminCustomersCRUDAndFiltering(t *testing.T) {
 	if reEnabledOne.Status != "active" {
 		t.Fatalf("expected status active, got %s", reEnabledOne.Status)
 	}
+	if _, err := store.InsertCustomerActionLog(ctx, CreateCustomerActionLogInput{
+		CustomerID: &customerOne.ID,
+		IP:         "198.51.100.200",
+		Action:     "customer.updated",
+	}); err != nil {
+		t.Fatalf("insert customer one action log: %v", err)
+	}
+	if _, err := store.InsertCustomerActionLog(ctx, CreateCustomerActionLogInput{
+		CustomerID: &customerTwo.ID,
+		IP:         "198.51.100.201",
+		Action:     "customer.created",
+	}); err != nil {
+		t.Fatalf("insert customer two action log: %v", err)
+	}
 
 	activeFiltered, err := store.ListCustomers(ctx, AdminCustomersListParams{
 		Page:   1,
@@ -516,6 +530,9 @@ func TestAdminCustomersCRUDAndFiltering(t *testing.T) {
 	for _, item := range activeFiltered.Items {
 		if item.ID == customerOne.ID {
 			foundActive = true
+			if item.LatestIP == nil || *item.LatestIP != "198.51.100.200" {
+				t.Fatalf("expected latest customer IP for customer one, got %#v", item.LatestIP)
+			}
 		}
 	}
 	if !foundActive {

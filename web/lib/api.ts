@@ -860,6 +860,7 @@ export type AdminCustomerSummary = {
   group_name: string | null;
   group_code: string | null;
   is_anonymous: boolean;
+  latest_ip: string | null;
   last_login_at: string | null;
   shipping_full_name: string;
   shipping_phone: string;
@@ -1043,6 +1044,7 @@ function normalizeAdminCustomerSummary(raw: unknown): AdminCustomerSummary | nul
     group_name: asNullableString(obj.group_name),
     group_code: asNullableString(obj.group_code),
     is_anonymous: asBoolean(obj.is_anonymous),
+    latest_ip: asNullableString(obj.latest_ip),
     last_login_at: asNullableString(obj.last_login_at),
     shipping_full_name: asString(obj.shipping_full_name),
     shipping_phone: asString(obj.shipping_phone),
