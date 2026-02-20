@@ -1,7 +1,26 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, type Key, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  Button,
+  Card,
+  CardBody,
+  Checkbox,
+  Input,
+  Radio,
+  RadioGroup,
+  Select,
+  SelectItem,
+  SelectSection,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/react";
+import { Trash2 } from "lucide-react";
 import type { AdminCustomOption, AdminCustomOptionValueMutationInput } from "@/lib/api";
 
 type OptionType = AdminCustomOption["type"];
@@ -93,6 +112,18 @@ function normalizeValuesForPayload(values: ValueDraft[]): AdminCustomOptionValue
   }));
 }
 
+function selectionToKey(selection: "all" | Set<Key>): string | null {
+  if (selection === "all") return null;
+  const first = selection.values().next().value;
+  if (typeof first === "string") return first;
+  if (typeof first === "number") return String(first);
+  return null;
+}
+
+function isOptionType(value: string): value is OptionType {
+  return typeGroups.some((group) => group.options.some((option) => option.value === value));
+}
+
 export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: CustomOptionFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [code, setCode] = useState(initial?.code ?? "");
@@ -108,6 +139,7 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
 
   const typeGroup = typeGroupFromType(type);
   const valuesJSON = useMemo(() => JSON.stringify(normalizeValuesForPayload(values)), [values]);
+  const selectedTypeKeys = useMemo(() => new Set<Key>([type]), [type]);
 
   const onTitleChange = (nextTitle: string) => {
     setTitle(nextTitle);
@@ -160,240 +192,237 @@ export function CustomOptionForm({ mode, submitAction, cancelHref, initial }: Cu
       <input type="hidden" name="type_group" value={typeGroup} />
       <input type="hidden" name="values_json" value={valuesJSON} />
 
-      <section className="glass rounded-2xl border p-4 md:p-5">
-        <h2 className="text-base font-semibold">Basic</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <label className="space-y-1 text-sm md:col-span-2">
-            <span>Title</span>
-            <input
+      <Card className="glass rounded-2xl border border-surface-border/80">
+        <CardBody className="space-y-4 p-4 md:p-5">
+          <h2 className="text-base font-semibold">Basic</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              label="Title"
               name="title"
               value={title}
-              onChange={(event) => onTitleChange(event.target.value)}
+              onValueChange={onTitleChange}
               minLength={2}
-              required
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+              isRequired
+              variant="bordered"
+              className="md:col-span-2"
+              classNames={{ inputWrapper: "border-surface-border bg-background/60" }}
             />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Code</span>
-            <input
+            <Input
+              label="Code"
               name="code"
               value={code}
-              onChange={(event) => {
+              onValueChange={(nextCode) => {
                 setCodeTouched(true);
-                setCode(event.target.value);
+                setCode(nextCode);
               }}
               pattern="[a-z0-9-]+"
-              required
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2 font-mono"
+              isRequired
+              variant="bordered"
+              className="font-mono"
+              classNames={{ inputWrapper: "border-surface-border bg-background/60", input: "font-mono" }}
             />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Sort order</span>
-            <input
+            <Input
+              label="Sort order"
               name="sort_order"
               value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
+              onValueChange={setSortOrder}
               type="number"
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+              variant="bordered"
+              classNames={{ inputWrapper: "border-surface-border bg-background/60" }}
             />
-          </label>
-          <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-sm">
-            <input
-              name="required"
-              type="checkbox"
-              value="true"
-              checked={required}
-              onChange={(event) => setRequired(event.target.checked)}
-              className="h-4 w-4 rounded border-surface-border"
-            />
-            <input type="hidden" name="required" value="false" />
-            <span>Required</span>
-          </label>
-          <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-sm">
-            <input
-              name="is_active"
-              type="checkbox"
-              value="true"
-              checked={isActive}
-              onChange={(event) => setIsActive(event.target.checked)}
-              className="h-4 w-4 rounded border-surface-border"
-            />
-            <input type="hidden" name="is_active" value="false" />
-            <span>Active</span>
-          </label>
-        </div>
-      </section>
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-surface-border bg-background/40 px-3 py-2 md:col-span-2">
+              <Checkbox isSelected={required} onValueChange={setRequired}>
+                Required
+              </Checkbox>
+              <Checkbox isSelected={isActive} onValueChange={setIsActive}>
+                Active
+              </Checkbox>
+              <input type="hidden" name="required" value={required ? "true" : "false"} />
+              <input type="hidden" name="is_active" value={isActive ? "true" : "false"} />
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
-      <section className="glass rounded-2xl border p-4 md:p-5">
-        <h2 className="text-base font-semibold">Option Type</h2>
-        <p className="mt-1 text-sm text-foreground/70">Pick a Magento-style type group and concrete option type.</p>
-        <div className="mt-3">
-          <label className="space-y-1 text-sm">
-            <span>Type</span>
-            <select
-              name="type"
-              value={type}
-              onChange={(event) => setType(event.target.value as OptionType)}
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
-            >
-              {typeGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
+      <Card className="glass rounded-2xl border border-surface-border/80">
+        <CardBody className="space-y-4 p-4 md:p-5">
+          <div>
+            <h2 className="text-base font-semibold">Option Type</h2>
+            <p className="mt-1 text-sm text-foreground/70">Pick a Magento-style type group and concrete option type.</p>
+          </div>
+          <Select
+            label="Type"
+            name="type"
+            selectedKeys={selectedTypeKeys}
+            onSelectionChange={(selection) => {
+              const next = selectionToKey(selection);
+              if (next && isOptionType(next)) setType(next);
+            }}
+            variant="bordered"
+            classNames={{ trigger: "border-surface-border bg-background/60" }}
+          >
+            {typeGroups.map((group) => (
+              <SelectSection key={group.label} title={group.label}>
+                {group.options.map((option) => (
+                  <SelectItem key={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectSection>
+            ))}
+          </Select>
+        </CardBody>
+      </Card>
 
       {typeGroup !== "select" && (
-        <section className="glass rounded-2xl border p-4 md:p-5">
-          <h2 className="text-base font-semibold">Pricing</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <label className="space-y-1 text-sm">
-              <span>Price Type</span>
-              <select
+        <Card className="glass rounded-2xl border border-surface-border/80">
+          <CardBody className="space-y-4 p-4 md:p-5">
+            <h2 className="text-base font-semibold">Pricing</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              <RadioGroup
+                label="Price Type"
                 name="price_type"
                 value={priceType}
-                onChange={(event) => setPriceType(event.target.value as PriceType)}
-                className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                onValueChange={(value) => setPriceType(value as PriceType)}
+                orientation="horizontal"
+                className="md:col-span-2"
               >
-                <option value="fixed">Fixed</option>
-                <option value="percent">Percent</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span>Price Value</span>
-              <input
+                <Radio value="fixed">Fixed</Radio>
+                <Radio value="percent">Percent</Radio>
+              </RadioGroup>
+              <Input
+                label="Price Value"
                 name="price_value"
                 value={priceValue}
-                onChange={(event) => setPriceValue(event.target.value)}
+                onValueChange={setPriceValue}
                 type="number"
                 step="0.01"
                 min="0"
-                required
-                className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+                isRequired
+                variant="bordered"
+                classNames={{ inputWrapper: "border-surface-border bg-background/60" }}
               />
-            </label>
-          </div>
-        </section>
+            </div>
+          </CardBody>
+        </Card>
       )}
 
       {typeGroup === "select" && (
-        <section className="glass rounded-2xl border p-4 md:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">Values</h2>
-              <p className="text-sm text-foreground/70">Each value controls its own price type and amount.</p>
+        <Card className="glass rounded-2xl border border-surface-border/80">
+          <CardBody className="space-y-4 p-4 md:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold">Values</h2>
+                <p className="text-sm text-foreground/70">Each value controls its own price type and amount.</p>
+              </div>
+              <Button type="button" color="primary" variant="flat" onPress={addValue}>
+                Add value
+              </Button>
             </div>
-            <button
-              type="button"
-              onClick={addValue}
-              className="rounded-xl border border-blue-500/35 bg-blue-500/12 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
-            >
-              Add value
-            </button>
-          </div>
 
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-foreground/65">
-                <tr>
-                  <th className="px-2 py-2 font-medium">Title</th>
-                  <th className="px-2 py-2 font-medium">Price Type</th>
-                  <th className="px-2 py-2 font-medium">Price Value</th>
-                  <th className="px-2 py-2 font-medium">Sort</th>
-                  <th className="px-2 py-2 font-medium">Default</th>
-                  <th className="px-2 py-2 font-medium text-right">Delete</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table
+              aria-label="Custom option values"
+              removeWrapper
+              classNames={{
+                table: "min-w-[760px]",
+                th: "bg-transparent text-foreground/65",
+                td: "align-middle",
+              }}
+            >
+              <TableHeader>
+                <TableColumn>Title</TableColumn>
+                <TableColumn>Price Type</TableColumn>
+                <TableColumn>Price Value</TableColumn>
+                <TableColumn>Sort</TableColumn>
+                <TableColumn>Default</TableColumn>
+                <TableColumn className="text-right">Delete</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent="No values yet. Add at least one value for select options.">
                 {values.map((value, index) => (
-                  <tr key={`value-${index}`} className="border-t border-surface-border">
-                    <td className="px-2 py-2">
-                      <input
+                  <TableRow key={`value-${index}`}>
+                    <TableCell>
+                      <Input
                         value={value.title}
-                        onChange={(event) => updateValue(index, { title: event.target.value })}
-                        required
-                        className="w-full rounded-lg border border-surface-border bg-background px-3 py-2"
+                        onValueChange={(nextValue) => updateValue(index, { title: nextValue })}
+                        isRequired
+                        variant="bordered"
+                        classNames={{ inputWrapper: "border-surface-border bg-background/60" }}
                       />
-                    </td>
-                    <td className="px-2 py-2">
-                      <select
-                        value={value.price_type}
-                        onChange={(event) => updateValue(index, { price_type: event.target.value as PriceType })}
-                        className="w-full rounded-lg border border-surface-border bg-background px-3 py-2"
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        aria-label="Value price type"
+                        selectedKeys={new Set<Key>([value.price_type])}
+                        onSelectionChange={(selection) => {
+                          const next = selectionToKey(selection);
+                          if (next === "fixed" || next === "percent") {
+                            updateValue(index, { price_type: next });
+                          }
+                        }}
+                        variant="bordered"
+                        classNames={{ trigger: "border-surface-border bg-background/60 min-h-10" }}
                       >
-                        <option value="fixed">Fixed</option>
-                        <option value="percent">Percent</option>
-                      </select>
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
+                        <SelectItem key="fixed">Fixed</SelectItem>
+                        <SelectItem key="percent">Percent</SelectItem>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Input
                         value={value.price_value}
-                        onChange={(event) => updateValue(index, { price_value: event.target.value })}
+                        onValueChange={(nextValue) => updateValue(index, { price_value: nextValue })}
                         type="number"
                         step="0.01"
                         min="0"
-                        required
-                        className="w-full rounded-lg border border-surface-border bg-background px-3 py-2"
+                        isRequired
+                        variant="bordered"
+                        classNames={{ inputWrapper: "border-surface-border bg-background/60" }}
                       />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
+                    </TableCell>
+                    <TableCell>
+                      <Input
                         value={value.sort_order}
-                        onChange={(event) => updateValue(index, { sort_order: event.target.value })}
+                        onValueChange={(nextValue) => updateValue(index, { sort_order: nextValue })}
                         type="number"
-                        className="w-24 rounded-lg border border-surface-border bg-background px-3 py-2"
+                        variant="bordered"
+                        classNames={{ inputWrapper: "border-surface-border bg-background/60 w-24" }}
                       />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="checkbox"
-                        checked={value.is_default}
-                        onChange={(event) => updateValue(index, { is_default: event.target.checked })}
-                        className="h-4 w-4 rounded border-surface-border"
-                      />
-                    </td>
-                    <td className="px-2 py-2 text-right">
-                      <button
+                    </TableCell>
+                    <TableCell>
+                      <Checkbox isSelected={value.is_default} onValueChange={(nextValue) => updateValue(index, { is_default: nextValue })}>
+                        Default
+                      </Checkbox>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
                         type="button"
-                        onClick={() => removeValue(index)}
-                        className="rounded-lg border border-red-500/35 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-500/16 dark:text-red-300"
+                        isIconOnly
+                        color="danger"
+                        variant="light"
+                        onPress={() => removeValue(index)}
+                        aria-label="Delete value"
                       >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
+                        <Trash2 size={16} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
       )}
 
       {clientError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{clientError}</div>
+        <Card className="rounded-2xl border border-danger-200/60 bg-danger-50/70">
+          <CardBody className="py-3 text-sm text-danger-700">{clientError}</CardBody>
+        </Card>
       )}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Link
-          href={cancelHref}
-          className="rounded-xl border border-surface-border bg-foreground/[0.02] px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground/[0.05]"
-        >
+        <Button as={Link} href={cancelHref} variant="bordered">
           Cancel
-        </Link>
-        <button
-          type="submit"
-          className="rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
-        >
+        </Button>
+        <Button type="submit" color="primary" variant="flat">
           {mode === "create" ? "Create option" : "Save option"}
-        </button>
+        </Button>
       </div>
     </form>
   );
