@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { redirect, isRedirectError } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import {
   createAdminCategory,
   deleteAdminCategory,
@@ -78,7 +78,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/categories");
       redirect(messageHref(returnTo, "notice", "Category created"));
     } catch (error) {
-      if (isRedirectError(error)) throw error;
+      unstable_rethrow(error);
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -105,7 +105,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/categories");
       redirect(messageHref(returnTo, "notice", "Category updated"));
     } catch (error) {
-      if (isRedirectError(error)) throw error;
+      unstable_rethrow(error);
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -124,7 +124,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/categories");
       redirect(messageHref(returnTo, "notice", "Image uploaded to media library"));
     } catch (error) {
-      if (isRedirectError(error)) throw error;
+      unstable_rethrow(error);
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -151,7 +151,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       revalidatePath("/admin/catalog/categories");
       redirect(messageHref(returnTo, "notice", "Image imported to media library"));
     } catch (error) {
-      if (isRedirectError(error)) throw error;
+      unstable_rethrow(error);
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
@@ -184,7 +184,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
         `Category deleted (${result.deleted_category_slug || expectedSlug}, affected ${result.affected_products || affectedProducts}${fallbackNotice})`,
       ));
     } catch (error) {
-      if (isRedirectError(error)) throw error;
+      unstable_rethrow(error);
       redirect(messageHref(returnTo, "error", errorMessage(error)));
     }
   };
