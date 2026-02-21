@@ -3,7 +3,10 @@ package shipping
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -325,5 +328,128 @@ func TestValidatePricingModes(t *testing.T) {
 		if err != nil {
 			t.Errorf("pricing mode %s should be valid, got error: %v", mode, err)
 		}
+	}
+}
+
+func TestHandleAdminProviders_UpdateProviderResponseShape(t *testing.T) {
+	now := time.Now().UTC()
+	getCalls := 0
+	m := &module{
+		store: &mockStore{
+			getProviderFunc: func(ctx context.Context, key string) (*shipping.Provider, error) {
+				getCalls++
+				if getCalls == 1 {
+					return nil, nil
+				}
+				return &shipping.Provider{
+					ID:         "prov-1",
+					Key:        key,
+					Name:       "Lietuvos Pastas",
+					Enabled:    true,
+					Mode:       "live",
+					ConfigJSON: []byte(`{"api_key":"secret"}`),
+					CreatedAt:  now,
+					UpdatedAt:  now,
+				}, nil
+			},
+			createProviderFunc: func(ctx context.Context, key, name, mode string, configJSON []byte) error {
+				if key != "ltpost" {
+					t.Fatalf("unexpected key: %s", key)
+				}
+				if name != "Lietuvos Pastas" {
+					t.Fatalf("unexpected name: %s", name)
+				}
+				if mode != "live" {
+					t.Fatalf("unexpected mode: %s", mode)
+				}
+				if string(configJSON) != `{"api_key":"secret"}` {
+					t.Fatalf("unexpected config_json: %s", string(configJSON))
+				}
+				return nil
+			},
+		},
+	}
+
+	body := `{"name":"Lietuvos Pastas","mode":"live","enabled":true,"config_json":{"api_key":"secret"}}`
+	r := httptest.NewRequest(http.MethodPut, "/admin/shipping/providers/ltpost", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	m.handleAdminProviders(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if payload["id"] != "prov-1" {
+		t.Fatalf("expected id prov-1, got %v", payload["id"])
+	}
+	if _, ok := payload["ID"]; ok {
+		t.Fatal("response should not contain ID field")
+	}
+	config, ok := payload["config_json"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected config_json object, got %T", payload["config_json"])
+	}
+	if config["api_key"] != "secret" {
+		t.Fatalf("expected api_key=secret, got %v", config["api_key"])
+	}
+}
+
+func TestHandleAdminProviders_ListProvidersResponseShape(t *testing.T) {
+	now := time.Now().UTC()
+	m := &module{
+		store: &mockStore{
+			listProvidersFunc: func(ctx context.Context) ([]shipping.Provider, error) {
+				return []shipping.Provider{
+					{
+						ID:         "prov-1",
+						Key:        "ltpost",
+						Name:       "Lietuvos Pastas",
+						Enabled:    true,
+						Mode:       "live",
+						ConfigJSON: []byte(`{"region":"lt"}`),
+						CreatedAt:  now,
+						UpdatedAt:  now,
+					},
+				}, nil
+			},
+		},
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/admin/shipping/providers", nil)
+	w := httptest.NewRecorder()
+
+	m.handleAdminProviders(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	items, ok := payload["items"].([]any)
+	if !ok {
+		t.Fatalf("expected items array, got %T", payload["items"])
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected one item, got %d", len(items))
+	}
+	if _, ok := payload["providers"]; ok {
+		t.Fatal("response should not contain providers field")
+	}
+	first, ok := items[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected item object, got %T", items[0])
+	}
+	if first["id"] != "prov-1" {
+		t.Fatalf("expected item id prov-1, got %v", first["id"])
 	}
 }

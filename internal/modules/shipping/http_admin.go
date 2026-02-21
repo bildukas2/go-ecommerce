@@ -36,6 +36,37 @@ type upsertMethodRequest struct {
 	PricingRulesJSON map[string]interface{} `json:"pricing_rules_json"`
 }
 
+type providerResponse struct {
+	ID         string                 `json:"id"`
+	Key        string                 `json:"key"`
+	Name       string                 `json:"name"`
+	Enabled    bool                   `json:"enabled"`
+	Mode       string                 `json:"mode"`
+	ConfigJSON map[string]interface{} `json:"config_json"`
+	CreatedAt  any                    `json:"created_at"`
+	UpdatedAt  any                    `json:"updated_at"`
+}
+
+func toProviderResponse(provider shipping.Provider) providerResponse {
+	config := map[string]interface{}{}
+	if len(provider.ConfigJSON) > 0 {
+		_ = json.Unmarshal(provider.ConfigJSON, &config)
+	}
+	if config == nil {
+		config = map[string]interface{}{}
+	}
+	return providerResponse{
+		ID:         provider.ID,
+		Key:        provider.Key,
+		Name:       provider.Name,
+		Enabled:    provider.Enabled,
+		Mode:       provider.Mode,
+		ConfigJSON: config,
+		CreatedAt:  provider.CreatedAt,
+		UpdatedAt:  provider.UpdatedAt,
+	}
+}
+
 func decodeRequest(r *http.Request, dst any) error {
 	defer r.Body.Close()
 	const maxBodyBytes = 1 << 20
@@ -105,7 +136,11 @@ func (m *module) handleListProviders(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "list providers error")
 		return
 	}
-	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"providers": providers})
+	items := make([]providerResponse, 0, len(providers))
+	for _, provider := range providers {
+		items = append(items, toProviderResponse(provider))
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 func (m *module) handleUpdateProvider(w http.ResponseWriter, r *http.Request, key string) {
@@ -153,7 +188,7 @@ func (m *module) handleUpdateProvider(w http.ResponseWriter, r *http.Request, ke
 		return
 	}
 
-	_ = platformhttp.JSON(w, http.StatusOK, provider)
+	_ = platformhttp.JSON(w, http.StatusOK, toProviderResponse(*provider))
 }
 
 func (m *module) handleDeleteProvider(w http.ResponseWriter, r *http.Request, key string) {

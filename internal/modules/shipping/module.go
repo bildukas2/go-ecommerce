@@ -13,12 +13,19 @@ import (
 )
 
 type module struct {
-	store     *storshiping.Store
+	store     shippingStore
 	providers map[string]shipping.Provider
 }
 
+type shippingStore interface {
+	storshiping.ProvidersStore
+	storshiping.ZonesStore
+	storshiping.MethodsStore
+	storshiping.TerminalsStore
+}
+
 func NewModule(deps app.Deps) app.Module {
-	var store *storshiping.Store
+	var store shippingStore
 	if deps.DB != nil {
 		if s, err := storshiping.NewStore(context.Background(), deps.DB); err == nil {
 			store = s
@@ -36,7 +43,7 @@ func NewModule(deps app.Deps) app.Module {
 	}
 }
 
-func initializeProviders(ctx context.Context, store *storshiping.Store, providers map[string]shipping.Provider) {
+func initializeProviders(ctx context.Context, store storshiping.ProvidersStore, providers map[string]shipping.Provider) {
 	dbProviders, err := store.ListProviders(ctx)
 	if err != nil {
 		log.Printf("shipping: error loading providers from db: %v", err)
