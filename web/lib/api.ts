@@ -1908,3 +1908,348 @@ export async function bulkApplyAdminProductDiscount(input: {
     body: input,
   });
 }
+
+export type ShippingProvider = {
+  id: string;
+  key: string;
+  name: string;
+  enabled: boolean;
+  mode: "sandbox" | "live";
+  config_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShippingZone = {
+  id: string;
+  name: string;
+  countries_json: string[];
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShippingMethod = {
+  id: string;
+  zone_id: string;
+  provider_key: string;
+  service_code: string;
+  title: string;
+  enabled: boolean;
+  sort_order: number;
+  pricing_mode: "fixed" | "table" | "provider";
+  pricing_rules_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TerminalsCacheItem = {
+  provider: string;
+  country: string;
+  terminals: unknown[];
+  fetched_at: string;
+};
+
+function normalizeShippingProvider(raw: unknown): ShippingProvider | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
+  const mode = asString(obj.mode).toLowerCase();
+  if (mode !== "sandbox" && mode !== "live") return null;
+
+  return {
+    id,
+    key: asString(obj.key),
+    name: asString(obj.name),
+    enabled: asBoolean(obj.enabled),
+    mode: mode as "sandbox" | "live",
+    config_json: asRecord(obj.config_json ?? obj.configJSON),
+    created_at: asString(obj.created_at ?? obj.createdAt),
+    updated_at: asString(obj.updated_at ?? obj.updatedAt),
+  };
+}
+
+function normalizeShippingZone(raw: unknown): ShippingZone | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
+  let countriesArray: string[] = [];
+  const countriesJsonRaw = obj.countries_json ?? obj.countriesJSON;
+  if (typeof countriesJsonRaw === "string") {
+    try {
+      const parsed = JSON.parse(countriesJsonRaw);
+      if (Array.isArray(parsed)) {
+        countriesArray = parsed.map((c) => asString(c)).filter((c) => c.length > 0);
+      }
+    } catch {}
+  } else if (Array.isArray(countriesJsonRaw)) {
+    countriesArray = countriesJsonRaw.map((c) => asString(c)).filter((c) => c.length > 0);
+  }
+
+  return {
+    id,
+    name: asString(obj.name),
+    countries_json: countriesArray,
+    enabled: asBoolean(obj.enabled),
+    created_at: asString(obj.created_at ?? obj.createdAt),
+    updated_at: asString(obj.updated_at ?? obj.updatedAt),
+  };
+}
+
+function normalizeShippingMethod(raw: unknown): ShippingMethod | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
+  const pricingMode = asString(obj.pricing_mode ?? obj.pricingMode).toLowerCase();
+  if (pricingMode !== "fixed" && pricingMode !== "table" && pricingMode !== "provider") {
+    return null;
+  }
+
+  return {
+    id,
+    zone_id: asString(obj.zone_id ?? obj.zoneID),
+    provider_key: asString(obj.provider_key ?? obj.providerKey),
+    service_code: asString(obj.service_code ?? obj.serviceCode),
+    title: asString(obj.title),
+    enabled: asBoolean(obj.enabled),
+    sort_order: asNumber(obj.sort_order ?? obj.sortOrder),
+    pricing_mode: pricingMode as "fixed" | "table" | "provider",
+    pricing_rules_json: asRecord(obj.pricing_rules_json ?? obj.pricingRulesJSON),
+    created_at: asString(obj.created_at ?? obj.createdAt),
+    updated_at: asString(obj.updated_at ?? obj.updatedAt),
+  };
+}
+
+function normalizeTerminalsCacheItem(raw: unknown): TerminalsCacheItem | null {
+  const obj = asRecord(raw);
+  const provider = asString(obj.provider);
+  const country = asString(obj.country);
+  if (!provider || !country) return null;
+
+  const terminalsRaw = Array.isArray(obj.terminals) ? obj.terminals : [];
+  return {
+    provider,
+    country,
+    terminals: terminalsRaw,
+    fetched_at: asString(obj.fetched_at ?? obj.fetchedAt),
+  };
+}
+
+export async function getShippingProviders(): Promise<ShippingProvider[]> {
+  const url = new URL(apiJoin("admin/shipping/providers"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch shipping providers: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return itemsRaw.map(normalizeShippingProvider).filter((item): item is ShippingProvider => item !== null);
+}
+
+export async function updateShippingProvider(key: string, data: Partial<ShippingProvider>): Promise<ShippingProvider> {
+  const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}`));
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update shipping provider: ${res.status}`));
+  }
+  const normalized = normalizeShippingProvider(await res.json());
+  if (!normalized) throw new Error("Failed to update shipping provider: invalid response");
+  return normalized;
+}
+
+export async function deleteShippingProvider(key: string): Promise<void> {
+  const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to delete shipping provider: ${res.status}`));
+  }
+}
+
+export async function getShippingZones(): Promise<ShippingZone[]> {
+  const url = new URL(apiJoin("admin/shipping/zones"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch shipping zones: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return itemsRaw.map(normalizeShippingZone).filter((item): item is ShippingZone => item !== null);
+}
+
+export async function createShippingZone(data: Omit<ShippingZone, "id" | "created_at" | "updated_at">): Promise<ShippingZone> {
+  const url = new URL(apiJoin("admin/shipping/zones"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to create shipping zone: ${res.status}`));
+  }
+  const normalized = normalizeShippingZone(await res.json());
+  if (!normalized) throw new Error("Failed to create shipping zone: invalid response");
+  return normalized;
+}
+
+export async function updateShippingZone(id: string, data: Partial<ShippingZone>): Promise<ShippingZone> {
+  const url = new URL(apiJoin(`admin/shipping/zones/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update shipping zone: ${res.status}`));
+  }
+  const normalized = normalizeShippingZone(await res.json());
+  if (!normalized) throw new Error("Failed to update shipping zone: invalid response");
+  return normalized;
+}
+
+export async function deleteShippingZone(id: string): Promise<void> {
+  const url = new URL(apiJoin(`admin/shipping/zones/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to delete shipping zone: ${res.status}`));
+  }
+}
+
+export async function getShippingMethods(): Promise<ShippingMethod[]> {
+  const url = new URL(apiJoin("admin/shipping/methods"));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch shipping methods: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return itemsRaw.map(normalizeShippingMethod).filter((item): item is ShippingMethod => item !== null);
+}
+
+export async function createShippingMethod(data: Omit<ShippingMethod, "id" | "created_at" | "updated_at">): Promise<ShippingMethod> {
+  const url = new URL(apiJoin("admin/shipping/methods"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to create shipping method: ${res.status}`));
+  }
+  const normalized = normalizeShippingMethod(await res.json());
+  if (!normalized) throw new Error("Failed to create shipping method: invalid response");
+  return normalized;
+}
+
+export async function updateShippingMethod(id: string, data: Partial<ShippingMethod>): Promise<ShippingMethod> {
+  const url = new URL(apiJoin(`admin/shipping/methods/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update shipping method: ${res.status}`));
+  }
+  const normalized = normalizeShippingMethod(await res.json());
+  if (!normalized) throw new Error("Failed to update shipping method: invalid response");
+  return normalized;
+}
+
+export async function deleteShippingMethod(id: string): Promise<void> {
+  const url = new URL(apiJoin(`admin/shipping/methods/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to delete shipping method: ${res.status}`));
+  }
+}
+
+export async function getShippingTerminals(provider: string, country: string): Promise<TerminalsCacheItem> {
+  const url = new URL(apiJoin("admin/shipping/terminals"));
+  url.searchParams.set("provider", provider);
+  url.searchParams.set("country", country);
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch shipping terminals: ${res.status}`);
+  const normalized = normalizeTerminalsCacheItem(await res.json());
+  if (!normalized) throw new Error("Failed to fetch shipping terminals: invalid response");
+  return normalized;
+}
+
+export async function refreshShippingTerminals(provider: string, country: string): Promise<TerminalsCacheItem> {
+  const url = new URL(apiJoin("admin/shipping/terminals"));
+  url.searchParams.set("provider", provider);
+  url.searchParams.set("country", country);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: adminAuthHeader(),
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({ provider, country }),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to refresh shipping terminals: ${res.status}`));
+  }
+  const normalized = normalizeTerminalsCacheItem(await res.json());
+  if (!normalized) throw new Error("Failed to refresh shipping terminals: invalid response");
+  return normalized;
+}
+
+export async function deleteShippingTerminals(provider: string, country: string): Promise<void> {
+  const url = new URL(apiJoin("admin/shipping/terminals"));
+  url.searchParams.set("provider", provider);
+  url.searchParams.set("country", country);
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { Authorization: adminAuthHeader() },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to delete shipping terminals: ${res.status}`));
+  }
+}
