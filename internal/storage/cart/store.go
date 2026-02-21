@@ -52,11 +52,11 @@ type CartItemCustomOption struct {
 }
 
 type AddItemCustomOptionInput struct {
-	OptionID  string
-	Type      string
-	ValueID   string
-	ValueIDs  []string
-	ValueText string
+	OptionID  string   `json:"option_id"`
+	Type      string   `json:"type"`
+	ValueID   string   `json:"value_id"`
+	ValueIDs  []string `json:"value_ids"`
+	ValueText string   `json:"value_text"`
 }
 
 type Totals struct {

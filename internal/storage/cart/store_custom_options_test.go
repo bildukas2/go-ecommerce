@@ -1,6 +1,7 @@
 package cart
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -70,5 +71,45 @@ func TestHashCustomOptionsDeterministic(t *testing.T) {
 	}
 	if hashA != hashB {
 		t.Fatalf("expected deterministic hash; %q != %q", hashA, hashB)
+	}
+}
+
+func TestAddItemCustomOptionInputUnmarshalSnakeCaseJSON(t *testing.T) {
+	var options []AddItemCustomOptionInput
+	payload := []byte(`[
+		{
+			"option_id": "opt-size",
+			"type": "dropdown",
+			"value_id": "v-m"
+		},
+		{
+			"option_id": "opt-toppings",
+			"type": "multiple",
+			"value_ids": ["v-cheese", "v-bacon"]
+		},
+		{
+			"option_id": "opt-note",
+			"type": "field",
+			"value_text": "No onions"
+		}
+	]`)
+
+	if err := json.Unmarshal(payload, &options); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if len(options) != 3 {
+		t.Fatalf("expected 3 options, got %d", len(options))
+	}
+	if options[0].OptionID != "opt-size" || options[0].ValueID != "v-m" {
+		t.Fatalf("expected first option to decode option_id/value_id, got %+v", options[0])
+	}
+	if options[1].OptionID != "opt-toppings" || len(options[1].ValueIDs) != 2 {
+		t.Fatalf("expected second option value_ids decoded, got %+v", options[1])
+	}
+	if options[1].ValueIDs[0] != "v-cheese" || options[1].ValueIDs[1] != "v-bacon" {
+		t.Fatalf("unexpected value_ids order/content: %+v", options[1].ValueIDs)
+	}
+	if options[2].OptionID != "opt-note" || options[2].ValueText != "No onions" {
+		t.Fatalf("expected text option decoded, got %+v", options[2])
 	}
 }
