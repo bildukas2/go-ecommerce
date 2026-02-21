@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,6 +68,19 @@ func (m *module) handleStorefrontShippingOptions(w http.ResponseWriter, r *http.
 		cartValue = val
 	}
 
+	cartWeightStr := strings.TrimSpace(r.URL.Query().Get("cart_weight_kg"))
+	var cartWeightKg float64
+	hasCartWeight := false
+	if cartWeightStr != "" {
+		val, err := strconv.ParseFloat(cartWeightStr, 64)
+		if err != nil || val < 0 {
+			platformhttp.Error(w, http.StatusBadRequest, "invalid cart_weight_kg")
+			return
+		}
+		cartWeightKg = val
+		hasCartWeight = true
+	}
+
 	zone, err := m.store.GetZoneByCountry(r.Context(), country)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -104,7 +118,7 @@ func (m *module) handleStorefrontShippingOptions(w http.ResponseWriter, r *http.
 			continue
 		}
 
-		price := calculateMethodPrice(&method, cartValue)
+		price := calculateMethodPrice(&method, cartValue, cartWeightKg, hasCartWeight)
 		methodDTOs = append(methodDTOs, methodDTO{
 			ID:          method.ID,
 			ZoneID:      method.ZoneID,
@@ -125,9 +139,9 @@ func (m *module) handleStorefrontShippingOptions(w http.ResponseWriter, r *http.
 	})
 }
 
-func calculateMethodPrice(method *storshiping.Method, cartValue int64) int {
+func calculateMethodPrice(method *storshiping.Method, cartValue int64, cartWeightKg float64, hasCartWeight bool) int {
 	if method.PricingMode == "" {
-		method.PricingMode = "fixed"
+		method.PricingMode = "flat"
 	}
 
 	var rules map[string]any
@@ -138,46 +152,161 @@ func calculateMethodPrice(method *storshiping.Method, cartValue int64) int {
 		}
 	}
 
-	checkFreeShipping := func() int {
-		if freeThreshold, ok := rules["free_shipping_order_min_cents"]; ok {
-			if threshold, ok := freeThreshold.(float64); ok && cartValue > 0 && cartValue >= int64(threshold) {
-				return 0
-			}
+	resolveTiers := func(primaryKey, legacyKey string) []any {
+		if v, ok := rules[primaryKey].([]any); ok {
+			return v
 		}
-		return -1
+		if v, ok := rules[legacyKey].([]any); ok {
+			return v
+		}
+		return nil
 	}
 
-	switch method.PricingMode {
-	case "fixed":
-		if freePrice := checkFreeShipping(); freePrice == 0 {
+	matchesTier := func(value, min, max float64, hasMax bool) bool {
+		if value < min {
+			return false
+		}
+		if hasMax && value >= max {
+			return false
+		}
+		return true
+	}
+
+	lookupInt := func(obj map[string]any, keys ...string) (int64, bool) {
+		for _, key := range keys {
+			v, ok := obj[key]
+			if !ok {
+				continue
+			}
+			n, ok := v.(float64)
+			if !ok || n < 0 || math.Trunc(n) != n {
+				continue
+			}
+			return int64(n), true
+		}
+		return 0, false
+	}
+
+	lookupNumber := func(obj map[string]any, keys ...string) (float64, bool) {
+		for _, key := range keys {
+			v, ok := obj[key]
+			if !ok {
+				continue
+			}
+			n, ok := v.(float64)
+			if !ok || n < 0 {
+				continue
+			}
+			return n, true
+		}
+		return 0, false
+	}
+
+	applyProviderAdjustments := func(basePrice int64) int {
+		price := float64(basePrice)
+		if markupFixed, ok := lookupInt(rules, "markupFixed"); ok {
+			price += float64(markupFixed)
+		}
+		if markupPercent, ok := lookupNumber(rules, "markupPercent"); ok {
+			price += (float64(basePrice) * markupPercent / 100.0)
+		}
+		finalPrice := int64(math.Round(price))
+		if minPrice, ok := lookupInt(rules, "minPrice"); ok && finalPrice < minPrice {
+			finalPrice = minPrice
+		}
+		if maxPrice, ok := lookupInt(rules, "maxPrice"); ok && finalPrice > maxPrice {
+			finalPrice = maxPrice
+		}
+		if finalPrice < 0 {
 			return 0
 		}
-		if basePrice, ok := rules["base_price_cents"]; ok {
-			if price, ok := basePrice.(float64); ok {
+		return int(finalPrice)
+	}
+
+	getFlatPrice := func() int {
+		freeOver, hasFreeOver := lookupInt(rules, "freeOver", "free_shipping_order_min_cents")
+		if hasFreeOver && cartValue >= freeOver {
+			return 0
+		}
+		if price, ok := lookupInt(rules, "price", "base_price_cents"); ok {
+			return int(price)
+		}
+		return 0
+	}
+
+	mode := method.PricingMode
+	switch mode {
+	case "fixed":
+		mode = "flat"
+	case "table":
+		mode = "weight_tiers"
+	}
+
+	switch mode {
+	case "flat":
+		return getFlatPrice()
+
+	case "free":
+		if always, ok := rules["always"].(bool); ok && always {
+			return 0
+		}
+		freeOver, ok := lookupInt(rules, "freeOver")
+		if ok && cartValue >= freeOver {
+			return 0
+		}
+		return 0
+
+	case "total_tiers":
+		tiers := resolveTiers("tiers", "")
+		for _, rawTier := range tiers {
+			tier, ok := rawTier.(map[string]any)
+			if !ok {
+				continue
+			}
+			min, hasMin := lookupNumber(tier, "min")
+			if !hasMin {
+				continue
+			}
+			max, hasMax := lookupNumber(tier, "max")
+			price, hasPrice := lookupInt(tier, "price")
+			if !hasPrice {
+				continue
+			}
+			if matchesTier(float64(cartValue), min, max, hasMax) {
 				return int(price)
 			}
 		}
 		return 0
 
-	case "table":
-		if freePrice := checkFreeShipping(); freePrice == 0 {
-			return 0
+	case "weight_tiers":
+		tiers := resolveTiers("tiers", "rules")
+		effectiveWeight := cartWeightKg
+		if !hasCartWeight {
+			effectiveWeight = 0
 		}
-		if tableRules, ok := rules["rules"]; ok {
-			if rulesArray, ok := tableRules.([]any); ok {
-				for _, rule := range rulesArray {
-					if ruleMap, ok := rule.(map[string]any); ok {
-						priceCents, ok := ruleMap["price_cents"].(float64)
-						if !ok {
-							continue
-						}
-						price := int(priceCents)
-						return price
-					}
-				}
+
+		for _, rawTier := range tiers {
+			tier, ok := rawTier.(map[string]any)
+			if !ok {
+				continue
+			}
+			min, hasMin := lookupNumber(tier, "min", "min_weight_kg")
+			if !hasMin {
+				continue
+			}
+			max, hasMax := lookupNumber(tier, "max", "max_weight_kg")
+			price, hasPrice := lookupInt(tier, "price", "price_cents")
+			if !hasPrice {
+				continue
+			}
+			if matchesTier(effectiveWeight, min, max, hasMax) {
+				return int(price)
 			}
 		}
 		return 0
+
+	case "provider":
+		return applyProviderAdjustments(0)
 
 	default:
 		return 0
