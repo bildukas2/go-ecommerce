@@ -1937,7 +1937,7 @@ export type ShippingMethod = {
   title: string;
   enabled: boolean;
   sort_order: number;
-  pricing_mode: "fixed" | "table" | "provider";
+  pricing_mode: "flat" | "free" | "total_tiers" | "weight_tiers" | "provider";
   pricing_rules_json: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -2010,8 +2010,13 @@ function normalizeShippingMethod(raw: unknown): ShippingMethod | null {
   const id = asString(obj.id);
   if (!id) return null;
 
-  const pricingMode = asString(obj.pricing_mode ?? obj.pricingMode).toLowerCase();
-  if (pricingMode !== "fixed" && pricingMode !== "table" && pricingMode !== "provider") {
+  const pricingModeRaw = asString(obj.pricing_mode ?? obj.pricingMode).toLowerCase();
+  const pricingMode = pricingModeRaw === "fixed"
+    ? "flat"
+    : pricingModeRaw === "table"
+      ? "weight_tiers"
+      : pricingModeRaw;
+  if (pricingMode !== "flat" && pricingMode !== "free" && pricingMode !== "total_tiers" && pricingMode !== "weight_tiers" && pricingMode !== "provider") {
     return null;
   }
 
@@ -2023,7 +2028,7 @@ function normalizeShippingMethod(raw: unknown): ShippingMethod | null {
     title: asString(obj.title),
     enabled: asBoolean(obj.enabled),
     sort_order: asNumber(obj.sort_order ?? obj.sortOrder),
-    pricing_mode: pricingMode as "fixed" | "table" | "provider",
+    pricing_mode: pricingMode as ShippingMethod["pricing_mode"],
     pricing_rules_json: asRecord(obj.pricing_rules_json ?? obj.pricingRulesJSON),
     created_at: asString(obj.created_at ?? obj.createdAt),
     updated_at: asString(obj.updated_at ?? obj.updatedAt),
@@ -2191,7 +2196,7 @@ export async function createShippingMethod(data: Omit<ShippingMethod, "id" | "cr
     title: data.title || "",
     enabled: data.enabled !== undefined ? data.enabled : true,
     sort_order: data.sort_order || 0,
-    pricing_mode: data.pricing_mode || "fixed",
+    pricing_mode: data.pricing_mode || "flat",
     pricing_rules_json: data.pricing_rules_json || {},
   };
   const res = await fetch(url.toString(), {
@@ -2219,7 +2224,7 @@ export async function updateShippingMethod(id: string, data: Partial<ShippingMet
     title: data.title || "",
     enabled: data.enabled !== undefined ? data.enabled : true,
     sort_order: data.sort_order || 0,
-    pricing_mode: data.pricing_mode || "fixed",
+    pricing_mode: data.pricing_mode || "flat",
     pricing_rules_json: data.pricing_rules_json || {},
   };
   const res = await fetch(url.toString(), {

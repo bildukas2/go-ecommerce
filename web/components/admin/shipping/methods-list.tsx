@@ -20,7 +20,6 @@ export function MethodsList({
   onMethodUpdated,
 }: Props) {
   const [methods, setMethods] = useState(initialMethods);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<ShippingMethod | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
@@ -83,6 +82,36 @@ export function MethodsList({
     return zone?.name || "(unknown zone)";
   };
 
+  const getPricingModePresentation = (mode: ShippingMethod["pricing_mode"]) => {
+    switch (mode) {
+      case "flat":
+        return {
+          label: "Flat rate",
+          classes: "border border-blue-500/35 bg-blue-500/12 text-blue-700 dark:text-blue-300",
+        };
+      case "free":
+        return {
+          label: "Free shipping",
+          classes: "border border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+        };
+      case "total_tiers":
+        return {
+          label: "Order total tiers",
+          classes: "border border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300",
+        };
+      case "weight_tiers":
+        return {
+          label: "Weight tiers",
+          classes: "border border-purple-500/35 bg-purple-500/12 text-purple-700 dark:text-purple-300",
+        };
+      default:
+        return {
+          label: "Provider rate",
+          classes: "border border-green-500/35 bg-green-500/12 text-green-700 dark:text-green-300",
+        };
+    }
+  };
+
   return (
     <>
       <div className="space-y-4">
@@ -118,7 +147,9 @@ export function MethodsList({
                 </tr>
               </thead>
               <tbody>
-                {methods.map((method) => (
+                {methods.map((method) => {
+                  const pricing = getPricingModePresentation(method.pricing_mode);
+                  return (
                   <tr key={method.id} className="border-b border-surface-border/50 hover:bg-foreground/[0.02]">
                     <td className="px-4 py-3 font-medium">{method.title}</td>
                     <td className="px-4 py-3 text-foreground/70">{getZoneName(method.zone_id)}</td>
@@ -128,14 +159,10 @@ export function MethodsList({
                       <span
                         className={[
                           "inline-block rounded-full px-2 py-1 text-xs font-medium",
-                          method.pricing_mode === "fixed"
-                            ? "border border-blue-500/35 bg-blue-500/12 text-blue-700 dark:text-blue-300"
-                            : method.pricing_mode === "table"
-                              ? "border border-purple-500/35 bg-purple-500/12 text-purple-700 dark:text-purple-300"
-                              : "border border-green-500/35 bg-green-500/12 text-green-700 dark:text-green-300",
+                          pricing.classes,
                         ].join(" ")}
                       >
-                        {method.pricing_mode}
+                        {pricing.label}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-foreground/70">{method.sort_order}</td>
@@ -173,7 +200,8 @@ export function MethodsList({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
