@@ -6,14 +6,14 @@ import (
 )
 
 type Provider struct {
-	ID        string
-	Key       string
-	Name      string
-	Enabled   bool
-	Mode      string
+	ID         string
+	Key        string
+	Name       string
+	Enabled    bool
+	Mode       string
 	ConfigJSON []byte
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Zone struct {

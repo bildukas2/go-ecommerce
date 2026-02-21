@@ -10,18 +10,18 @@ import (
 )
 
 type upsertCustomOptionRequest struct {
-	StoreID    *string                        `json:"store_id"`
-	Code       string                         `json:"code"`
-	Title      string                         `json:"title"`
-	TypeGroup  string                         `json:"type_group"`
-	Type       string                         `json:"type"`
-	Required   bool                           `json:"required"`
-	SortOrder  *int                           `json:"sort_order"`
-	PriceType  *string                        `json:"price_type"`
-	PriceValue *float64                       `json:"price_value"`
-	IsActive   *bool                          `json:"is_active"`
-	DisplayMode *string                      `json:"display_mode"`
-	Values     []upsertCustomOptionValueInput `json:"values"`
+	StoreID     *string                        `json:"store_id"`
+	Code        string                         `json:"code"`
+	Title       string                         `json:"title"`
+	TypeGroup   string                         `json:"type_group"`
+	Type        string                         `json:"type"`
+	Required    bool                           `json:"required"`
+	SortOrder   *int                           `json:"sort_order"`
+	PriceType   *string                        `json:"price_type"`
+	PriceValue  *float64                       `json:"price_value"`
+	IsActive    *bool                          `json:"is_active"`
+	DisplayMode *string                        `json:"display_mode"`
+	Values      []upsertCustomOptionValueInput `json:"values"`
 }
 
 type upsertCustomOptionValueInput struct {

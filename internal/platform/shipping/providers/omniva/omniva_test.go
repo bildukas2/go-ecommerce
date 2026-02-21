@@ -24,9 +24,9 @@ func TestNewProvider(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:     "empty config",
-			config:   map[string]any{},
-			wantErr:  false,
+			name:    "empty config",
+			config:  map[string]any{},
+			wantErr: false,
 		},
 		{
 			name: "partial config",

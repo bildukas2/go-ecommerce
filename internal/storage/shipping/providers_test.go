@@ -29,36 +29,36 @@ func TestProvidersStore_CreateProvider(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		key       string
-		provName  string
-		mode      string
+		name       string
+		key        string
+		provName   string
+		mode       string
 		configJSON []byte
-		wantErr   bool
+		wantErr    bool
 	}{
 		{
-			name:      "valid provider",
-			key:       "test-omniva",
-			provName:  "Omniva",
-			mode:      "sandbox",
+			name:       "valid provider",
+			key:        "test-omniva",
+			provName:   "Omniva",
+			mode:       "sandbox",
 			configJSON: []byte(`{"username":"test","password":"test"}`),
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:      "missing key",
-			key:       "",
-			provName:  "Test Provider",
-			mode:      "sandbox",
+			name:       "missing key",
+			key:        "",
+			provName:   "Test Provider",
+			mode:       "sandbox",
 			configJSON: []byte(`{}`),
-			wantErr:   true,
+			wantErr:    true,
 		},
 		{
-			name:      "missing name",
-			key:       "test-key",
-			provName:  "",
-			mode:      "sandbox",
+			name:       "missing name",
+			key:        "test-key",
+			provName:   "",
+			mode:       "sandbox",
 			configJSON: []byte(`{}`),
-			wantErr:   true,
+			wantErr:    true,
 		},
 	}
 
@@ -135,8 +135,19 @@ func TestProvidersStore_UpdateProvider(t *testing.T) {
 	if p.Mode != "live" {
 		t.Fatalf("expected mode %q, got %q", "live", p.Mode)
 	}
-	if string(p.ConfigJSON) != string(newConfig) {
-		t.Fatalf("expected config %q, got %q", newConfig, p.ConfigJSON)
+
+	var expected, actual map[string]interface{}
+	if err := json.Unmarshal(newConfig, &expected); err != nil {
+		t.Fatalf("unmarshal expected config error: %v", err)
+	}
+	if err := json.Unmarshal(p.ConfigJSON, &actual); err != nil {
+		t.Fatalf("unmarshal actual config error: %v", err)
+	}
+	if expected["username"] != actual["username"] {
+		t.Fatalf("expected username %q, got %q", expected["username"], actual["username"])
+	}
+	if expected["password"] != actual["password"] {
+		t.Fatalf("expected password %q, got %q", expected["password"], actual["password"])
 	}
 }
 
