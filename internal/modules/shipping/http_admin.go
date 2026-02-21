@@ -2,6 +2,7 @@ package shipping
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -165,7 +166,7 @@ func (m *module) handleUpdateProvider(w http.ResponseWriter, r *http.Request, ke
 	configJSON, _ := json.Marshal(req.ConfigJSON)
 
 	existing, err := m.store.GetProvider(r.Context(), key)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		platformhttp.Error(w, http.StatusInternalServerError, "get provider error")
 		return
 	}
