@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 
@@ -604,8 +606,225 @@ func validateMethodRequest(req upsertMethodRequest) error {
 	if req.PricingMode == "" {
 		return errors.New("pricing_mode is required")
 	}
-	if req.PricingMode != "fixed" && req.PricingMode != "table" && req.PricingMode != "provider" {
-		return errors.New("pricing_mode must be fixed, table, or provider")
+	switch req.PricingMode {
+	case "flat":
+		if err := validateFlatPricingRules(req.PricingRulesJSON); err != nil {
+			return err
+		}
+	case "free":
+		if err := validateFreePricingRules(req.PricingRulesJSON); err != nil {
+			return err
+		}
+	case "total_tiers":
+		if err := validateTotalTiersPricingRules(req.PricingRulesJSON); err != nil {
+			return err
+		}
+	case "weight_tiers":
+		if err := validateWeightTiersPricingRules(req.PricingRulesJSON); err != nil {
+			return err
+		}
+	case "provider":
+		if err := validateProviderPricingRules(req.PricingRulesJSON); err != nil {
+			return err
+		}
+	default:
+		return errors.New("pricing_mode must be flat, free, total_tiers, weight_tiers, or provider")
 	}
 	return nil
+}
+
+func validateFlatPricingRules(rules map[string]interface{}) error {
+	if rules == nil {
+		return errors.New("pricing_rules_json.price is required for flat mode")
+	}
+	if _, _, err := getIntField(rules, "price", true); err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	if _, _, err := getIntField(rules, "freeOver", false); err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	return nil
+}
+
+func validateFreePricingRules(rules map[string]interface{}) error {
+	if rules == nil {
+		return errors.New("pricing_rules_json.always or pricing_rules_json.freeOver is required for free mode")
+	}
+	always, hasAlways, err := getBoolField(rules, "always")
+	if err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	_, hasFreeOver, err := getIntField(rules, "freeOver", false)
+	if err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	if hasAlways && hasFreeOver {
+		return errors.New("pricing_rules_json.always and pricing_rules_json.freeOver cannot be used together for free mode")
+	}
+	if hasAlways {
+		if !always {
+			return errors.New("pricing_rules_json.always must be true when set for free mode")
+		}
+		return nil
+	}
+	if hasFreeOver {
+		return nil
+	}
+	return errors.New("pricing_rules_json.always or pricing_rules_json.freeOver is required for free mode")
+}
+
+func validateTotalTiersPricingRules(rules map[string]interface{}) error {
+	if rules == nil {
+		return errors.New("pricing_rules_json.tiers is required for total_tiers mode")
+	}
+	if err := validatePriceTiers(rules, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateWeightTiersPricingRules(rules map[string]interface{}) error {
+	if rules == nil {
+		return errors.New("pricing_rules_json.tiers is required for weight_tiers mode")
+	}
+	if rawUnit, ok := rules["unit"]; ok {
+		unit, ok := rawUnit.(string)
+		if !ok {
+			return errors.New("pricing_rules_json.unit must be a string")
+		}
+		if unit != "kg" {
+			return errors.New("pricing_rules_json.unit must be kg")
+		}
+	}
+	if err := validatePriceTiers(rules, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateProviderPricingRules(rules map[string]interface{}) error {
+	if rules == nil {
+		return nil
+	}
+	if _, _, err := getBoolField(rules, "liveRates"); err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	minPrice, hasMinPrice, err := getIntField(rules, "minPrice", false)
+	if err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	maxPrice, hasMaxPrice, err := getIntField(rules, "maxPrice", false)
+	if err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	if hasMinPrice && hasMaxPrice && maxPrice < minPrice {
+		return errors.New("pricing_rules_json.maxPrice must be greater than or equal to pricing_rules_json.minPrice")
+	}
+	if _, _, err := getIntField(rules, "markupFixed", false); err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	if _, _, err := getNumberField(rules, "markupPercent"); err != nil {
+		return fmt.Errorf("pricing_rules_json.%w", err)
+	}
+	return nil
+}
+
+func validatePriceTiers(rules map[string]interface{}, integerBounds bool) error {
+	rawTiers, ok := rules["tiers"]
+	if !ok {
+		return errors.New("pricing_rules_json.tiers is required")
+	}
+	tiers, ok := rawTiers.([]interface{})
+	if !ok {
+		return errors.New("pricing_rules_json.tiers must be an array")
+	}
+	if len(tiers) == 0 {
+		return errors.New("pricing_rules_json.tiers must contain at least one tier")
+	}
+	for i, rawTier := range tiers {
+		tier, ok := rawTier.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("pricing_rules_json.tiers[%d] must be an object", i)
+		}
+		min, hasMin, err := getNumberField(tier, "min")
+		if err != nil || !hasMin {
+			if err != nil {
+				return fmt.Errorf("pricing_rules_json.tiers[%d].%s", i, err.Error())
+			}
+			return fmt.Errorf("pricing_rules_json.tiers[%d].min is required", i)
+		}
+		if min < 0 {
+			return fmt.Errorf("pricing_rules_json.tiers[%d].min must be non-negative", i)
+		}
+		if integerBounds && math.Trunc(min) != min {
+			return fmt.Errorf("pricing_rules_json.tiers[%d].min must be a whole number", i)
+		}
+		max, hasMax, err := getNumberField(tier, "max")
+		if err != nil {
+			return fmt.Errorf("pricing_rules_json.tiers[%d].%s", i, err.Error())
+		}
+		if hasMax {
+			if max < 0 {
+				return fmt.Errorf("pricing_rules_json.tiers[%d].max must be non-negative", i)
+			}
+			if integerBounds && math.Trunc(max) != max {
+				return fmt.Errorf("pricing_rules_json.tiers[%d].max must be a whole number", i)
+			}
+			if max < min {
+				return fmt.Errorf("pricing_rules_json.tiers[%d].max must be greater than or equal to min", i)
+			}
+		}
+		if _, _, err := getIntField(tier, "price", true); err != nil {
+			return fmt.Errorf("pricing_rules_json.tiers[%d].%s", i, err.Error())
+		}
+	}
+	return nil
+}
+
+func getIntField(obj map[string]interface{}, key string, required bool) (int64, bool, error) {
+	v, ok := obj[key]
+	if !ok {
+		if required {
+			return 0, false, fmt.Errorf("%s is required", key)
+		}
+		return 0, false, nil
+	}
+	n, ok := v.(float64)
+	if !ok {
+		return 0, true, fmt.Errorf("%s must be a number", key)
+	}
+	if n < 0 {
+		return 0, true, fmt.Errorf("%s must be non-negative", key)
+	}
+	if math.Trunc(n) != n {
+		return 0, true, fmt.Errorf("%s must be a whole number", key)
+	}
+	return int64(n), true, nil
+}
+
+func getBoolField(obj map[string]interface{}, key string) (bool, bool, error) {
+	v, ok := obj[key]
+	if !ok {
+		return false, false, nil
+	}
+	b, ok := v.(bool)
+	if !ok {
+		return false, true, fmt.Errorf("%s must be a boolean", key)
+	}
+	return b, true, nil
+}
+
+func getNumberField(obj map[string]interface{}, key string) (float64, bool, error) {
+	v, ok := obj[key]
+	if !ok {
+		return 0, false, nil
+	}
+	n, ok := v.(float64)
+	if !ok {
+		return 0, true, fmt.Errorf("%s must be a number", key)
+	}
+	if n < 0 {
+		return 0, true, fmt.Errorf("%s must be non-negative", key)
+	}
+	return n, true, nil
 }

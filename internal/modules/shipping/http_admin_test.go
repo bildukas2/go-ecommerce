@@ -220,7 +220,10 @@ func TestValidateMethodRequest_AllFieldsValid(t *testing.T) {
 		ProviderKey: "omniva",
 		ServiceCode: "PICKUP_LT",
 		Title:       "Test",
-		PricingMode: "fixed",
+		PricingMode: "flat",
+		PricingRulesJSON: map[string]interface{}{
+			"price": float64(499),
+		},
 	}
 
 	err := validateMethodRequest(req)
@@ -234,7 +237,10 @@ func TestValidateMethodRequest_MissingZoneID(t *testing.T) {
 		ProviderKey: "omniva",
 		ServiceCode: "PICKUP_LT",
 		Title:       "Test",
-		PricingMode: "fixed",
+		PricingMode: "flat",
+		PricingRulesJSON: map[string]interface{}{
+			"price": float64(499),
+		},
 	}
 
 	err := validateMethodRequest(req)
@@ -248,7 +254,10 @@ func TestValidateMethodRequest_MissingProviderKey(t *testing.T) {
 		ZoneID:      "zone-1",
 		ServiceCode: "PICKUP_LT",
 		Title:       "Test",
-		PricingMode: "fixed",
+		PricingMode: "flat",
+		PricingRulesJSON: map[string]interface{}{
+			"price": float64(499),
+		},
 	}
 
 	err := validateMethodRequest(req)
@@ -262,7 +271,10 @@ func TestValidateMethodRequest_MissingServiceCode(t *testing.T) {
 		ZoneID:      "zone-1",
 		ProviderKey: "omniva",
 		Title:       "Test",
-		PricingMode: "fixed",
+		PricingMode: "flat",
+		PricingRulesJSON: map[string]interface{}{
+			"price": float64(499),
+		},
 	}
 
 	err := validateMethodRequest(req)
@@ -276,7 +288,10 @@ func TestValidateMethodRequest_MissingTitle(t *testing.T) {
 		ZoneID:      "zone-1",
 		ProviderKey: "omniva",
 		ServiceCode: "PICKUP_LT",
-		PricingMode: "fixed",
+		PricingMode: "flat",
+		PricingRulesJSON: map[string]interface{}{
+			"price": float64(499),
+		},
 	}
 
 	err := validateMethodRequest(req)
@@ -315,19 +330,212 @@ func TestValidateMethodRequest_InvalidPricingMode(t *testing.T) {
 }
 
 func TestValidatePricingModes(t *testing.T) {
-	validModes := []string{"fixed", "table", "provider"}
+	validModes := []string{"flat", "free", "total_tiers", "weight_tiers", "provider"}
 	for _, mode := range validModes {
-		req := upsertMethodRequest{
-			ZoneID:      "zone-1",
-			ProviderKey: "omniva",
-			ServiceCode: "PICKUP_LT",
-			Title:       "Test",
-			PricingMode: mode,
-		}
+		req := baseValidMethodRequest(mode)
 		err := validateMethodRequest(req)
 		if err != nil {
 			t.Errorf("pricing mode %s should be valid, got error: %v", mode, err)
 		}
+	}
+}
+
+func TestValidateMethodRequest_ModeSpecificPricingRules(t *testing.T) {
+	tests := []struct {
+		name      string
+		req       upsertMethodRequest
+		wantError bool
+	}{
+		{
+			name:      "flat valid",
+			req:       baseValidMethodRequest("flat"),
+			wantError: false,
+		},
+		{
+			name: "flat missing price",
+			req: upsertMethodRequest{
+				ZoneID:           "zone-1",
+				ProviderKey:      "omniva",
+				ServiceCode:      "PICKUP_LT",
+				Title:            "Test",
+				PricingMode:      "flat",
+				PricingRulesJSON: map[string]interface{}{},
+			},
+			wantError: true,
+		},
+		{
+			name:      "free always true valid",
+			req:       baseValidMethodRequest("free"),
+			wantError: false,
+		},
+		{
+			name: "free with threshold valid",
+			req: upsertMethodRequest{
+				ZoneID:      "zone-1",
+				ProviderKey: "omniva",
+				ServiceCode: "PICKUP_LT",
+				Title:       "Test",
+				PricingMode: "free",
+				PricingRulesJSON: map[string]interface{}{
+					"freeOver": float64(10000),
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "free always and threshold together invalid",
+			req: upsertMethodRequest{
+				ZoneID:      "zone-1",
+				ProviderKey: "omniva",
+				ServiceCode: "PICKUP_LT",
+				Title:       "Test",
+				PricingMode: "free",
+				PricingRulesJSON: map[string]interface{}{
+					"always":   true,
+					"freeOver": float64(10000),
+				},
+			},
+			wantError: true,
+		},
+		{
+			name:      "total tiers valid",
+			req:       baseValidMethodRequest("total_tiers"),
+			wantError: false,
+		},
+		{
+			name: "total tiers invalid range",
+			req: upsertMethodRequest{
+				ZoneID:      "zone-1",
+				ProviderKey: "omniva",
+				ServiceCode: "PICKUP_LT",
+				Title:       "Test",
+				PricingMode: "total_tiers",
+				PricingRulesJSON: map[string]interface{}{
+					"tiers": []interface{}{
+						map[string]interface{}{
+							"min":   float64(10000),
+							"max":   float64(5000),
+							"price": float64(299),
+						},
+					},
+				},
+			},
+			wantError: true,
+		},
+		{
+			name:      "weight tiers valid",
+			req:       baseValidMethodRequest("weight_tiers"),
+			wantError: false,
+		},
+		{
+			name: "weight tiers invalid unit",
+			req: upsertMethodRequest{
+				ZoneID:      "zone-1",
+				ProviderKey: "omniva",
+				ServiceCode: "PICKUP_LT",
+				Title:       "Test",
+				PricingMode: "weight_tiers",
+				PricingRulesJSON: map[string]interface{}{
+					"unit": "lb",
+					"tiers": []interface{}{
+						map[string]interface{}{
+							"min":   float64(0),
+							"max":   float64(2),
+							"price": float64(399),
+						},
+					},
+				},
+			},
+			wantError: true,
+		},
+		{
+			name:      "provider valid",
+			req:       baseValidMethodRequest("provider"),
+			wantError: false,
+		},
+		{
+			name: "provider invalid min max",
+			req: upsertMethodRequest{
+				ZoneID:      "zone-1",
+				ProviderKey: "omniva",
+				ServiceCode: "PICKUP_LT",
+				Title:       "Test",
+				PricingMode: "provider",
+				PricingRulesJSON: map[string]interface{}{
+					"minPrice": float64(1000),
+					"maxPrice": float64(500),
+				},
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateMethodRequest(tc.req)
+			if tc.wantError && err == nil {
+				t.Fatal("expected validation error")
+			}
+			if !tc.wantError && err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+		})
+	}
+}
+
+func baseValidMethodRequest(mode string) upsertMethodRequest {
+	req := upsertMethodRequest{
+		ZoneID:      "zone-1",
+		ProviderKey: "omniva",
+		ServiceCode: "PICKUP_LT",
+		Title:       "Test",
+		PricingMode: mode,
+	}
+	switch mode {
+	case "flat":
+		req.PricingRulesJSON = map[string]interface{}{
+			"price":    float64(499),
+			"freeOver": float64(10000),
+		}
+	case "free":
+		req.PricingRulesJSON = map[string]interface{}{
+			"always": true,
+		}
+	case "total_tiers":
+		req.PricingRulesJSON = map[string]interface{}{
+			"tiers": []interface{}{
+				map[string]interface{}{"min": float64(0), "max": float64(5000), "price": float64(499)},
+				map[string]interface{}{"min": float64(5000), "price": float64(0)},
+			},
+		}
+	case "weight_tiers":
+		req.PricingRulesJSON = map[string]interface{}{
+			"unit": "kg",
+			"tiers": []interface{}{
+				map[string]interface{}{"min": float64(0), "max": float64(2), "price": float64(399)},
+				map[string]interface{}{"min": float64(2), "price": float64(599)},
+			},
+		}
+	case "provider":
+		req.PricingRulesJSON = map[string]interface{}{
+			"liveRates":     true,
+			"markupFixed":   float64(100),
+			"markupPercent": float64(5),
+			"minPrice":      float64(300),
+			"maxPrice":      float64(3000),
+		}
+	}
+	return req
+}
+
+func TestValidateMethodRequest_FlatPriceMustBeWholeCents(t *testing.T) {
+	req := baseValidMethodRequest("flat")
+	req.PricingRulesJSON["price"] = 4.99
+
+	err := validateMethodRequest(req)
+	if err == nil {
+		t.Fatal("expected validation error for decimal cents")
 	}
 }
 

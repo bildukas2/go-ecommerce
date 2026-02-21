@@ -20,7 +20,7 @@ func (s *Store) CreateMethod(ctx context.Context, method Method) (string, error)
 		return "", errors.New("title is required")
 	}
 	if method.PricingMode == "" {
-		method.PricingMode = "fixed"
+		method.PricingMode = "flat"
 	}
 	if method.PricingRulesJSON == nil {
 		method.PricingRulesJSON = []byte("{}")
@@ -55,7 +55,7 @@ func (s *Store) UpdateMethod(ctx context.Context, method Method) error {
 		return errors.New("title is required")
 	}
 	if method.PricingMode == "" {
-		method.PricingMode = "fixed"
+		method.PricingMode = "flat"
 	}
 	if method.PricingRulesJSON == nil {
 		method.PricingRulesJSON = []byte("{}")
