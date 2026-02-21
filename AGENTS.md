@@ -3,7 +3,8 @@
 This is a public, open-source Go ecommerce project.
 Your job is to help implement features **without over-engineering**.
 
-If anything is unclear, **choose the simplest correct approach** and explain assumptions in the PR/commit message.
+If anything is unclear, **choose the simplest correct approach**
+
 
 ---
 
@@ -82,6 +83,24 @@ If anything is unclear, **choose the simplest correct approach** and explain ass
 - Avoid unnecessary commentary
 - Output only required result
 
+## Output Rules
+- Default: code only
+- Tiny summaries for user what need to test and see
+- No introductions
+- No closing remarks
+
+## Development Mode
+- Implement, do not teach
+- Prefer minimal responses
+- Follow command-style prompts
+
+## Token Efficiency
+- Avoid verbosity
+- Avoid architectural discussion unless requested
+- Avoid repetition
+
+## When unsure
+Ask a short clarification question instead of writing long explanation
 
 ### KISS first
 - Prefer **simple and boring** solutions.

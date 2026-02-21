@@ -7,6 +7,7 @@ import type { ShippingProvider, ShippingZone, ShippingMethod } from "@/lib/api";
 import { ProvidersList } from "./providers-list";
 import { ZonesList } from "./zones-list";
 import { MethodsList } from "./methods-list";
+import { TerminalsList } from "./terminals-list";
 
 type TabType = "providers" | "zones" | "methods" | "terminals";
 
@@ -82,10 +83,10 @@ export function ShippingSettingsTabs({
         )}
 
         {currentTab === "terminals" && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold">Terminals Cache</h2>
-            <p className="text-foreground/70">Terminals placeholder — Coming soon</p>
-          </div>
+          <TerminalsList
+            initialProviders={initialProviders}
+            initialZones={initialZones}
+          />
         )}
       </div>
     </div>
