@@ -1976,10 +1976,17 @@ function normalizeShippingZone(raw: unknown): ShippingZone | null {
   if (!id) return null;
 
   let countriesArray: string[] = [];
-  const countriesJsonRaw = obj.countries_json ?? obj.countriesJSON;
+  const countriesJsonRaw = obj.countries_json ?? obj.countriesJSON ?? obj.CountriesJSON;
   if (typeof countriesJsonRaw === "string") {
     try {
-      const parsed = JSON.parse(countriesJsonRaw);
+      let jsonStr = countriesJsonRaw;
+      if (countriesJsonRaw.match(/^[A-Za-z0-9+/=]+$/)) {
+        try {
+          jsonStr = atob(countriesJsonRaw);
+        } catch {
+        }
+      }
+      const parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed)) {
         countriesArray = parsed.map((c) => asString(c)).filter((c) => c.length > 0);
       }
