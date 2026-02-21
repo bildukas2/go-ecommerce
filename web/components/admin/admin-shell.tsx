@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Users, UsersRound, X } from "lucide-react";
+import { ChevronDown, Cog, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Truck, Users, UsersRound, X } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -35,6 +35,10 @@ const customerItems: NavItem[] = [
   { href: "/admin/customers/groups", label: "Customer Groups", icon: <UsersRound size={16} /> },
 ];
 
+const settingsItems: NavItem[] = [
+  { href: "/admin/settings/shipping", label: "Shipping", icon: <Truck size={16} /> },
+];
+
 function isActivePath(pathname: string, href: string): boolean {
   if (href === "/admin") {
     return pathname === href;
@@ -58,6 +62,9 @@ function SidebarNav({
   const customersActive = pathname.startsWith("/admin/customers");
   const [customersOpen, setCustomersOpen] = useState(false);
   const isCustomersExpanded = customersActive || customersOpen;
+  const settingsActive = pathname.startsWith("/admin/settings");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const isSettingsExpanded = settingsActive || settingsOpen;
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-2" aria-label="Admin navigation">
@@ -238,6 +245,84 @@ function SidebarNav({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <button
+        type="button"
+        onClick={() => setSettingsOpen((value) => !value)}
+        aria-expanded={!collapsed && isSettingsExpanded}
+        aria-controls="admin-settings-submenu"
+        aria-label="Toggle settings menu"
+        className={[
+          "group flex items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
+          settingsActive
+            ? "border-blue-500/30 bg-blue-500/12 text-foreground"
+            : "border-transparent text-foreground/80 hover:border-surface-border hover:bg-foreground/5",
+        ].join(" ")}
+      >
+        <span className={settingsActive ? "text-blue-500" : "text-foreground/70 group-hover:text-blue-500"}>
+          <Cog size={18} />
+        </span>
+        {!collapsed && (
+          <>
+            <span className={settingsActive ? "font-medium" : ""}>Settings</span>
+            <ChevronDown
+              size={16}
+              className={`ml-auto transition-transform duration-200 ${isSettingsExpanded ? "rotate-180" : ""}`}
+            />
+          </>
+        )}
+        {settingsActive && collapsed && (
+          <span aria-hidden className="ml-auto size-2 rounded-full bg-blue-500 shadow-[0_0_14px_rgba(0,114,245,0.8)]" />
+        )}
+      </button>
+
+      {!collapsed && (
+        <AnimatePresence initial={false}>
+          {isSettingsExpanded && (
+            <motion.div
+              id="admin-settings-submenu"
+              className="ml-3 overflow-hidden border-l border-surface-border/80 pl-3"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="space-y-1 py-1">
+                {settingsItems.map((item) => {
+                  const active = isActivePath(pathname, item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onNavigate}
+                      title={collapsed ? item.label : undefined}
+                      aria-label={item.label}
+                      className={[
+                        "group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
+                        active
+                          ? "border-blue-500/30 bg-blue-500/12 text-foreground"
+                          : "border-transparent text-foreground/75 hover:border-surface-border hover:bg-foreground/5",
+                        collapsed ? "justify-center px-2" : "",
+                      ].join(" ")}
+                    >
+                      <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
+                        {item.icon}
+                      </span>
+                      {!collapsed && <span className={active ? "font-medium" : ""}>{item.label}</span>}
+                      {collapsed && active && (
+                        <span aria-hidden className="size-1.5 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(0,114,245,0.8)]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
     </nav>
   );
 }
