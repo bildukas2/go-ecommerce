@@ -14,8 +14,8 @@ import (
 )
 
 type shippingOptionsResponse struct {
-	Zone    *zoneDTO        `json:"zone"`
-	Methods []methodDTO     `json:"methods"`
+	Zone    *zoneDTO    `json:"zone"`
+	Methods []methodDTO `json:"methods"`
 }
 
 type zoneDTO struct {
@@ -26,16 +26,16 @@ type zoneDTO struct {
 }
 
 type methodDTO struct {
-	ID           string                 `json:"id"`
-	ZoneID       string                 `json:"zone_id"`
-	ProviderKey  string                 `json:"provider_key"`
-	ServiceCode  string                 `json:"service_code"`
-	Title        string                 `json:"title"`
-	Enabled      bool                   `json:"enabled"`
-	SortOrder    int                    `json:"sort_order"`
-	PricingMode  string                 `json:"pricing_mode"`
-	Price        int                    `json:"price"`
-	Currency     string                 `json:"currency"`
+	ID          string `json:"id"`
+	ZoneID      string `json:"zone_id"`
+	ProviderKey string `json:"provider_key"`
+	ServiceCode string `json:"service_code"`
+	Title       string `json:"title"`
+	Enabled     bool   `json:"enabled"`
+	SortOrder   int    `json:"sort_order"`
+	PricingMode string `json:"pricing_mode"`
+	Price       int    `json:"price"`
+	Currency    string `json:"currency"`
 }
 
 type terminalsResponse struct {

@@ -70,12 +70,10 @@ func TestHandleStorefrontTerminals_NoStore(t *testing.T) {
 	}
 }
 
-
-
 func TestCalculateMethodPrice_FixedMode_NoFreeShipping(t *testing.T) {
 	method := &shipping.Method{
-		ID:          "test-id",
-		PricingMode: "fixed",
+		ID:               "test-id",
+		PricingMode:      "fixed",
 		PricingRulesJSON: []byte(`{"base_price_cents": 250}`),
 	}
 
@@ -88,8 +86,8 @@ func TestCalculateMethodPrice_FixedMode_NoFreeShipping(t *testing.T) {
 
 func TestCalculateMethodPrice_FixedMode_WithFreeShipping(t *testing.T) {
 	method := &shipping.Method{
-		ID:          "test-id",
-		PricingMode: "fixed",
+		ID:               "test-id",
+		PricingMode:      "fixed",
 		PricingRulesJSON: []byte(`{"base_price_cents": 250, "free_shipping_order_min_cents": 10000}`),
 	}
 
@@ -102,8 +100,8 @@ func TestCalculateMethodPrice_FixedMode_WithFreeShipping(t *testing.T) {
 
 func TestCalculateMethodPrice_FixedMode_BelowFreeShippingThreshold(t *testing.T) {
 	method := &shipping.Method{
-		ID:          "test-id",
-		PricingMode: "fixed",
+		ID:               "test-id",
+		PricingMode:      "fixed",
 		PricingRulesJSON: []byte(`{"base_price_cents": 250, "free_shipping_order_min_cents": 10000}`),
 	}
 
@@ -135,8 +133,8 @@ func TestCalculateMethodPrice_TableMode(t *testing.T) {
 
 func TestCalculateMethodPrice_InvalidJSON(t *testing.T) {
 	method := &shipping.Method{
-		ID:          "test-id",
-		PricingMode: "fixed",
+		ID:               "test-id",
+		PricingMode:      "fixed",
 		PricingRulesJSON: []byte(`invalid json`),
 	}
 
@@ -149,8 +147,8 @@ func TestCalculateMethodPrice_InvalidJSON(t *testing.T) {
 
 func TestCalculateMethodPrice_EmptyRules(t *testing.T) {
 	method := &shipping.Method{
-		ID:          "test-id",
-		PricingMode: "fixed",
+		ID:               "test-id",
+		PricingMode:      "fixed",
 		PricingRulesJSON: []byte(`{}`),
 	}
 

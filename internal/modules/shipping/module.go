@@ -89,4 +89,6 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/shipping/terminals", m.handleAdminTerminals)
 	mux.HandleFunc("/shipping/options", m.handleStorefrontShippingOptions)
 	mux.HandleFunc("/shipping/terminals", m.handleStorefrontTerminals)
+	mux.HandleFunc("/debug/shipping/omniva/ping", m.handleDebugOmnivaPing)
+	mux.HandleFunc("/debug/shipping/omniva/terminals", m.handleDebugOmnivaNTerminals)
 }
