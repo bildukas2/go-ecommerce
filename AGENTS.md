@@ -75,6 +75,14 @@ If anything is unclear, **choose the simplest correct approach** and explain ass
 
 ## How You Must Behave (Agent Rules)
 
+## Communication Style
+- Be concise
+- Prefer code over explanation
+- Do not explain unless explicitly asked
+- Avoid unnecessary commentary
+- Output only required result
+
+
 ### KISS first
 - Prefer **simple and boring** solutions.
 - Do **not** introduce microservices, CQRS, event sourcing, DDD layers, or fancy patterns unless the repo already uses them and the task requires it.

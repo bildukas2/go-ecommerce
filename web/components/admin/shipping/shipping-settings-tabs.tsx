@@ -6,6 +6,7 @@ import { Zap, MapPin, Truck, Package } from "lucide-react";
 import type { ShippingProvider, ShippingZone, ShippingMethod } from "@/lib/api";
 import { ProvidersList } from "./providers-list";
 import { ZonesList } from "./zones-list";
+import { MethodsList } from "./methods-list";
 
 type TabType = "providers" | "zones" | "methods" | "terminals";
 
@@ -73,10 +74,11 @@ export function ShippingSettingsTabs({
         )}
 
         {currentTab === "methods" && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold">Shipping Methods</h2>
-            <p className="text-foreground/70">Methods placeholder — Coming soon</p>
-          </div>
+          <MethodsList
+            initialMethods={initialMethods}
+            initialZones={initialZones}
+            initialProviders={initialProviders}
+          />
         )}
 
         {currentTab === "terminals" && (
