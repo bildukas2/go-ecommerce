@@ -66,7 +66,7 @@ type MethodsStore interface {
 }
 
 type TerminalsStore interface {
-	GetCachedTerminals(ctx context.Context, providerKey, country string) ([]byte, error)
+	GetCachedTerminals(ctx context.Context, providerKey, country string) ([]byte, time.Time, error)
 	UpsertCachedTerminals(ctx context.Context, providerKey, country string, payloadJSON []byte) error
 	DeleteCachedTerminals(ctx context.Context, providerKey, country string) error
 }
