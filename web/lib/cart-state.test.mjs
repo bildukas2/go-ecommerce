@@ -44,3 +44,21 @@ test("optimisticRemoveItem removes item and recalculates totals", () => {
   assert.equal(updated.Totals.ItemCount, 2);
   assert.equal(updated.Totals.SubtotalCents, 5000);
 });
+
+test("recalculateTotals normalizes null item list to empty array", () => {
+  const updated = optimisticRemoveItem(
+    {
+      ID: "cart-null-items",
+      Items: null,
+      Totals: {
+        SubtotalCents: 9999,
+        Currency: "EUR",
+        ItemCount: 9,
+      },
+    },
+    "missing-item",
+  );
+  assert.deepEqual(updated.Items, []);
+  assert.equal(updated.Totals.ItemCount, 0);
+  assert.equal(updated.Totals.SubtotalCents, 0);
+});

@@ -33,6 +33,7 @@ export function CartDrawer() {
   const { open, closeDrawer, cart, loading, error, mutatingItemIds, update, remove, checkout } = useCart();
   const [checkoutBusy, setCheckoutBusy] = React.useState(false);
   const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
+  const items = Array.isArray(cart?.Items) ? cart.Items : [];
 
   React.useEffect(() => {
     function onEsc(e: KeyboardEvent) {
@@ -83,7 +84,7 @@ export function CartDrawer() {
               {error && <div className="text-sm text-red-600">{error}</div>}
               {checkoutError && <div className="text-sm text-red-600">{checkoutError}</div>}
 
-              {!loading && cart && cart.Items.length === 0 ? (
+              {!loading && cart && items.length === 0 ? (
                 <GlassCard className="p-6 text-center">
                   <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/15">
                     <ShoppingBag size={18} className="text-primary" />
@@ -92,9 +93,9 @@ export function CartDrawer() {
                 </GlassCard>
               ) : null}
 
-              {!loading && cart && cart.Items.length > 0 ? (
+              {!loading && cart && items.length > 0 ? (
                 <ul className="space-y-3">
-                  {cart.Items.map((it) => {
+                  {items.map((it) => {
                     const isMutating = mutatingItemIds.includes(it.ID);
                     const lineTotal = it.UnitPriceCents * it.Quantity;
 
@@ -186,7 +187,7 @@ export function CartDrawer() {
 
               <Button
                 className="w-full"
-                disabled={!cart || cart.Items.length === 0 || loading || checkoutBusy}
+                disabled={!cart || items.length === 0 || loading || checkoutBusy}
                 onClick={async () => {
                   setCheckoutBusy(true);
                   setCheckoutError(null);

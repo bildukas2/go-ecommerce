@@ -201,7 +201,7 @@ func (s *Store) GetCart(ctx context.Context, cartID string) (Cart, error) {
 		return Cart{}, err
 	}
 	defer rows.Close()
-	var items []CartItem
+	items := make([]CartItem, 0)
 	var subtotal int
 	var currency string
 	var itemCount int
