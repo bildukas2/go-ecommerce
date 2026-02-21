@@ -5,6 +5,7 @@ import { Card } from "@heroui/react";
 import { Zap, MapPin, Truck, Package } from "lucide-react";
 import type { ShippingProvider, ShippingZone, ShippingMethod } from "@/lib/api";
 import { ProvidersList } from "./providers-list";
+import { ZonesList } from "./zones-list";
 
 type TabType = "providers" | "zones" | "methods" | "terminals";
 
@@ -68,10 +69,7 @@ export function ShippingSettingsTabs({
         )}
 
         {currentTab === "zones" && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold">Shipping Zones</h2>
-            <p className="text-foreground/70">Zones placeholder — Coming soon</p>
-          </div>
+          <ZonesList initialZones={initialZones} />
         )}
 
         {currentTab === "methods" && (
