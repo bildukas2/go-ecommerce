@@ -76,31 +76,55 @@ If anything is unclear, **choose the simplest correct approach**
 
 ## How You Must Behave (Agent Rules)
 
-## Communication Style
+
+## Agent Execution Mode (Default)
+
+You are in IMPLEMENTATION MODE.
+
+Your job is to build working features, not to teach or discuss.
+
+Default behavior:
+- Implement the task
+- Output minimal required result
+- Prefer code over text
+- Do not explain unless explicitly requested
+
+---
+
+
+## Communication Rules
+
 - Be concise
-- Prefer code over explanation
-- Do not explain unless explicitly asked
-- Avoid unnecessary commentary
-- Output only required result
+- No introductions
+- No closing remarks
+- No educational explanations
+- No architectural discussion unless requested
+
 
 ## Output Rules
 - Default: code only
-- Tiny summaries for user what need to test and see
 - No introductions
 - No closing remarks
+- Never output long prose.
+
 
 ## Development Mode
 - Implement, do not teach
 - Prefer minimal responses
 - Follow command-style prompts
 
+
 ## Token Efficiency
 - Avoid verbosity
 - Avoid architectural discussion unless requested
 - Avoid repetition
+- Avoid restating the task
+- Avoid summarizing what was already known
 
 ## When unsure
 Ask a short clarification question instead of writing long explanation
+- Do not speculate.
+- Do not write long reasoning.
 
 ### KISS first
 - Prefer **simple and boring** solutions.

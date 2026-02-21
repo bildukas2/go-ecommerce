@@ -2041,7 +2041,6 @@ function normalizeTerminalsCacheItem(raw: unknown): TerminalsCacheItem | null {
 export async function getShippingProviders(): Promise<ShippingProvider[]> {
   const url = new URL(apiJoin("admin/shipping/providers"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping providers: ${res.status}`);
@@ -2055,7 +2054,6 @@ export async function updateShippingProvider(key: string, data: Partial<Shipping
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: {
-      Authorization: adminAuthHeader(),
       "Content-Type": "application/json",
     },
     cache: "no-store",
@@ -2073,7 +2071,6 @@ export async function deleteShippingProvider(key: string): Promise<void> {
   const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2084,7 +2081,6 @@ export async function deleteShippingProvider(key: string): Promise<void> {
 export async function getShippingZones(): Promise<ShippingZone[]> {
   const url = new URL(apiJoin("admin/shipping/zones"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping zones: ${res.status}`);
@@ -2098,7 +2094,6 @@ export async function createShippingZone(data: Omit<ShippingZone, "id" | "create
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
-      Authorization: adminAuthHeader(),
       "Content-Type": "application/json",
     },
     cache: "no-store",
@@ -2117,7 +2112,6 @@ export async function updateShippingZone(id: string, data: Partial<ShippingZone>
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: {
-      Authorization: adminAuthHeader(),
       "Content-Type": "application/json",
     },
     cache: "no-store",
@@ -2135,7 +2129,6 @@ export async function deleteShippingZone(id: string): Promise<void> {
   const url = new URL(apiJoin(`admin/shipping/zones/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2146,7 +2139,6 @@ export async function deleteShippingZone(id: string): Promise<void> {
 export async function getShippingMethods(): Promise<ShippingMethod[]> {
   const url = new URL(apiJoin("admin/shipping/methods"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping methods: ${res.status}`);
@@ -2160,7 +2152,6 @@ export async function createShippingMethod(data: Omit<ShippingMethod, "id" | "cr
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
-      Authorization: adminAuthHeader(),
       "Content-Type": "application/json",
     },
     cache: "no-store",
@@ -2179,7 +2170,6 @@ export async function updateShippingMethod(id: string, data: Partial<ShippingMet
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: {
-      Authorization: adminAuthHeader(),
       "Content-Type": "application/json",
     },
     cache: "no-store",
@@ -2197,7 +2187,6 @@ export async function deleteShippingMethod(id: string): Promise<void> {
   const url = new URL(apiJoin(`admin/shipping/methods/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2210,7 +2199,6 @@ export async function getShippingTerminals(provider: string, country: string): P
   url.searchParams.set("provider", provider);
   url.searchParams.set("country", country);
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping terminals: ${res.status}`);
@@ -2226,7 +2214,6 @@ export async function refreshShippingTerminals(provider: string, country: string
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
-      Authorization: adminAuthHeader(),
       "Content-Type": "application/json",
     },
     cache: "no-store",
@@ -2246,7 +2233,6 @@ export async function deleteShippingTerminals(provider: string, country: string)
   url.searchParams.set("country", country);
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) {

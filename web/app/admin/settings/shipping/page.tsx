@@ -8,18 +8,6 @@ import { ShippingSettingsTabs } from "@/components/admin/shipping/shipping-setti
 export const dynamic = "force-dynamic";
 
 async function fetchShippingData() {
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASS;
-
-  if (!user || !pass) {
-    return {
-      error: "Admin credentials not configured",
-      providers: [],
-      zones: [],
-      methods: [],
-    };
-  }
-
   try {
     const [providers, zones, methods] = await Promise.all([
       getShippingProviders(),
