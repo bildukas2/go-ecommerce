@@ -2052,7 +2052,11 @@ export async function getShippingProviders(): Promise<ShippingProvider[]> {
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping providers: ${res.status}`);
   const payload = asRecord(await res.json());
-  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  const itemsRaw = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.providers)
+      ? payload.providers
+      : [];
   return itemsRaw.map(normalizeShippingProvider).filter((item): item is ShippingProvider => item !== null);
 }
 
@@ -2098,7 +2102,11 @@ export async function getShippingZones(): Promise<ShippingZone[]> {
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping zones: ${res.status}`);
   const payload = asRecord(await res.json());
-  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  const itemsRaw = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.zones)
+      ? payload.zones
+      : [];
   return itemsRaw.map(normalizeShippingZone).filter((item): item is ShippingZone => item !== null);
 }
 
@@ -2166,7 +2174,11 @@ export async function getShippingMethods(): Promise<ShippingMethod[]> {
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping methods: ${res.status}`);
   const payload = asRecord(await res.json());
-  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  const itemsRaw = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.methods)
+      ? payload.methods
+      : [];
   return itemsRaw.map(normalizeShippingMethod).filter((item): item is ShippingMethod => item !== null);
 }
 
