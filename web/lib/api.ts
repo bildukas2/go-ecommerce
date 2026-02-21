@@ -2058,13 +2058,19 @@ export async function getShippingProviders(): Promise<ShippingProvider[]> {
 
 export async function updateShippingProvider(key: string, data: Partial<ShippingProvider>): Promise<ShippingProvider> {
   const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}`));
+  const payload = {
+    name: data.name || "",
+    mode: data.mode || "sandbox",
+    enabled: data.enabled || false,
+    config_json: data.config_json || {},
+  };
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     throw new Error(await apiErrorMessage(res, `Failed to update shipping provider: ${res.status}`));
@@ -2098,13 +2104,18 @@ export async function getShippingZones(): Promise<ShippingZone[]> {
 
 export async function createShippingZone(data: Omit<ShippingZone, "id" | "created_at" | "updated_at">): Promise<ShippingZone> {
   const url = new URL(apiJoin("admin/shipping/zones"));
+  const payload = {
+    name: data.name || "",
+    countries_json: data.countries_json || [],
+    enabled: data.enabled || false,
+  };
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     throw new Error(await apiErrorMessage(res, `Failed to create shipping zone: ${res.status}`));
@@ -2116,13 +2127,18 @@ export async function createShippingZone(data: Omit<ShippingZone, "id" | "create
 
 export async function updateShippingZone(id: string, data: Partial<ShippingZone>): Promise<ShippingZone> {
   const url = new URL(apiJoin(`admin/shipping/zones/${encodeURIComponent(id)}`));
+  const payload = {
+    name: data.name || "",
+    countries_json: data.countries_json || [],
+    enabled: data.enabled !== undefined ? data.enabled : false,
+  };
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     throw new Error(await apiErrorMessage(res, `Failed to update shipping zone: ${res.status}`));
@@ -2156,13 +2172,23 @@ export async function getShippingMethods(): Promise<ShippingMethod[]> {
 
 export async function createShippingMethod(data: Omit<ShippingMethod, "id" | "created_at" | "updated_at">): Promise<ShippingMethod> {
   const url = new URL(apiJoin("admin/shipping/methods"));
+  const payload = {
+    zone_id: data.zone_id || "",
+    provider_key: data.provider_key || "",
+    service_code: data.service_code || "",
+    title: data.title || "",
+    enabled: data.enabled !== undefined ? data.enabled : true,
+    sort_order: data.sort_order || 0,
+    pricing_mode: data.pricing_mode || "fixed",
+    pricing_rules_json: data.pricing_rules_json || {},
+  };
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     throw new Error(await apiErrorMessage(res, `Failed to create shipping method: ${res.status}`));
@@ -2174,13 +2200,23 @@ export async function createShippingMethod(data: Omit<ShippingMethod, "id" | "cr
 
 export async function updateShippingMethod(id: string, data: Partial<ShippingMethod>): Promise<ShippingMethod> {
   const url = new URL(apiJoin(`admin/shipping/methods/${encodeURIComponent(id)}`));
+  const payload = {
+    zone_id: data.zone_id || "",
+    provider_key: data.provider_key || "",
+    service_code: data.service_code || "",
+    title: data.title || "",
+    enabled: data.enabled !== undefined ? data.enabled : true,
+    sort_order: data.sort_order || 0,
+    pricing_mode: data.pricing_mode || "fixed",
+    pricing_rules_json: data.pricing_rules_json || {},
+  };
   const res = await fetch(url.toString(), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     throw new Error(await apiErrorMessage(res, `Failed to update shipping method: ${res.status}`));
