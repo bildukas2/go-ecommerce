@@ -80,4 +80,11 @@ func (m *module) Name() string {
 }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/admin/shipping/providers", m.handleAdminProviders)
+	mux.HandleFunc("/admin/shipping/providers/", m.handleAdminProviders)
+	mux.HandleFunc("/admin/shipping/zones", m.handleAdminZones)
+	mux.HandleFunc("/admin/shipping/zones/", m.handleAdminZones)
+	mux.HandleFunc("/admin/shipping/methods", m.handleAdminMethods)
+	mux.HandleFunc("/admin/shipping/methods/", m.handleAdminMethods)
+	mux.HandleFunc("/admin/shipping/terminals", m.handleAdminTerminals)
 }
