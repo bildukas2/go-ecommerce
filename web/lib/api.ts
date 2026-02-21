@@ -1972,7 +1972,7 @@ function normalizeShippingProvider(raw: unknown): ShippingProvider | null {
 
 function normalizeShippingZone(raw: unknown): ShippingZone | null {
   const obj = asRecord(raw);
-  const id = asString(obj.id);
+  const id = asString(obj.id ?? obj.ID);
   if (!id) return null;
 
   let countriesArray: string[] = [];

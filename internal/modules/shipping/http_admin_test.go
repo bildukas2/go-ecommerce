@@ -453,3 +453,183 @@ func TestHandleAdminProviders_ListProvidersResponseShape(t *testing.T) {
 		t.Fatalf("expected item id prov-1, got %v", first["id"])
 	}
 }
+
+func TestHandleAdminZones_ListZonesResponseShape(t *testing.T) {
+	now := time.Now().UTC()
+	m := &module{
+		store: &mockStore{
+			listZonesFunc: func(ctx context.Context) ([]shipping.Zone, error) {
+				return []shipping.Zone{
+					{
+						ID:            "zone-1",
+						Name:          "Lithuania",
+						CountriesJSON: []byte(`["LT"]`),
+						Enabled:       true,
+						CreatedAt:     now,
+						UpdatedAt:     now,
+					},
+				}, nil
+			},
+		},
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/admin/shipping/zones", nil)
+	w := httptest.NewRecorder()
+
+	m.handleAdminZones(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	items, ok := payload["items"].([]any)
+	if !ok {
+		t.Fatalf("expected items array, got %T", payload["items"])
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected one item, got %d", len(items))
+	}
+	if _, ok := payload["zones"]; ok {
+		t.Fatal("response should not contain zones field")
+	}
+	first, ok := items[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected item object, got %T", items[0])
+	}
+	if first["id"] != "zone-1" {
+		t.Fatalf("expected id zone-1, got %v", first["id"])
+	}
+	if _, ok := first["ID"]; ok {
+		t.Fatal("response should not contain ID field")
+	}
+	countries, ok := first["countries_json"].([]any)
+	if !ok {
+		t.Fatalf("expected countries_json array, got %T", first["countries_json"])
+	}
+	if len(countries) != 1 || countries[0] != "LT" {
+		t.Fatalf("expected countries_json [LT], got %#v", countries)
+	}
+}
+
+func TestHandleAdminZones_CreateZoneResponseShape(t *testing.T) {
+	now := time.Now().UTC()
+	m := &module{
+		store: &mockStore{
+			createZoneFunc: func(ctx context.Context, name string, countriesJSON []byte) (string, error) {
+				if name != "Lithuania" {
+					t.Fatalf("unexpected name: %s", name)
+				}
+				if string(countriesJSON) != `["LT"]` {
+					t.Fatalf("unexpected countries_json payload: %s", string(countriesJSON))
+				}
+				return "zone-1", nil
+			},
+			getZoneFunc: func(ctx context.Context, id string) (*shipping.Zone, error) {
+				return &shipping.Zone{
+					ID:            id,
+					Name:          "Lithuania",
+					CountriesJSON: []byte(`["LT"]`),
+					Enabled:       true,
+					CreatedAt:     now,
+					UpdatedAt:     now,
+				}, nil
+			},
+		},
+	}
+
+	body := `{"name":"Lithuania","countries_json":["LT"],"enabled":true}`
+	r := httptest.NewRequest(http.MethodPost, "/admin/shipping/zones", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	m.handleAdminZones(w, r)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if payload["id"] != "zone-1" {
+		t.Fatalf("expected id zone-1, got %v", payload["id"])
+	}
+	if _, ok := payload["ID"]; ok {
+		t.Fatal("response should not contain ID field")
+	}
+	countries, ok := payload["countries_json"].([]any)
+	if !ok {
+		t.Fatalf("expected countries_json array, got %T", payload["countries_json"])
+	}
+	if len(countries) != 1 || countries[0] != "LT" {
+		t.Fatalf("expected countries_json [LT], got %#v", countries)
+	}
+}
+
+func TestHandleAdminZones_UpdateZoneResponseShape(t *testing.T) {
+	now := time.Now().UTC()
+	m := &module{
+		store: &mockStore{
+			updateZoneFunc: func(ctx context.Context, id, name string, countriesJSON []byte, enabled bool) error {
+				if id != "zone-1" {
+					t.Fatalf("unexpected id: %s", id)
+				}
+				if name != "Lithuania Updated" {
+					t.Fatalf("unexpected name: %s", name)
+				}
+				if string(countriesJSON) != `["LT","LV"]` {
+					t.Fatalf("unexpected countries_json payload: %s", string(countriesJSON))
+				}
+				if !enabled {
+					t.Fatal("expected enabled true")
+				}
+				return nil
+			},
+			getZoneFunc: func(ctx context.Context, id string) (*shipping.Zone, error) {
+				return &shipping.Zone{
+					ID:            id,
+					Name:          "Lithuania Updated",
+					CountriesJSON: []byte(`["LT","LV"]`),
+					Enabled:       true,
+					CreatedAt:     now,
+					UpdatedAt:     now,
+				}, nil
+			},
+		},
+	}
+
+	body := `{"name":"Lithuania Updated","countries_json":["LT","LV"],"enabled":true}`
+	r := httptest.NewRequest(http.MethodPut, "/admin/shipping/zones/zone-1", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	m.handleAdminZones(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if payload["id"] != "zone-1" {
+		t.Fatalf("expected id zone-1, got %v", payload["id"])
+	}
+	if _, ok := payload["ID"]; ok {
+		t.Fatal("response should not contain ID field")
+	}
+	countries, ok := payload["countries_json"].([]any)
+	if !ok {
+		t.Fatalf("expected countries_json array, got %T", payload["countries_json"])
+	}
+	if len(countries) != 2 || countries[0] != "LT" || countries[1] != "LV" {
+		t.Fatalf("expected countries_json [LT LV], got %#v", countries)
+	}
+}

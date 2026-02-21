@@ -48,6 +48,15 @@ type providerResponse struct {
 	UpdatedAt  any                    `json:"updated_at"`
 }
 
+type zoneResponse struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Countries []string `json:"countries_json"`
+	Enabled   bool     `json:"enabled"`
+	CreatedAt any      `json:"created_at"`
+	UpdatedAt any      `json:"updated_at"`
+}
+
 func toProviderResponse(provider shipping.Provider) providerResponse {
 	config := map[string]interface{}{}
 	if len(provider.ConfigJSON) > 0 {
@@ -65,6 +74,24 @@ func toProviderResponse(provider shipping.Provider) providerResponse {
 		ConfigJSON: config,
 		CreatedAt:  provider.CreatedAt,
 		UpdatedAt:  provider.UpdatedAt,
+	}
+}
+
+func toZoneResponse(zone shipping.Zone) zoneResponse {
+	countries := []string{}
+	if len(zone.CountriesJSON) > 0 {
+		_ = json.Unmarshal(zone.CountriesJSON, &countries)
+	}
+	if countries == nil {
+		countries = []string{}
+	}
+	return zoneResponse{
+		ID:        zone.ID,
+		Name:      zone.Name,
+		Countries: countries,
+		Enabled:   zone.Enabled,
+		CreatedAt: zone.CreatedAt,
+		UpdatedAt: zone.UpdatedAt,
 	}
 }
 
@@ -243,7 +270,11 @@ func (m *module) handleListZones(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "list zones error")
 		return
 	}
-	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"zones": zones})
+	items := make([]zoneResponse, 0, len(zones))
+	for _, zone := range zones {
+		items = append(items, toZoneResponse(zone))
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 func (m *module) handleCreateZone(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +307,7 @@ func (m *module) handleCreateZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = platformhttp.JSON(w, http.StatusCreated, zone)
+	_ = platformhttp.JSON(w, http.StatusCreated, toZoneResponse(*zone))
 }
 
 func (m *module) handleUpdateZone(w http.ResponseWriter, r *http.Request, zoneID string) {
@@ -308,7 +339,7 @@ func (m *module) handleUpdateZone(w http.ResponseWriter, r *http.Request, zoneID
 		return
 	}
 
-	_ = platformhttp.JSON(w, http.StatusOK, zone)
+	_ = platformhttp.JSON(w, http.StatusOK, toZoneResponse(*zone))
 }
 
 func (m *module) handleDeleteZone(w http.ResponseWriter, r *http.Request, zoneID string) {
