@@ -2100,6 +2100,38 @@ export async function deleteShippingProvider(key: string): Promise<void> {
   }
 }
 
+export type TestProviderResult = {
+  success: boolean;
+  message: string;
+  error?: string;
+  terminals_found?: number;
+  provider?: string;
+  name?: string;
+};
+
+export async function testShippingProvider(
+  key: string,
+  configJson: Record<string, unknown>,
+  mode: "sandbox" | "live"
+): Promise<TestProviderResult> {
+  const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}/test`));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      config_json: configJson,
+      mode,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to test shipping provider: ${res.status}`));
+  }
+  return res.json();
+}
+
 export async function getShippingZones(): Promise<ShippingZone[]> {
   const url = new URL(apiJoin("admin/shipping/zones"));
   const res = await fetch(url.toString(), {
@@ -2298,4 +2330,77 @@ export async function deleteShippingTerminals(provider: string, country: string)
   if (!res.ok) {
     throw new Error(await apiErrorMessage(res, `Failed to delete shipping terminals: ${res.status}`));
   }
+}
+
+// Storefront shipping types
+export type StorefrontShippingZone = {
+  id: string;
+  name: string;
+  countries: string[];
+  enabled: boolean;
+};
+
+export type StorefrontShippingMethod = {
+  id: string;
+  zone_id: string;
+  provider_key: string;
+  service_code: string;
+  title: string;
+  enabled: boolean;
+  sort_order: number;
+  pricing_mode: string;
+  price: number;
+  currency: string;
+  requires_terminal: boolean;
+};
+
+export type StorefrontShippingOptionsResponse = {
+  zone: StorefrontShippingZone | null;
+  methods: StorefrontShippingMethod[];
+};
+
+export async function getStorefrontShippingOptions(params: {
+  country: string;
+  cart_value?: number;
+  cart_weight_kg?: number;
+}): Promise<StorefrontShippingOptionsResponse> {
+  const url = new URL(apiJoin("shipping/options"));
+  url.searchParams.set("country", params.country);
+  if (params.cart_value !== undefined) {
+    url.searchParams.set("cart_value", params.cart_value.toString());
+  }
+  if (params.cart_weight_kg !== undefined) {
+    url.searchParams.set("cart_weight_kg", params.cart_weight_kg.toString());
+  }
+  const res = await fetch(url.toString(), {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch shipping options: ${res.status}`);
+  }
+  const data = await res.json();
+  return {
+    zone: data.zone ? {
+      id: asString(data.zone.id),
+      name: asString(data.zone.name),
+      countries: Array.isArray(data.zone.countries) ? data.zone.countries.map(String) : [],
+      enabled: Boolean(data.zone.enabled),
+    } : null,
+    methods: Array.isArray(data.methods) ? data.methods.map((m: unknown) => {
+      const method = asRecord(m);
+      return {
+        id: asString(method.id),
+        zone_id: asString(method.zone_id),
+        provider_key: asString(method.provider_key),
+        service_code: asString(method.service_code),
+        title: asString(method.title),
+        enabled: Boolean(method.enabled),
+        sort_order: asNumber(method.sort_order ?? 0),
+        pricing_mode: asString(method.pricing_mode),
+        price: asNumber(method.price ?? 0),
+        currency: asString(method.currency),
+        requires_terminal: Boolean(method.requires_terminal),
+      };
+    }) : [],
+  };
 }

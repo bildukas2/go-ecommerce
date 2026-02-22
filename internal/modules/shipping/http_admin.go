@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	platformhttp "goecommerce/internal/platform/http"
+	platformshipping "goecommerce/internal/platform/shipping"
 	"goecommerce/internal/storage/shipping"
 )
 
@@ -59,6 +60,20 @@ type zoneResponse struct {
 	UpdatedAt any      `json:"updated_at"`
 }
 
+type methodResponse struct {
+	ID               string                 `json:"id"`
+	ZoneID           string                 `json:"zone_id"`
+	ProviderKey      string                 `json:"provider_key"`
+	ServiceCode      string                 `json:"service_code"`
+	Title            string                 `json:"title"`
+	Enabled          bool                   `json:"enabled"`
+	SortOrder        int                    `json:"sort_order"`
+	PricingMode      string                 `json:"pricing_mode"`
+	PricingRulesJSON map[string]interface{} `json:"pricing_rules_json"`
+	CreatedAt        any                    `json:"created_at"`
+	UpdatedAt        any                    `json:"updated_at"`
+}
+
 func toProviderResponse(provider shipping.Provider) providerResponse {
 	config := map[string]interface{}{}
 	if len(provider.ConfigJSON) > 0 {
@@ -94,6 +109,29 @@ func toZoneResponse(zone shipping.Zone) zoneResponse {
 		Enabled:   zone.Enabled,
 		CreatedAt: zone.CreatedAt,
 		UpdatedAt: zone.UpdatedAt,
+	}
+}
+
+func toMethodResponse(method shipping.Method) methodResponse {
+	pricingRules := map[string]interface{}{}
+	if len(method.PricingRulesJSON) > 0 {
+		_ = json.Unmarshal(method.PricingRulesJSON, &pricingRules)
+	}
+	if pricingRules == nil {
+		pricingRules = map[string]interface{}{}
+	}
+	return methodResponse{
+		ID:               method.ID,
+		ZoneID:           method.ZoneID,
+		ProviderKey:      method.ProviderKey,
+		ServiceCode:      method.ServiceCode,
+		Title:            method.Title,
+		Enabled:          method.Enabled,
+		SortOrder:        method.SortOrder,
+		PricingMode:      method.PricingMode,
+		PricingRulesJSON: pricingRules,
+		CreatedAt:        method.CreatedAt,
+		UpdatedAt:        method.UpdatedAt,
 	}
 }
 
@@ -135,6 +173,8 @@ func (m *module) handleAdminProviders(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			m.handleListProviders(w, r)
+		case http.MethodPost:
+			m.handleCreateProvider(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -145,6 +185,15 @@ func (m *module) handleAdminProviders(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/admin/shipping/providers/"), "/")
 		if len(parts) > 0 && parts[0] != "" {
 			providerKey := parts[0]
+			// Check for sub-actions like /test
+			if len(parts) > 1 && parts[1] == "test" {
+				if r.Method == http.MethodPost {
+					m.handleTestProvider(w, r, providerKey)
+					return
+				}
+				http.NotFound(w, r)
+				return
+			}
 			switch r.Method {
 			case http.MethodPut:
 				m.handleUpdateProvider(w, r, providerKey)
@@ -158,6 +207,144 @@ func (m *module) handleAdminProviders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.NotFound(w, r)
+}
+
+func (m *module) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Key        string                 `json:"key"`
+		Name       string                 `json:"name"`
+		Mode       string                 `json:"mode"`
+		Enabled    bool                   `json:"enabled"`
+		ConfigJSON map[string]interface{} `json:"config_json"`
+	}
+	if err := decodeRequest(r, &req); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if req.Key == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "key is required")
+		return
+	}
+	if req.Name == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.Mode == "" {
+		req.Mode = "sandbox"
+	}
+	if req.Mode != "sandbox" && req.Mode != "live" {
+		platformhttp.Error(w, http.StatusBadRequest, "mode must be sandbox or live")
+		return
+	}
+
+	// Check if provider already exists
+	existing, err := m.store.GetProvider(r.Context(), req.Key)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		platformhttp.Error(w, http.StatusInternalServerError, "get provider error")
+		return
+	}
+	if existing != nil {
+		platformhttp.Error(w, http.StatusConflict, "provider with this key already exists")
+		return
+	}
+
+	configJSON, _ := json.Marshal(req.ConfigJSON)
+
+	if err := m.store.CreateProvider(r.Context(), req.Key, req.Name, req.Mode, configJSON); err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "create provider error")
+		return
+	}
+
+	provider, err := m.store.GetProvider(r.Context(), req.Key)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "get provider error")
+		return
+	}
+
+	_ = platformhttp.JSON(w, http.StatusCreated, toProviderResponse(*provider))
+}
+
+func (m *module) handleTestProvider(w http.ResponseWriter, r *http.Request, key string) {
+	// Parse request body for config override (allows testing before saving)
+	var req struct {
+		ConfigJSON map[string]any `json:"config_json"`
+		Mode       string         `json:"mode"`
+	}
+	if err := decodeRequest(r, &req); err != nil {
+		// Body is optional, continue with DB config
+	}
+
+	// Get factory for this provider
+	factory, err := platformshipping.Get(key)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "provider not registered: "+key)
+		return
+	}
+
+	// Use config from request if provided, otherwise fall back to DB
+	var config map[string]any
+	if len(req.ConfigJSON) > 0 {
+		config = req.ConfigJSON
+	} else {
+		// Get provider from DB
+		dbProvider, err := m.store.GetProvider(r.Context(), key)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				platformhttp.Error(w, http.StatusNotFound, "provider not found and no config provided")
+				return
+			}
+			platformhttp.Error(w, http.StatusInternalServerError, "get provider error")
+			return
+		}
+		if len(dbProvider.ConfigJSON) > 0 {
+			if err := json.Unmarshal(dbProvider.ConfigJSON, &config); err != nil {
+				platformhttp.Error(w, http.StatusInternalServerError, "parse config error")
+				return
+			}
+		}
+	}
+
+	if config == nil {
+		config = make(map[string]any)
+	}
+
+	// Add mode to config if provided
+	if req.Mode != "" {
+		config["mode"] = req.Mode
+	}
+
+	// Create provider instance
+	prov, err := factory(config)
+	if err != nil {
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+			"success": false,
+			"error":   err.Error(),
+			"message": "Failed to create provider instance",
+		})
+		return
+	}
+
+	// Test connection by listing terminals for a default country
+	testCountry := "LT"
+	terminals, err := prov.ListTerminals(r.Context(), testCountry)
+	if err != nil {
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+			"success": false,
+			"error":   err.Error(),
+			"message": "Connection test failed",
+		})
+		return
+	}
+
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+		"success":         true,
+		"message":         "Connection successful",
+		"terminals_found": len(terminals),
+		"provider":        prov.Key(),
+		"name":            prov.Name(),
+		"capabilities":    prov.Capabilities(),
+	})
 }
 
 func (m *module) handleListProviders(w http.ResponseWriter, r *http.Request) {
@@ -395,7 +582,11 @@ func (m *module) handleListMethods(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "list methods error")
 		return
 	}
-	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"methods": methods})
+	responses := make([]methodResponse, len(methods))
+	for i, method := range methods {
+		responses[i] = toMethodResponse(method)
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"methods": responses})
 }
 
 func (m *module) handleCreateMethod(w http.ResponseWriter, r *http.Request) {
@@ -435,7 +626,7 @@ func (m *module) handleCreateMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = platformhttp.JSON(w, http.StatusCreated, created)
+	_ = platformhttp.JSON(w, http.StatusCreated, toMethodResponse(*created))
 }
 
 func (m *module) handleUpdateMethod(w http.ResponseWriter, r *http.Request, methodID string) {
@@ -475,7 +666,7 @@ func (m *module) handleUpdateMethod(w http.ResponseWriter, r *http.Request, meth
 		return
 	}
 
-	_ = platformhttp.JSON(w, http.StatusOK, updated)
+	_ = platformhttp.JSON(w, http.StatusOK, toMethodResponse(*updated))
 }
 
 func (m *module) handleDeleteMethod(w http.ResponseWriter, r *http.Request, methodID string) {

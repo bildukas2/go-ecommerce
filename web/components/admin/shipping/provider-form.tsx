@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ShippingProvider } from "@/lib/api";
 import { updateShippingProvider } from "@/lib/api";
+import { ProviderConfig } from "./provider-configs";
 
 type Props = {
   provider: ShippingProvider | null;
@@ -17,13 +18,9 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
   const [key, setKey] = useState(provider?.key ?? "");
   const [mode, setMode] = useState<"sandbox" | "live">(provider?.mode ?? "sandbox");
   const [enabled, setEnabled] = useState(provider?.enabled ?? false);
-  const [configJson, setConfigJson] = useState(() => {
-    if (!provider?.config_json) return "{}";
-    try {
-      return JSON.stringify(provider.config_json, null, 2);
-    } catch {
-      return "{}";
-    }
+  const [configJson, setConfigJson] = useState<Record<string, unknown>>(() => {
+    if (!provider?.config_json) return {};
+    return provider.config_json;
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -49,13 +46,6 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
       }
     }
 
-    try {
-      JSON.parse(configJson);
-    } catch {
-      setError("Config JSON is invalid");
-      return false;
-    }
-
     return true;
   };
 
@@ -66,12 +56,11 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
 
     setIsLoading(true);
     try {
-      const config = JSON.parse(configJson);
       const payload: Partial<ShippingProvider> = {
         name: name.trim(),
         mode,
         enabled,
-        config_json: config,
+        config_json: configJson,
       };
 
       if (isCreating) {
@@ -110,7 +99,7 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 max-h-[70vh] overflow-y-auto">
           {error && (
             <div className="rounded-lg border border-red-500/35 bg-red-500/12 p-3 text-sm text-red-700 dark:text-red-300">
               {error}
@@ -123,7 +112,7 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., DHL, UPS, FedEx"
+              placeholder="e.g., Omniva, DPD, Venipak"
               disabled={isLoading}
               className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm disabled:opacity-50"
               required
@@ -136,25 +125,12 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
               type="text"
               value={key}
               onChange={(e) => isCreating && setKey(e.target.value)}
-              placeholder="e.g., dhl, ups, fedex"
+              placeholder="e.g., omniva, dpd, venipak"
               disabled={!isCreating || isLoading}
               className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm font-mono disabled:opacity-50"
               required
             />
             {!isCreating && <p className="text-xs text-foreground/60">Cannot be changed after creation</p>}
-          </label>
-
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Mode</span>
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value as "sandbox" | "live")}
-              disabled={isLoading}
-              className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm disabled:opacity-50"
-            >
-              <option value="sandbox">Sandbox (testing)</option>
-              <option value="live">Live (production)</option>
-            </select>
           </label>
 
           <label className="flex items-center gap-2 text-sm">
@@ -168,18 +144,15 @@ export function ProviderForm({ provider, currentProviders, onClose, onSuccess }:
             <span>Enabled</span>
           </label>
 
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Config JSON (optional)</span>
-            <textarea
-              value={configJson}
-              onChange={(e) => setConfigJson(e.target.value)}
-              disabled={isLoading}
-              rows={5}
-              className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs disabled:opacity-50"
-              placeholder='{"api_key": "..."}'
+          <div className="border-t border-surface-border pt-4">
+            <ProviderConfig
+              providerKey={key.trim()}
+              configJson={configJson}
+              onChange={setConfigJson}
+              mode={mode}
+              onModeChange={setMode}
             />
-            <p className="text-xs text-foreground/60">Provider-specific configuration in JSON format</p>
-          </label>
+          </div>
 
           <button
             type="submit"

@@ -1,18 +1,24 @@
 package shipping
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	platformhttp "goecommerce/internal/platform/http"
 	shipping "goecommerce/internal/platform/shipping"
 	storshiping "goecommerce/internal/storage/shipping"
 )
+
+// terminalsCacheTTL is the duration for which cached terminals are considered fresh
+const terminalsCacheTTL = 24 * time.Hour
 
 type shippingOptionsResponse struct {
 	Zone    *zoneDTO    `json:"zone"`
@@ -27,16 +33,17 @@ type zoneDTO struct {
 }
 
 type methodDTO struct {
-	ID          string `json:"id"`
-	ZoneID      string `json:"zone_id"`
-	ProviderKey string `json:"provider_key"`
-	ServiceCode string `json:"service_code"`
-	Title       string `json:"title"`
-	Enabled     bool   `json:"enabled"`
-	SortOrder   int    `json:"sort_order"`
-	PricingMode string `json:"pricing_mode"`
-	Price       int    `json:"price"`
-	Currency    string `json:"currency"`
+	ID               string `json:"id"`
+	ZoneID           string `json:"zone_id"`
+	ProviderKey      string `json:"provider_key"`
+	ServiceCode      string `json:"service_code"`
+	Title            string `json:"title"`
+	Enabled          bool   `json:"enabled"`
+	SortOrder        int    `json:"sort_order"`
+	PricingMode      string `json:"pricing_mode"`
+	Price            int    `json:"price"`
+	Currency         string `json:"currency"`
+	RequiresTerminal bool   `json:"requires_terminal"`
 }
 
 type terminalsResponse struct {
@@ -119,17 +126,25 @@ func (m *module) handleStorefrontShippingOptions(w http.ResponseWriter, r *http.
 		}
 
 		price := calculateMethodPrice(&method, cartValue, cartWeightKg, hasCartWeight)
+
+		// Check if provider supports terminals
+		requiresTerminal := false
+		if caps, err := shipping.GetCapabilities(method.ProviderKey); err == nil {
+			requiresTerminal = caps.Terminals
+		}
+
 		methodDTOs = append(methodDTOs, methodDTO{
-			ID:          method.ID,
-			ZoneID:      method.ZoneID,
-			ProviderKey: method.ProviderKey,
-			ServiceCode: method.ServiceCode,
-			Title:       method.Title,
-			Enabled:     method.Enabled,
-			SortOrder:   method.SortOrder,
-			PricingMode: method.PricingMode,
-			Price:       price,
-			Currency:    "EUR",
+			ID:               method.ID,
+			ZoneID:           method.ZoneID,
+			ProviderKey:      method.ProviderKey,
+			ServiceCode:      method.ServiceCode,
+			Title:            method.Title,
+			Enabled:          method.Enabled,
+			SortOrder:        method.SortOrder,
+			PricingMode:      method.PricingMode,
+			Price:            price,
+			Currency:         "EUR",
+			RequiresTerminal: requiresTerminal,
 		})
 	}
 
@@ -331,41 +346,12 @@ func (m *module) handleStorefrontTerminals(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	cached, _, err := m.store.GetCachedTerminals(r.Context(), provider, country)
-	if err == nil && len(cached) > 0 {
-		var terminals []shipping.Terminal
-		if err := json.Unmarshal(cached, &terminals); err == nil {
-			_ = platformhttp.JSON(w, http.StatusOK, terminalsResponse{
-				Provider:  provider,
-				Country:   country,
-				Terminals: terminals,
-			})
-			return
-		}
-	}
-
-	prov, ok := m.providers[provider]
-	if !ok {
-		platformhttp.Error(w, http.StatusBadRequest, "provider not found or not enabled")
-		return
-	}
-
-	terminals, err := prov.ListTerminals(r.Context(), country)
+	// Check cache with TTL
+	terminals, err := m.getTerminals(r.Context(), provider, country)
 	if err != nil {
-		log.Printf("error fetching terminals from provider %s: %v", provider, err)
-		platformhttp.Error(w, http.StatusServiceUnavailable, "error fetching terminals from provider")
+		log.Printf("error fetching terminals for %s/%s: %v", provider, country, err)
+		platformhttp.Error(w, http.StatusServiceUnavailable, "error fetching terminals")
 		return
-	}
-
-	terminalsJSON, err := json.Marshal(terminals)
-	if err != nil {
-		log.Printf("error marshaling terminals: %v", err)
-		platformhttp.Error(w, http.StatusInternalServerError, "error processing terminals")
-		return
-	}
-
-	if err := m.store.UpsertCachedTerminals(r.Context(), provider, country, terminalsJSON); err != nil {
-		log.Printf("error caching terminals: %v", err)
 	}
 
 	_ = platformhttp.JSON(w, http.StatusOK, terminalsResponse{
@@ -373,4 +359,47 @@ func (m *module) handleStorefrontTerminals(w http.ResponseWriter, r *http.Reques
 		Country:   country,
 		Terminals: terminals,
 	})
+}
+
+// getTerminals returns terminals from cache (if fresh) or fetches from provider
+func (m *module) getTerminals(ctx context.Context, providerKey, country string) ([]shipping.Terminal, error) {
+	// Check cache first
+	cached, fetchedAt, err := m.store.GetCachedTerminals(ctx, providerKey, country)
+	if err == nil && len(cached) > 0 {
+		// Check if cache is still fresh (within TTL)
+		if time.Since(fetchedAt) < terminalsCacheTTL {
+			var terminals []shipping.Terminal
+			if err := json.Unmarshal(cached, &terminals); err == nil {
+				return terminals, nil
+			}
+		}
+	}
+
+	// Cache miss or expired - fetch from provider
+	return m.refreshTerminals(ctx, providerKey, country)
+}
+
+// refreshTerminals fetches terminals from provider and updates cache
+func (m *module) refreshTerminals(ctx context.Context, providerKey, country string) ([]shipping.Terminal, error) {
+	prov, ok := m.providers[providerKey]
+	if !ok {
+		return nil, fmt.Errorf("provider not found or not enabled: %s", providerKey)
+	}
+
+	terminals, err := prov.ListTerminals(ctx, country)
+	if err != nil {
+		return nil, fmt.Errorf("provider error: %w", err)
+	}
+
+	// Cache the result
+	terminalsJSON, err := json.Marshal(terminals)
+	if err != nil {
+		log.Printf("error marshaling terminals for cache: %v", err)
+	} else {
+		if err := m.store.UpsertCachedTerminals(ctx, providerKey, country, terminalsJSON); err != nil {
+			log.Printf("error caching terminals: %v", err)
+		}
+	}
+
+	return terminals, nil
 }

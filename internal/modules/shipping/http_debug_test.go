@@ -15,6 +15,12 @@ type mockProvider struct {
 	quoteFunc         func(ctx context.Context, req shipping_platform.QuoteRequest) ([]shipping_platform.ShippingOption, error)
 }
 
+func (m *mockProvider) Key() string  { return "mock" }
+func (m *mockProvider) Name() string { return "Mock Provider" }
+func (m *mockProvider) Capabilities() shipping_platform.Capabilities {
+	return shipping_platform.Capabilities{Terminals: true}
+}
+
 func (m *mockProvider) ListTerminals(ctx context.Context, country string) ([]shipping_platform.Terminal, error) {
 	if m.listTerminalsFunc != nil {
 		return m.listTerminalsFunc(ctx, country)

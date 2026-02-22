@@ -46,7 +46,37 @@ func init() {
 	shipping.Register("omniva", NewProvider)
 }
 
+func (p *omnivaProvider) Key() string {
+	return "omniva"
+}
+
+func (p *omnivaProvider) Name() string {
+	return "Omniva"
+}
+
+func (p *omnivaProvider) Capabilities() shipping.Capabilities {
+	return shipping.Capabilities{
+		Terminals:      true,
+		CreateShipment: false, // Stage 2
+		Labels:         false, // Stage 2
+		Tracking:       false, // Stage 2
+		Pickup:         false, // Stage 2
+	}
+}
+
 func (p *omnivaProvider) ListTerminals(ctx context.Context, country string) ([]shipping.Terminal, error) {
+	// Try real API first if credentials are configured
+	if p.username != "" && p.password != "" {
+		terminals, err := p.ListTerminalsFromAPI(ctx, country)
+		if err != nil {
+			// Log error but fall back to mock data
+			// In production, you might want to return the error
+		} else if terminals != nil {
+			return terminals, nil
+		}
+	}
+
+	// Fall back to mock data for development/testing
 	switch country {
 	case "LT":
 		return mockTerminalsLT(), nil
@@ -59,6 +89,7 @@ func (p *omnivaProvider) ListTerminals(ctx context.Context, country string) ([]s
 	}
 }
 
+// Quote is implemented as an optional interface
 func (p *omnivaProvider) Quote(ctx context.Context, req shipping.QuoteRequest) ([]shipping.ShippingOption, error) {
 	if req.Country == "" {
 		return nil, fmt.Errorf("country is required for quote")

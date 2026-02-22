@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
 import type { ShippingProvider, ShippingZone } from "@/lib/api";
 import { getShippingTerminals, refreshShippingTerminals, deleteShippingTerminals } from "@/lib/api";
 import { TerminalsRefreshButton } from "./terminals-refresh-button";
+import { TerminalsModal, type Terminal } from "./terminals-modal";
 
 type Props = {
   initialProviders: ShippingProvider[];
@@ -16,6 +17,7 @@ type CacheEntry = {
   country: string;
   terminalCount: number;
   fetchedAt: string;
+  terminals?: Terminal[];
 };
 
 export function TerminalsList({ initialProviders, initialZones }: Props) {
@@ -26,6 +28,7 @@ export function TerminalsList({ initialProviders, initialZones }: Props) {
   const [deleteConfirm, setDeleteConfirm] = useState<CacheEntry | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [loadError, setLoadError] = useState<string>("");
+  const [viewModal, setViewModal] = useState<CacheEntry | null>(null);
 
   const enabledProviders = initialProviders.filter((p) => p.enabled);
 
@@ -56,6 +59,7 @@ export function TerminalsList({ initialProviders, initialZones }: Props) {
         country: data.country,
         terminalCount: data.terminals.length,
         fetchedAt: data.fetched_at,
+        terminals: data.terminals as Terminal[],
       };
 
       setCacheEntries((prev) => {
@@ -72,13 +76,30 @@ export function TerminalsList({ initialProviders, initialZones }: Props) {
     }
   };
 
-  const handleRefreshSuccess = (entry: CacheEntry) => {
-    setCacheEntries((prev) => {
-      const filtered = prev.filter(
-        (e) => !(e.provider === entry.provider && e.country === entry.country)
-      );
-      return [entry, ...filtered];
-    });
+  const handleRefreshSuccess = async (entry: CacheEntry) => {
+    try {
+      const data = await getShippingTerminals(entry.provider, entry.country);
+      const updatedEntry: CacheEntry = {
+        provider: data.provider,
+        country: data.country,
+        terminalCount: data.terminals.length,
+        fetchedAt: data.fetched_at,
+        terminals: data.terminals as Terminal[],
+      };
+      setCacheEntries((prev) => {
+        const filtered = prev.filter(
+          (e) => !(e.provider === updatedEntry.provider && e.country === updatedEntry.country)
+        );
+        return [updatedEntry, ...filtered];
+      });
+    } catch {
+      setCacheEntries((prev) => {
+        const filtered = prev.filter(
+          (e) => !(e.provider === entry.provider && e.country === entry.country)
+        );
+        return [entry, ...filtered];
+      });
+    }
   };
 
   const handleDeleteClick = (entry: CacheEntry) => {
@@ -102,6 +123,10 @@ export function TerminalsList({ initialProviders, initialZones }: Props) {
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  const handleViewClick = (entry: CacheEntry) => {
+    setViewModal(entry);
   };
 
   const formatDate = (dateStr: string) => {
@@ -205,6 +230,14 @@ export function TerminalsList({ initialProviders, initialZones }: Props) {
                     <td className="px-4 py-3 text-foreground/70 text-xs">{formatDate(entry.fetchedAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleViewClick(entry)}
+                          title="View terminals"
+                          aria-label="View terminals"
+                          className="inline-flex size-8 items-center justify-center rounded-lg border border-surface-border bg-background text-foreground/70 hover:bg-foreground/[0.05]"
+                        >
+                          <Eye size={16} />
+                        </button>
                         <TerminalsRefreshButton
                           provider={entry.provider}
                           country={entry.country}
@@ -259,6 +292,16 @@ export function TerminalsList({ initialProviders, initialZones }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {viewModal && viewModal.terminals && (
+        <TerminalsModal
+          terminals={viewModal.terminals}
+          provider={viewModal.provider}
+          country={viewModal.country}
+          fetchedAt={viewModal.fetchedAt}
+          onClose={() => setViewModal(null)}
+        />
       )}
     </>
   );

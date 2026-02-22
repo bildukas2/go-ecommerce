@@ -157,12 +157,18 @@ func TestQuote_Lithuania(t *testing.T) {
 		t.Fatalf("NewProvider error: %v", err)
 	}
 
+	// Check if provider implements QuoteProvider interface
+	quoteProv, ok := prov.(shipping.QuoteProvider)
+	if !ok {
+		t.Fatal("provider does not implement QuoteProvider interface")
+	}
+
 	ctx := context.Background()
 	req := shipping.QuoteRequest{
 		Weight:  1.5,
 		Country: "LT",
 	}
-	options, err := prov.Quote(ctx, req)
+	options, err := quoteProv.Quote(ctx, req)
 	if err != nil {
 		t.Fatalf("Quote error: %v", err)
 	}
@@ -206,12 +212,17 @@ func TestQuote_DifferentWeights(t *testing.T) {
 		t.Fatalf("NewProvider error: %v", err)
 	}
 
+	quoteProv, ok := prov.(shipping.QuoteProvider)
+	if !ok {
+		t.Fatal("provider does not implement QuoteProvider interface")
+	}
+
 	ctx := context.Background()
 	req1 := shipping.QuoteRequest{
 		Weight:  0.5,
 		Country: "LT",
 	}
-	options1, err := prov.Quote(ctx, req1)
+	options1, err := quoteProv.Quote(ctx, req1)
 	if err != nil {
 		t.Fatalf("Quote error: %v", err)
 	}
@@ -220,7 +231,7 @@ func TestQuote_DifferentWeights(t *testing.T) {
 		Weight:  5.0,
 		Country: "LT",
 	}
-	options2, err := prov.Quote(ctx, req2)
+	options2, err := quoteProv.Quote(ctx, req2)
 	if err != nil {
 		t.Fatalf("Quote error: %v", err)
 	}
@@ -236,11 +247,16 @@ func TestQuote_MissingCountry(t *testing.T) {
 		t.Fatalf("NewProvider error: %v", err)
 	}
 
+	quoteProv, ok := prov.(shipping.QuoteProvider)
+	if !ok {
+		t.Fatal("provider does not implement QuoteProvider interface")
+	}
+
 	ctx := context.Background()
 	req := shipping.QuoteRequest{
 		Weight: 1.0,
 	}
-	options, err := prov.Quote(ctx, req)
+	options, err := quoteProv.Quote(ctx, req)
 	if err == nil {
 		t.Fatalf("expected error for missing country, got nil")
 	}
@@ -255,6 +271,11 @@ func TestQuote_CountriesHaveDifferentPrices(t *testing.T) {
 		t.Fatalf("NewProvider error: %v", err)
 	}
 
+	quoteProv, ok := prov.(shipping.QuoteProvider)
+	if !ok {
+		t.Fatal("provider does not implement QuoteProvider interface")
+	}
+
 	ctx := context.Background()
 	req := shipping.QuoteRequest{
 		Weight: 1.0,
@@ -262,14 +283,14 @@ func TestQuote_CountriesHaveDifferentPrices(t *testing.T) {
 
 	ltReq := req
 	ltReq.Country = "LT"
-	ltOpts, err := prov.Quote(ctx, ltReq)
+	ltOpts, err := quoteProv.Quote(ctx, ltReq)
 	if err != nil {
 		t.Fatalf("Quote error for LT: %v", err)
 	}
 
 	lvReq := req
 	lvReq.Country = "LV"
-	lvOpts, err := prov.Quote(ctx, lvReq)
+	lvOpts, err := quoteProv.Quote(ctx, lvReq)
 	if err != nil {
 		t.Fatalf("Quote error for LV: %v", err)
 	}
@@ -280,7 +301,7 @@ func TestQuote_CountriesHaveDifferentPrices(t *testing.T) {
 
 	ltUnknown := req
 	ltUnknown.Country = "XX"
-	unknownOpts, err := prov.Quote(ctx, ltUnknown)
+	unknownOpts, err := quoteProv.Quote(ctx, ltUnknown)
 	if err != nil {
 		t.Fatalf("Quote error for unknown: %v", err)
 	}

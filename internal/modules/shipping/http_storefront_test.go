@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	shipping_platform "goecommerce/internal/platform/shipping"
 	"goecommerce/internal/storage/shipping"
@@ -424,5 +426,146 @@ func TestTerminalsResponse_JSON(t *testing.T) {
 
 	if len(data) == 0 {
 		t.Error("expected non-empty json")
+	}
+}
+
+func TestGetTerminals_CacheHit(t *testing.T) {
+	cachedTerminals := []shipping_platform.Terminal{
+		{ID: "001", Name: "Cached Terminal", Country: "LT", City: "Vilnius"},
+	}
+	cachedJSON, _ := json.Marshal(cachedTerminals)
+
+	m := &module{
+		store: &mockStore{
+			getCachedTerminalsFunc: func(ctx context.Context, providerKey, country string) ([]byte, time.Time, error) {
+				// Return fresh cache (1 hour ago)
+				return cachedJSON, time.Now().Add(-1 * time.Hour), nil
+			},
+		},
+	}
+
+	terminals, err := m.getTerminals(context.Background(), "omniva", "LT")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(terminals) != 1 {
+		t.Fatalf("expected 1 terminal, got %d", len(terminals))
+	}
+
+	if terminals[0].ID != "001" {
+		t.Errorf("expected terminal ID 001, got %s", terminals[0].ID)
+	}
+}
+
+func TestGetTerminals_CacheExpired(t *testing.T) {
+	cachedTerminals := []shipping_platform.Terminal{
+		{ID: "old", Name: "Old Terminal", Country: "LT", City: "Vilnius"},
+	}
+	cachedJSON, _ := json.Marshal(cachedTerminals)
+
+	freshTerminals := []shipping_platform.Terminal{
+		{ID: "fresh", Name: "Fresh Terminal", Country: "LT", City: "Kaunas"},
+	}
+
+	m := &module{
+		store: &mockStore{
+			getCachedTerminalsFunc: func(ctx context.Context, providerKey, country string) ([]byte, time.Time, error) {
+				// Return expired cache (25 hours ago, beyond 24h TTL)
+				return cachedJSON, time.Now().Add(-25 * time.Hour), nil
+			},
+			upsertCachedTerminalsFunc: func(ctx context.Context, providerKey, country string, payloadJSON []byte) error {
+				return nil
+			},
+		},
+		providers: map[string]shipping_platform.Provider{
+			"omniva": &mockProvider{
+				listTerminalsFunc: func(ctx context.Context, country string) ([]shipping_platform.Terminal, error) {
+					return freshTerminals, nil
+				},
+			},
+		},
+	}
+
+	terminals, err := m.getTerminals(context.Background(), "omniva", "LT")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should return fresh terminals, not cached
+	if len(terminals) != 1 {
+		t.Fatalf("expected 1 terminal, got %d", len(terminals))
+	}
+
+	if terminals[0].ID != "fresh" {
+		t.Errorf("expected fresh terminal, got cached terminal with ID %s", terminals[0].ID)
+	}
+}
+
+func TestGetTerminals_CacheMiss(t *testing.T) {
+	freshTerminals := []shipping_platform.Terminal{
+		{ID: "new", Name: "New Terminal", Country: "LT", City: "Klaipėda"},
+	}
+
+	m := &module{
+		store: &mockStore{
+			getCachedTerminalsFunc: func(ctx context.Context, providerKey, country string) ([]byte, time.Time, error) {
+				// Cache miss
+				return nil, time.Time{}, sql.ErrNoRows
+			},
+			upsertCachedTerminalsFunc: func(ctx context.Context, providerKey, country string, payloadJSON []byte) error {
+				return nil
+			},
+		},
+		providers: map[string]shipping_platform.Provider{
+			"omniva": &mockProvider{
+				listTerminalsFunc: func(ctx context.Context, country string) ([]shipping_platform.Terminal, error) {
+					return freshTerminals, nil
+				},
+			},
+		},
+	}
+
+	terminals, err := m.getTerminals(context.Background(), "omniva", "LT")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(terminals) != 1 {
+		t.Fatalf("expected 1 terminal, got %d", len(terminals))
+	}
+
+	if terminals[0].ID != "new" {
+		t.Errorf("expected terminal ID 'new', got %s", terminals[0].ID)
+	}
+}
+
+func TestRefreshTerminals_ProviderNotFound(t *testing.T) {
+	m := &module{
+		store:     &mockStore{},
+		providers: map[string]shipping_platform.Provider{},
+	}
+
+	_, err := m.refreshTerminals(context.Background(), "nonexistent", "LT")
+	if err == nil {
+		t.Fatal("expected error for nonexistent provider")
+	}
+}
+
+func TestRefreshTerminals_ProviderError(t *testing.T) {
+	m := &module{
+		store: &mockStore{},
+		providers: map[string]shipping_platform.Provider{
+			"omniva": &mockProvider{
+				listTerminalsFunc: func(ctx context.Context, country string) ([]shipping_platform.Terminal, error) {
+					return nil, fmt.Errorf("provider error")
+				},
+			},
+		},
+	}
+
+	_, err := m.refreshTerminals(context.Background(), "omniva", "LT")
+	if err == nil {
+		t.Fatal("expected error from provider")
 	}
 }

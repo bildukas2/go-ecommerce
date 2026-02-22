@@ -34,3 +34,20 @@ func Get(key string) (ProviderFactory, error) {
 	}
 	return factory, nil
 }
+
+// GetCapabilities returns the capabilities for a registered provider.
+// It creates a provider instance with nil config, which should work for capability discovery.
+func GetCapabilities(key string) (Capabilities, error) {
+	providersMu.RLock()
+	defer providersMu.RUnlock()
+	factory, exists := providers[key]
+	if !exists {
+		return Capabilities{}, fmt.Errorf("provider '%s' not registered", key)
+	}
+	// Create a temporary instance with empty config to get capabilities
+	p, err := factory(nil)
+	if err != nil {
+		return Capabilities{}, err
+	}
+	return p.Capabilities(), nil
+}
