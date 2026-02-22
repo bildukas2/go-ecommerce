@@ -1,0 +1,185 @@
+import { API_URL } from "./config";
+
+function apiJoin(path: string): string {
+  const base = new URL(API_URL);
+  const clean = path.replace(/^\/+/, "");
+  if (!base.pathname.endsWith("/")) base.pathname += "/";
+  return new URL(clean, base).toString();
+}
+
+// Address types
+export interface CheckoutAddress {
+  full_name: string;
+  phone: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  state?: string;
+  postcode: string;
+  country: string;
+}
+
+export interface CompanyInfo {
+  name: string;
+  vat?: string;
+  invoice_email?: string;
+}
+
+// Shipping method from quote
+export interface CheckoutShippingMethod {
+  id: string;
+  zone_id: string;
+  provider_key: string;
+  service_code: string;
+  title: string;
+  enabled: boolean;
+  sort_order: number;
+  pricing_mode: string;
+  price: number;
+  currency: string;
+  requires_terminal: boolean;
+}
+
+// Payment method
+export interface CheckoutPaymentMethod {
+  id: string;
+  title: string;
+  icon?: string;
+}
+
+export const PAYMENT_METHODS: CheckoutPaymentMethod[] = [
+  { id: "card", title: "Credit/Debit Card", icon: "💳" },
+  { id: "banklink", title: "Bank Link", icon: "🏦" },
+  { id: "cash_on_delivery", title: "Cash on Delivery", icon: "💵" },
+];
+
+// Quote response
+export interface CheckoutQuoteResponse {
+  zone: { id: string; name: string; enabled: boolean } | null;
+  methods: CheckoutShippingMethod[];
+  totals: {
+    subtotal: number;
+    shipping: number;
+    total: number;
+  };
+}
+
+// Select shipping response
+export interface CheckoutSelectShippingResponse {
+  success: boolean;
+  shipping_price: number;
+  currency: string;
+  totals: {
+    subtotal: number;
+    shipping: number;
+    total: number;
+  };
+}
+
+// Place order response
+export interface CheckoutPlaceOrderResponse {
+  order_id: string;
+  order_number: string;
+  checkout_url: string;
+  status: string;
+}
+
+// Get shipping quote for a country
+export async function getCheckoutQuote(country: string): Promise<CheckoutQuoteResponse> {
+  const url = new URL(apiJoin("checkout/quote"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ country }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to get quote: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Submit address
+export async function submitCheckoutAddress(data: {
+  shipping: CheckoutAddress;
+  billing?: CheckoutAddress;
+  use_same_as_billing: boolean;
+  company?: CompanyInfo;
+}): Promise<{ valid: boolean }> {
+  const url = new URL(apiJoin("checkout/address"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.error || `Failed to submit address: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Select shipping method
+export async function selectCheckoutShipping(
+  methodId: string,
+  terminalId?: string
+): Promise<CheckoutSelectShippingResponse> {
+  const url = new URL(apiJoin("checkout/select-shipping"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ method_id: methodId, terminal_id: terminalId }),
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.error || `Failed to select shipping: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Select payment method
+export async function selectCheckoutPayment(
+  method: string,
+  provider?: string
+): Promise<{ success: boolean }> {
+  const url = new URL(apiJoin("checkout/select-payment"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ method, provider }),
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.error || `Failed to select payment: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Place order
+export async function placeCheckoutOrder(data: {
+  shipping_address: CheckoutAddress;
+  billing_address?: CheckoutAddress;
+  use_same_as_billing: boolean;
+  company?: CompanyInfo;
+  shipping_method_id: string;
+  shipping_terminal_id?: string;
+  shipping_price: number;
+  payment_method: string;
+  payment_provider?: string;
+}): Promise<CheckoutPlaceOrderResponse> {
+  const url = new URL(apiJoin("checkout/place-order"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.error || `Failed to place order: ${res.status}`);
+  }
+  return res.json();
+}

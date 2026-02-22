@@ -1,151 +1,432 @@
 "use client";
 
 import * as React from "react";
-import { checkout, isBlockedIPError, type StorefrontShippingMethod } from "@/lib/api";
+import { getCart, isBlockedIPError, type StorefrontShippingMethod } from "@/lib/api";
 import type { Terminal } from "@/hooks/use-terminals";
+import { useCheckoutState, type CheckoutStep } from "@/hooks/use-checkout-state";
 import { Button } from "@/components/ui/button";
+import { AddressSection } from "@/components/checkout/address-section";
 import { ShippingMethodSelector } from "@/components/checkout/shipping-method-selector";
 import { TerminalPicker } from "@/components/checkout/terminal-picker";
-import { MapPin, Check } from "lucide-react";
+import { PaymentMethodSelector } from "@/components/checkout/payment-method-selector";
+import { OrderSummary } from "@/components/checkout/order-summary";
+import { UpsellSection } from "@/components/checkout/upsell-section";
+import { Check, MapPin, Truck, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// Default country for demo - in production this would come from user settings or geo-IP
-const DEFAULT_COUNTRY = "EE";
+function StepIndicator({
+  steps,
+  currentStep,
+  completedSteps,
+}: {
+  steps: { id: CheckoutStep; label: string; icon: React.ReactNode }[];
+  currentStep: CheckoutStep;
+  completedSteps: Set<CheckoutStep>;
+}) {
+  const currentIndex = steps.findIndex((s) => s.id === currentStep);
+
+  return (
+    <div className="flex items-center justify-between mb-8">
+      {steps.map((step, index) => {
+        const isCompleted = completedSteps.has(step.id);
+        const isCurrent = step.id === currentStep;
+        const isPast = index < currentIndex;
+
+        return (
+          <React.Fragment key={step.id}>
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors",
+                  isCompleted || isPast
+                    ? "border-green-500 bg-green-500 text-white"
+                    : isCurrent
+                    ? "border-blue-500 bg-blue-500 text-white"
+                    : "border-muted-foreground/30 text-muted-foreground/50"
+                )}
+              >
+                {isCompleted || isPast ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  step.icon
+                )}
+              </div>
+              <span
+                className={cn(
+                  "text-sm font-medium hidden sm:block",
+                  isCurrent ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div
+                className={cn(
+                  "flex-1 h-0.5 mx-2",
+                  index < currentIndex ? "bg-green-500" : "bg-muted-foreground/20"
+                )}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+const CHECKOUT_STEPS = [
+  { id: "address" as const, label: "Address", icon: <MapPin className="h-4 w-4" /> },
+  { id: "shipping" as const, label: "Shipping", icon: <Truck className="h-4 w-4" /> },
+  { id: "payment" as const, label: "Payment", icon: <CreditCard className="h-4 w-4" /> },
+  { id: "review" as const, label: "Review", icon: <CheckCircle2 className="h-4 w-4" /> },
+];
 
 export default function CheckoutPage() {
-  const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  
-  // Shipping state
-  const [selectedMethod, setSelectedMethod] = React.useState<StorefrontShippingMethod | null>(null);
-  const [selectedTerminal, setSelectedTerminal] = React.useState<Terminal | null>(null);
-  const [shippingCountry, setShippingCountry] = React.useState(DEFAULT_COUNTRY);
+  const {
+    state,
+    setCart,
+    setCartLoading,
+    setShippingAddress,
+    setBillingAddress,
+    setUseSameAsBilling,
+    setCompany,
+    setShippingCountry,
+    setSelectedShippingMethod,
+    setSelectedTerminal,
+    setSelectedPaymentMethod,
+    setCurrentStep,
+    fetchQuote,
+    submitAddress,
+    selectShipping,
+    selectPayment,
+    placeOrder,
+    canProceedToShipping,
+    canProceedToPayment,
+    canPlaceOrder,
+  } = useCheckoutState();
 
-  const canProceed = React.useMemo(() => {
-    if (!selectedMethod) return false;
-    if (selectedMethod.requires_terminal && !selectedTerminal) return false;
-    return true;
-  }, [selectedMethod, selectedTerminal]);
-
-  async function onCheckout() {
-    if (!canProceed) {
-      setError("Please select a shipping method" + 
-        (selectedMethod?.requires_terminal ? " and a pickup terminal" : ""));
-      return;
+  const completedSteps = React.useMemo(() => {
+    const completed = new Set<CheckoutStep>();
+    if (state.addressValid) completed.add("address");
+    if (state.selectedShippingMethod && (!state.selectedShippingMethod.requires_terminal || state.selectedTerminal)) {
+      completed.add("shipping");
     }
+    if (state.selectedPaymentMethod) completed.add("payment");
+    return completed;
+  }, [state.addressValid, state.selectedShippingMethod, state.selectedTerminal, state.selectedPaymentMethod]);
 
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await checkout();
-      if (res.checkout_url) {
-        window.location.href = res.checkout_url;
-        return;
+  const sectionPanel = "glass rounded-[28px] border border-surface-border bg-surface/80 p-6 shadow-[0_30px_60px_rgba(2,6,23,0.35)] backdrop-blur-xl transition-colors";
+
+  React.useEffect(() => {
+    const loadCart = async () => {
+      try {
+        const cart = await getCart();
+        setCart(cart);
+      } catch (e) {
+        console.error("Failed to load cart:", e);
+      } finally {
+        setCartLoading(false);
       }
-      setError("No checkout URL returned");
-    } catch (e: unknown) {
-      if (isBlockedIPError(e)) {
-        window.location.href = e.redirectTo;
-        return;
-      }
-      const msg = e instanceof Error ? e.message : "Checkout failed";
-      setError(msg);
-    } finally {
-      setLoading(false);
+    };
+    loadCart();
+  }, [setCart, setCartLoading]);
+
+  React.useEffect(() => {
+    if (state.shippingCountry) {
+      fetchQuote();
     }
-  }
+  }, [state.shippingCountry, fetchQuote]);
+
+  const handleAddressContinue = async () => {
+    const success = await submitAddress();
+    if (success) {
+      setCurrentStep("shipping");
+    }
+  };
 
   const handleShippingMethodSelect = (method: StorefrontShippingMethod) => {
-    setSelectedMethod(method);
-    // Clear terminal if method doesn't require one
+    setSelectedShippingMethod({
+      id: method.id,
+      title: method.title,
+      price: method.price,
+      requires_terminal: method.requires_terminal,
+      provider_key: method.provider_key,
+    });
     if (!method.requires_terminal) {
       setSelectedTerminal(null);
     }
   };
 
-  const handleTerminalSelect = (terminal: Terminal) => {
-    setSelectedTerminal(terminal);
+  const handleShippingContinue = async () => {
+    const success = await selectShipping();
+    if (success) {
+      setCurrentStep("payment");
+    }
   };
 
-  return (
-    <div className="mx-auto max-w-2xl px-6 py-10 space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Checkout</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-          Select your shipping method and proceed to payment.
+  const handlePaymentContinue = async () => {
+    const success = await selectPayment();
+    if (success) {
+      setCurrentStep("review");
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    const success = await placeOrder();
+    if (success && state.checkoutUrl) {
+      window.location.href = state.checkoutUrl;
+    }
+  };
+
+  React.useEffect(() => {
+    if (state.error?.includes("blocked")) {
+      try {
+        const errorData = JSON.parse(state.error);
+        if (errorData.blocked) {
+          window.location.href = "/blocked";
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [state.error]);
+
+  if (state.orderPlaced) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
+        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
+        <h1 className="text-2xl font-semibold mb-2">Order Placed!</h1>
+        <p className="text-muted-foreground mb-4">
+          Your order #{state.orderNumber} has been placed successfully.
         </p>
-      </div>
-
-      {/* Country selector */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Shipping Country</label>
-        <select
-          value={shippingCountry}
-          onChange={(e) => {
-            setShippingCountry(e.target.value);
-            setSelectedMethod(null);
-            setSelectedTerminal(null);
-          }}
-          className="w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
-        >
-          <option value="EE">Estonia</option>
-          <option value="LV">Latvia</option>
-          <option value="LT">Lithuania</option>
-          <option value="FI">Finland</option>
-        </select>
-      </div>
-
-      {/* Shipping method selector */}
-      <ShippingMethodSelector
-        country={shippingCountry}
-        selectedMethodId={selectedMethod?.id}
-        onSelect={handleShippingMethodSelect}
-      />
-
-      {/* Terminal picker - shown when method requires terminal */}
-      {selectedMethod?.requires_terminal && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-blue-500" />
-            <h3 className="text-lg font-semibold">Select Pickup Terminal</h3>
-          </div>
-          <TerminalPicker
-            provider={selectedMethod.provider_key}
-            country={shippingCountry}
-            selectedTerminalId={selectedTerminal?.id}
-            onSelect={handleTerminalSelect}
-          />
-          {selectedTerminal && (
-            <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-700 dark:text-green-300">
-              <Check className="h-4 w-4" />
-              <span>
-                Selected: <strong>{selectedTerminal.name}</strong> - {selectedTerminal.address}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <div className="text-sm text-red-600 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-          {error}
-        </div>
-      )}
-
-      {/* Proceed button */}
-      <div className="pt-4 border-t border-surface-border">
-        <Button 
-          onClick={onCheckout} 
-          disabled={loading || !canProceed}
-          className="w-full"
-        >
-          {loading ? "Redirecting..." : "Proceed to Payment"}
-        </Button>
-        {!canProceed && selectedMethod?.requires_terminal && !selectedTerminal && (
-          <p className="text-xs text-center text-foreground/50 mt-2">
-            Please select a pickup terminal to continue
-          </p>
+        {state.checkoutUrl && (
+          <Button onClick={() => { if (state.checkoutUrl) window.location.href = state.checkoutUrl; }}>
+            Complete Payment
+          </Button>
         )}
+      </div>
+    );
+  }
+
+  if (!state.cartLoading && (!state.cart?.Items || state.cart.Items.length === 0)) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
+        <h1 className="text-2xl font-semibold mb-2">Your cart is empty</h1>
+        <p className="text-muted-foreground mb-6">
+          Add some items to your cart to proceed with checkout.
+        </p>
+        <Button onClick={() => window.location.href = "/"}>
+          Continue Shopping
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hero-aurora min-h-screen bg-background px-4 py-10">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="rounded-[36px] border border-surface-border bg-surface/90 p-6 shadow-[0_40px_120px_rgba(2,6,23,0.45)] backdrop-blur-3xl">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-[0.4em] text-foreground/50">Checkout</span>
+            <h1 className="text-3xl font-semibold text-foreground">Shopping Cart</h1>
+            <p className="text-sm text-foreground/70">Complete your order in a few intentional steps.</p>
+          </div>
+
+          <div className="mt-6">
+            <div className="glass rounded-2xl border border-surface-border bg-surface/70 p-4">
+              <StepIndicator
+                steps={CHECKOUT_STEPS}
+                currentStep={state.currentStep}
+                completedSteps={completedSteps}
+              />
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="space-y-6">
+              {state.currentStep === "address" && (
+                <div className={`${sectionPanel} space-y-6`}>
+                  <AddressSection
+                    shippingAddress={state.shippingAddress}
+                    billingAddress={state.billingAddress}
+                    useSameAsBilling={state.useSameAsBilling}
+                    company={state.company}
+                    onShippingAddressChange={setShippingAddress}
+                    onBillingAddressChange={setBillingAddress}
+                    onUseSameAsBillingChange={setUseSameAsBilling}
+                    onCompanyChange={setCompany}
+                    onContinue={handleAddressContinue}
+                    loading={state.loading}
+                    error={state.error}
+                  />
+                </div>
+              )}
+
+              {state.currentStep === "shipping" && (
+                <div className={`${sectionPanel} space-y-6`}>
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-blue-500" />
+                    <h3 className="text-lg font-semibold">Shipping Method</h3>
+                  </div>
+
+                  {state.quoteLoading ? (
+                    <div className="flex items-center justify-center rounded-2xl border border-surface-border bg-surface/70 p-8 text-foreground/60">
+                      <Loader2 className="h-6 w-6 animate-spin text-foreground/60" />
+                      <span className="ml-2 text-foreground/60">Loading shipping options...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <ShippingMethodSelector
+                        country={state.shippingCountry}
+                        cartValue={state.subtotal}
+                        selectedMethodId={state.selectedShippingMethod?.id}
+                        onSelect={handleShippingMethodSelect}
+                      />
+
+                      {state.selectedShippingMethod?.requires_terminal && (
+                        <div className="space-y-4 pt-4 border-t border-surface-border">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-blue-500" />
+                            <h4 className="font-semibold">Select Pickup Terminal</h4>
+                          </div>
+                          <TerminalPicker
+                            provider={state.selectedShippingMethod.provider_key}
+                            country={state.shippingCountry}
+                            selectedTerminalId={state.selectedTerminal?.id}
+                            onSelect={setSelectedTerminal}
+                          />
+                          {state.selectedTerminal && (
+                            <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-700 dark:text-green-300">
+                              <Check className="h-4 w-4" />
+                              <span>
+                                Selected: <strong>{state.selectedTerminal.name}</strong> - {state.selectedTerminal.address}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {state.error && (
+                        <div className="text-sm text-red-600 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                          {state.error}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 pt-4 border-t border-surface-border">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCurrentStep("address")}
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          onClick={handleShippingContinue}
+                          disabled={!canProceedToPayment || state.loading}
+                        >
+                          {state.loading ? "Saving..." : "Continue to Payment"}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {state.currentStep === "payment" && (
+                <div className={`${sectionPanel} space-y-6`}>
+                  <PaymentMethodSelector
+                    selectedMethod={state.selectedPaymentMethod}
+                    onSelect={setSelectedPaymentMethod}
+                    onContinue={handlePaymentContinue}
+                    loading={state.loading}
+                    error={state.error}
+                  />
+                  <div className="flex gap-3 pt-4 border-t border-surface-border mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep("shipping")}
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {state.currentStep === "review" && (
+                <div className={`${sectionPanel} space-y-6`}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                    <h3 className="text-lg font-semibold">Review Your Order</h3>
+                  </div>
+
+                  {state.shippingAddress && (
+                    <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
+                      <h4 className="font-medium text-sm mb-2">Shipping Address</h4>
+                      <p className="text-sm text-foreground/70">
+                        {state.shippingAddress.full_name}<br />
+                        {state.shippingAddress.address1}<br />
+                        {state.shippingAddress.address2 && <>{state.shippingAddress.address2}<br /></>}
+                        {state.shippingAddress.city}, {state.shippingAddress.postcode}<br />
+                        {state.shippingAddress.country}
+                      </p>
+                    </div>
+                  )}
+
+                  {state.selectedShippingMethod && (
+                    <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
+                      <h4 className="font-medium text-sm mb-2">Shipping Method</h4>
+                      <p className="text-sm text-foreground/70">
+                        {state.selectedShippingMethod.title} - €{(state.selectedShippingMethod.price / 100).toFixed(2)}
+                        {state.selectedTerminal && (
+                          <><br />Terminal: {state.selectedTerminal.name}</>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {state.selectedPaymentMethod && (
+                    <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
+                      <h4 className="font-medium text-sm mb-2">Payment Method</h4>
+                      <p className="text-sm text-foreground/70 capitalize">
+                        {state.selectedPaymentMethod.replace("_", " ")}
+                      </p>
+                    </div>
+                  )}
+
+                  {state.error && (
+                    <div className="text-sm text-red-600 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                      {state.error}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-4 border-t border-surface-border">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep("payment")}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handlePlaceOrder}
+                      disabled={!canPlaceOrder || state.loading}
+                      className="flex-1"
+                    >
+                      {state.loading ? "Placing Order..." : "Place Order"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-6">
+              <OrderSummary
+                cart={state.cart}
+                shippingPrice={state.shippingPrice}
+                loading={state.cartLoading}
+              />
+              <UpsellSection />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

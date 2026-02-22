@@ -6,7 +6,6 @@ import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
-import { isBlockedIPError } from "@/lib/api";
 
 function formatCents(cents: number, currency: string) {
   try {
@@ -30,9 +29,7 @@ export function CartButton() {
 }
 
 export function CartDrawer() {
-  const { open, closeDrawer, cart, loading, error, mutatingItemIds, update, remove, checkout } = useCart();
-  const [checkoutBusy, setCheckoutBusy] = React.useState(false);
-  const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
+  const { open, closeDrawer, cart, loading, error, mutatingItemIds, update, remove } = useCart();
   const items = Array.isArray(cart?.Items) ? cart.Items : [];
 
   React.useEffect(() => {
@@ -82,7 +79,6 @@ export function CartDrawer() {
             <div className="flex-1 space-y-4 overflow-auto p-4">
               {loading && <div className="text-sm text-neutral-600 dark:text-neutral-400">Loading...</div>}
               {error && <div className="text-sm text-red-600">{error}</div>}
-              {checkoutError && <div className="text-sm text-red-600">{checkoutError}</div>}
 
               {!loading && cart && items.length === 0 ? (
                 <GlassCard className="p-6 text-center">
@@ -187,30 +183,13 @@ export function CartDrawer() {
 
               <Button
                 className="w-full"
-                disabled={!cart || items.length === 0 || loading || checkoutBusy}
-                onClick={async () => {
-                  setCheckoutBusy(true);
-                  setCheckoutError(null);
-                  try {
-                    const res = await checkout();
-                    if (!res.checkout_url) {
-                      setCheckoutError("No checkout URL returned.");
-                      return;
-                    }
-                    window.location.href = res.checkout_url;
-                  } catch (e: unknown) {
-                    if (isBlockedIPError(e)) {
-                      window.location.href = e.redirectTo;
-                      return;
-                    }
-                    const message = e instanceof Error ? e.message : "Checkout failed";
-                    setCheckoutError(message);
-                  } finally {
-                    setCheckoutBusy(false);
-                  }
+                disabled={!cart || items.length === 0 || loading}
+                onClick={() => {
+                  closeDrawer();
+                  window.location.href = "/checkout";
                 }}
               >
-                {checkoutBusy ? "Redirecting..." : "Checkout"}
+                Checkout
               </Button>
             </div>
           </motion.div>
