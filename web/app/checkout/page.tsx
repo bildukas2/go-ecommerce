@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { getCart, isBlockedIPError, type StorefrontShippingMethod } from "@/lib/api";
+import { getCart, isBlockedIPError } from "@/lib/api";
 import type { Terminal } from "@/hooks/use-terminals";
 import { useCheckoutState, type CheckoutStep } from "@/hooks/use-checkout-state";
+import type { CheckoutShippingMethod } from "@/lib/checkout-api";
+import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { AddressSection } from "@/components/checkout/address-section";
 import { ShippingMethodSelector } from "@/components/checkout/shipping-method-selector";
@@ -106,6 +108,26 @@ export default function CheckoutPage() {
     canPlaceOrder,
   } = useCheckoutState();
 
+  const { update: updateCart, remove: removeCart } = useCart();
+
+  const handleUpdateQuantity = React.useCallback(
+    async (itemId: string, quantity: number) => {
+      await updateCart(itemId, quantity);
+      const updatedCart = await getCart();
+      setCart(updatedCart);
+    },
+    [updateCart, setCart]
+  );
+
+  const handleRemoveItem = React.useCallback(
+    async (itemId: string) => {
+      await removeCart(itemId);
+      const updatedCart = await getCart();
+      setCart(updatedCart);
+    },
+    [removeCart, setCart]
+  );
+
   const completedSteps = React.useMemo(() => {
     const completed = new Set<CheckoutStep>();
     if (state.addressValid) completed.add("address");
@@ -145,7 +167,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleShippingMethodSelect = (method: StorefrontShippingMethod) => {
+  const handleShippingMethodSelect = (method: CheckoutShippingMethod) => {
     setSelectedShippingMethod({
       id: method.id,
       title: method.title,
@@ -279,7 +301,9 @@ export default function CheckoutPage() {
                     <>
                       <ShippingMethodSelector
                         country={state.shippingCountry}
-                        cartValue={state.subtotal}
+                        methods={state.shippingMethods}
+                        isLoading={state.quoteLoading}
+                        error={state.error}
                         selectedMethodId={state.selectedShippingMethod?.id}
                         onSelect={handleShippingMethodSelect}
                       />
@@ -422,6 +446,8 @@ export default function CheckoutPage() {
                 cart={state.cart}
                 shippingPrice={state.shippingPrice}
                 loading={state.cartLoading}
+                onUpdateQuantity={handleUpdateQuantity}
+                onRemoveItem={handleRemoveItem}
               />
               <UpsellSection />
             </div>

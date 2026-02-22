@@ -1,23 +1,39 @@
 import * as React from "react";
+import { motion } from "framer-motion";
 import { Cart, CartItem } from "@/lib/api";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Truck, Tag } from "lucide-react";
+import { Package, Truck, Tag, Minus, Plus } from "lucide-react";
 
 interface OrderSummaryProps {
   cart: Cart | null;
   shippingPrice?: number;
   loading?: boolean;
+  onUpdateQuantity?: (itemId: string, quantity: number) => Promise<void>;
+  onRemoveItem?: (itemId: string) => Promise<void>;
 }
 
 function formatPrice(cents: number): string {
   return `€${(cents / 100).toFixed(2)}`;
 }
 
-function CartItemRow({ item }: { item: CartItem }) {
+function CartItemRow({
+  item,
+  onUpdateQuantity,
+  onRemoveItem,
+  isMutating = false,
+  loading = false,
+}: {
+  item: CartItem;
+  onUpdateQuantity?: (itemId: string, quantity: number) => Promise<void>;
+  onRemoveItem?: (itemId: string) => Promise<void>;
+  isMutating?: boolean;
+  loading?: boolean;
+}) {
   const productName = item.ProductTitle || "Product";
   const price = item.UnitPriceCents || 0;
   const image = item.ImageURL;
+  const hasControls = onUpdateQuantity || onRemoveItem;
 
   return (
     <div className="flex items-center gap-4 rounded-[18px] border border-surface-border bg-background/50 px-3 py-3">
@@ -37,11 +53,52 @@ function CartItemRow({ item }: { item: CartItem }) {
       <div className="flex-1 min-w-0 space-y-1">
         <div className="font-medium text-sm truncate text-foreground">{productName}</div>
         <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          Qty: {item.Quantity}
+          {hasControls ? (
+            <div className="flex items-center gap-2">
+              <button
+                className="rounded-full border border-surface-border bg-surface p-1.5 text-sm disabled:opacity-60"
+                onClick={() => onUpdateQuantity?.(item.ID, Math.max(1, item.Quantity - 1))}
+                disabled={isMutating || loading}
+                aria-label="Decrease quantity"
+              >
+                <Minus size={12} />
+              </button>
+              <motion.span
+                key={`${item.ID}-${item.Quantity}`}
+                className="w-4 text-center text-xs"
+                initial={{ scale: 0.92, opacity: 0.8 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.16 }}
+              >
+                {item.Quantity}
+              </motion.span>
+              <button
+                className="rounded-full border border-surface-border bg-surface p-1.5 text-sm disabled:opacity-60"
+                onClick={() => onUpdateQuantity?.(item.ID, item.Quantity + 1)}
+                disabled={isMutating || loading}
+                aria-label="Increase quantity"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          ) : (
+            `Qty: ${item.Quantity}`
+          )}
         </div>
       </div>
-      <div className="text-sm font-semibold text-foreground">
-        {formatPrice(price * item.Quantity)}
+      <div className="flex items-center gap-3">
+        <div className="text-sm font-semibold text-foreground whitespace-nowrap">
+          {formatPrice(price * item.Quantity)}
+        </div>
+        {hasControls && onRemoveItem && (
+          <button
+            className="text-xs text-red-600 hover:underline disabled:opacity-60"
+            onClick={() => onRemoveItem(item.ID)}
+            disabled={isMutating || loading}
+          >
+            Remove
+          </button>
+        )}
       </div>
     </div>
   );
@@ -64,7 +121,45 @@ function CartSkeleton() {
   );
 }
 
-export function OrderSummary({ cart, shippingPrice = 0, loading }: OrderSummaryProps) {
+export function OrderSummary({
+  cart,
+  shippingPrice = 0,
+  loading,
+  onUpdateQuantity,
+  onRemoveItem,
+}: OrderSummaryProps) {
+  const [mutatingItemIds, setMutatingItemIds] = React.useState<string[]>([]);
+
+  const handleUpdateQuantity = React.useCallback(
+    async (itemId: string, quantity: number) => {
+      if (!onUpdateQuantity) return;
+      setMutatingItemIds((prev) =>
+        prev.includes(itemId) ? prev : [...prev, itemId]
+      );
+      try {
+        await onUpdateQuantity(itemId, quantity);
+      } finally {
+        setMutatingItemIds((prev) => prev.filter((id) => id !== itemId));
+      }
+    },
+    [onUpdateQuantity]
+  );
+
+  const handleRemoveItem = React.useCallback(
+    async (itemId: string) => {
+      if (!onRemoveItem) return;
+      setMutatingItemIds((prev) =>
+        prev.includes(itemId) ? prev : [...prev, itemId]
+      );
+      try {
+        await onRemoveItem(itemId);
+      } finally {
+        setMutatingItemIds((prev) => prev.filter((id) => id !== itemId));
+      }
+    },
+    [onRemoveItem]
+  );
+
   const subtotal = cart?.Totals?.SubtotalCents || 0;
   const total = subtotal + shippingPrice;
 
@@ -75,13 +170,20 @@ export function OrderSummary({ cart, shippingPrice = 0, loading }: OrderSummaryP
         <h3 className="text-lg font-semibold">Order Summary</h3>
       </div>
 
-      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+      <div className="space-y-3 max-h-100 overflow-y-auto pr-1">
         {loading ? (
           <CartSkeleton />
         ) : cart?.Items && cart.Items.length > 0 ? (
           <div className="space-y-3">
             {cart.Items.map((item) => (
-              <CartItemRow key={item.ID} item={item} />
+              <CartItemRow
+                key={item.ID}
+                item={item}
+                onUpdateQuantity={onUpdateQuantity ? handleUpdateQuantity : undefined}
+                onRemoveItem={onRemoveItem ? handleRemoveItem : undefined}
+                isMutating={mutatingItemIds.includes(item.ID)}
+                loading={loading || false}
+              />
             ))}
           </div>
         ) : (
