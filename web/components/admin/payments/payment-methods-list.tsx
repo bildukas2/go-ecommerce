@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Pencil } from "lucide-react";
 import type { PaymentMethod, ShippingMethod } from "@/lib/api";
 import { deletePaymentMethod, getShippingMethods } from "@/lib/api";
 import { MethodTypeSelector } from "./method-type-selector";
+import { PaymentMethodForm } from "./payment-method-form";
 
 type Props = {
   initialMethods: PaymentMethod[];
@@ -15,6 +16,7 @@ export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
   const [methods, setMethods] = useState(initialMethods);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -25,11 +27,18 @@ export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
   }, []);
 
   const handleAddMethod = () => {
+    setEditingMethod(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditMethod = (method: PaymentMethod) => {
+    setEditingMethod(method);
     setIsFormOpen(true);
   };
 
   const handleFormClose = () => {
     setIsFormOpen(false);
+    setEditingMethod(null);
   };
 
   const handleFormSuccess = (newMethods: PaymentMethod[]) => {
@@ -144,14 +153,24 @@ export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
                       <td className="px-4 py-3 text-foreground/70">{method.sort_order}</td>
                       <td className="px-4 py-3 text-foreground/70">{formatDate(method.updated_at)}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleDeleteClick(method.id, method.title)}
-                          title="Delete method"
-                          aria-label="Delete method"
-                          className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditMethod(method)}
+                            title="Edit method"
+                            aria-label="Edit method"
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-blue-500/35 bg-blue-500/10 text-blue-700 hover:bg-blue-500/15 dark:text-blue-300"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(method.id, method.title)}
+                            title="Delete method"
+                            aria-label="Delete method"
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -162,14 +181,23 @@ export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
         )}
       </div>
 
-      {isFormOpen && (
+      {isFormOpen && editingMethod ? (
+        <PaymentMethodForm
+          method={editingMethod}
+          currentMethods={methods}
+          onClose={handleFormClose}
+          onSuccess={handleFormSuccess}
+        />
+      ) : null}
+
+      {isFormOpen && !editingMethod ? (
         <MethodTypeSelector
           methods={methods}
           shippingMethods={shippingMethods}
           onClose={handleFormClose}
           onSuccess={handleFormSuccess}
         />
-      )}
+      ) : null}
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
