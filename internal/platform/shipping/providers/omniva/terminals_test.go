@@ -217,3 +217,48 @@ func TestFilterByCountryPreservesData(t *testing.T) {
 		t.Errorf("Name: got %s, want Vilnius Central", ltTerminals[0].Name)
 	}
 }
+
+func TestNormalizeTerminal_FullAddressComponents(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    omnivaPoint
+		expected string
+	}{
+		{
+			name: "full address with all components",
+			input: omnivaPoint{
+				Address: "LT Klaipėdos apskr. Klaipėdos r. sav. Gargždų m. J. Janonio g. 20",
+				City:    "Gargždų m.",
+				Country: "LT",
+			},
+			expected: "LT Klaipėdos apskr. Klaipėdos r. sav. Gargždų m. J. Janonio g. 20",
+		},
+		{
+			name: "address with mixed components",
+			input: omnivaPoint{
+				Address: "LV Region City Street 7",
+				City:    "City",
+				Country: "LV",
+			},
+			expected: "LV Region City Street 7",
+		},
+		{
+			name: "address with only country and street",
+			input: omnivaPoint{
+				Address: "LT Main St 42",
+				City:    "City",
+				Country: "LT",
+			},
+			expected: "LT Main St 42",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeTerminal(tt.input)
+			if result.Address != tt.expected {
+				t.Errorf("Address: got %q, want %q", result.Address, tt.expected)
+			}
+		})
+	}
+}

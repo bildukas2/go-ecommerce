@@ -117,15 +117,18 @@ func (c *Client) FetchTerminalsByCountry(ctx context.Context, country string) ([
 			continue
 		}
 
-		// Build address from components A0-A8
+		// Build address from all components A0-A8
 		addressParts := []string{}
-		for _, part := range []string{loc.A5NAME, loc.A7NAME} {
+		for _, part := range []string{
+			loc.A0NAME, loc.A1NAME, loc.A2NAME, loc.A3NAME, loc.A4NAME,
+			loc.A5NAME, loc.A6NAME, loc.A7NAME, loc.A8NAME,
+		} {
 			if strings.TrimSpace(part) != "" {
 				addressParts = append(addressParts, strings.TrimSpace(part))
 			}
 		}
 
-		address := strings.Join(addressParts, ", ")
+		address := strings.Join(addressParts, " ")
 		if address == "" {
 			address = loc.NAME
 		}

@@ -50,6 +50,7 @@ type terminalsResponse struct {
 	Provider  string              `json:"provider"`
 	Country   string              `json:"country"`
 	Terminals []shipping.Terminal `json:"terminals"`
+	FetchedAt time.Time           `json:"fetched_at"`
 }
 
 func (m *module) handleStorefrontShippingOptions(w http.ResponseWriter, r *http.Request) {
@@ -358,6 +359,7 @@ func (m *module) handleStorefrontTerminals(w http.ResponseWriter, r *http.Reques
 		Provider:  provider,
 		Country:   country,
 		Terminals: terminals,
+		FetchedAt: time.Now(),
 	})
 }
 

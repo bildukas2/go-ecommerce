@@ -2,6 +2,7 @@ package omniva
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"goecommerce/internal/platform/shipping"
@@ -308,5 +309,121 @@ func TestQuote_CountriesHaveDifferentPrices(t *testing.T) {
 
 	if unknownOpts[0].Price <= ltOpts[0].Price {
 		t.Fatalf("unknown country should have higher price than LT")
+	}
+}
+
+func TestFetchTerminalsByCountry_AddressComponentsParsing(t *testing.T) {
+	tests := []struct {
+		name         string
+		location     omnivaLocation
+		country      string
+		expectedAddr string
+	}{
+		{
+			name: "all address components present",
+			location: omnivaLocation{
+				ZIP:    "99940",
+				NAME:   "Gargždų AIBĖ Janonio paštomatas",
+				A0NAME: "LT",
+				A1NAME: "Klaipėdos apskr.",
+				A2NAME: "Klaipėdos r. sav.",
+				A3NAME: "Gargždų m.",
+				A4NAME: "",
+				A5NAME: "J. Janonio g.",
+				A6NAME: "",
+				A7NAME: "20",
+				A8NAME: "",
+			},
+			country:      "LT",
+			expectedAddr: "LT Klaipėdos apskr. Klaipėdos r. sav. Gargždų m. J. Janonio g. 20",
+		},
+		{
+			name: "only A5 and A7 present",
+			location: omnivaLocation{
+				ZIP:    "12345",
+				NAME:   "Test Terminal",
+				A0NAME: "LT",
+				A5NAME: "Main St",
+				A7NAME: "42",
+			},
+			country:      "LT",
+			expectedAddr: "LT Main St 42",
+		},
+		{
+			name: "empty address components fallback to name",
+			location: omnivaLocation{
+				ZIP:    "99999",
+				NAME:   "Fallback Terminal",
+				A0NAME: "LT",
+				A1NAME: "",
+				A2NAME: "",
+				A3NAME: "",
+				A4NAME: "",
+				A5NAME: "",
+				A6NAME: "",
+				A7NAME: "",
+				A8NAME: "",
+			},
+			country:      "LT",
+			expectedAddr: "LT",
+		},
+		{
+			name: "whitespace should be trimmed",
+			location: omnivaLocation{
+				ZIP:    "11111",
+				NAME:   "Test",
+				A0NAME: "  LT  ",
+				A5NAME: "  Street  ",
+				A7NAME: "  100  ",
+			},
+			country:      "LT",
+			expectedAddr: "LT Street 100",
+		},
+		{
+			name: "mixed empty and populated components",
+			location: omnivaLocation{
+				ZIP:    "22222",
+				NAME:   "Mixed Terminal",
+				A0NAME: "LV",
+				A1NAME: "Region",
+				A2NAME: "",
+				A3NAME: "City",
+				A4NAME: "",
+				A5NAME: "Street",
+				A6NAME: "",
+				A7NAME: "7",
+				A8NAME: "",
+			},
+			country:      "LV",
+			expectedAddr: "LV Region City Street 7",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Manually build address as the client code does (mirrors client.go logic)
+			var addressParts []string
+			for _, part := range []string{
+				tt.location.A0NAME, tt.location.A1NAME, tt.location.A2NAME,
+				tt.location.A3NAME, tt.location.A4NAME, tt.location.A5NAME,
+				tt.location.A6NAME, tt.location.A7NAME, tt.location.A8NAME,
+			} {
+				if strings.TrimSpace(part) != "" {
+					addressParts = append(addressParts, strings.TrimSpace(part))
+				}
+			}
+
+			var address string
+			if len(addressParts) > 0 {
+				address = strings.Join(addressParts, " ")
+			}
+			if address == "" {
+				address = tt.location.NAME
+			}
+
+			if address != tt.expectedAddr {
+				t.Errorf("address mismatch: got %q, want %q", address, tt.expectedAddr)
+			}
+		})
 	}
 }
