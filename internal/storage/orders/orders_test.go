@@ -435,3 +435,143 @@ func TestListOrdersIncludesCustomerShipmentAndPaymentFields(t *testing.T) {
 		t.Fatalf("expected payment type 'cash_on_delivery', got %q", found.PaymentType)
 	}
 }
+
+func TestGetOrderByIDIncludesEnrichedAdminDetailFields(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping order detail enrichment test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var ordersTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.orders')").Scan(&ordersTable); err != nil || ordersTable == nil || *ordersTable == "" {
+		t.Skip("orders table not present; apply migrations to run this test")
+	}
+	var orderItemsTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.order_items')").Scan(&orderItemsTable); err != nil || orderItemsTable == nil || *orderItemsTable == "" {
+		t.Skip("order_items table not present; apply migrations to run this test")
+	}
+	var customersTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.customers')").Scan(&customersTable); err != nil || customersTable == nil || *customersTable == "" {
+		t.Skip("customers table not present; apply migrations to run this test")
+	}
+	var shippingMethodsTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.shipping_methods')").Scan(&shippingMethodsTable); err != nil || shippingMethodsTable == nil || *shippingMethodsTable == "" {
+		t.Skip("shipping_methods table not present; apply migrations to run this test")
+	}
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	var variantID string
+	if err := db.QueryRowContext(ctx, "SELECT id FROM product_variants LIMIT 1").Scan(&variantID); err != nil {
+		if err == sql.ErrNoRows {
+			t.Skip("no product variants seeded; skipping")
+		}
+		t.Fatalf("query variant: %v", err)
+	}
+
+	email := fmt.Sprintf("order-detail-%d@example.com", time.Now().UnixNano())
+	phone := "+1555000222"
+	var customerID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO customers (email, phone, password_hash, first_name, last_name)
+		VALUES ($1, $2, 'hash', 'Taylor', 'Swift')
+		RETURNING id
+	`, email, phone).Scan(&customerID); err != nil {
+		t.Fatalf("insert customer: %v", err)
+	}
+
+	providerKey := fmt.Sprintf("prov-detail-%d", time.Now().UnixNano())
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO shipping_providers (key, name, enabled, mode, config_json)
+		VALUES ($1, 'Detail Provider', true, 'sandbox', '{}'::jsonb)
+	`, providerKey); err != nil {
+		t.Fatalf("insert shipping provider: %v", err)
+	}
+
+	var zoneID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO shipping_zones (name, countries_json, enabled)
+		VALUES ('Detail Zone', '["US"]'::jsonb, true)
+		RETURNING id
+	`).Scan(&zoneID); err != nil {
+		t.Fatalf("insert shipping zone: %v", err)
+	}
+
+	var shippingMethodID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO shipping_methods (zone_id, provider_key, service_code, title, enabled, sort_order, pricing_mode, pricing_rules_json)
+		VALUES ($1, $2, 'parcel', 'Parcel Terminal', true, 0, 'flat', '{"price_cents":700}'::jsonb)
+		RETURNING id
+	`, zoneID, providerKey).Scan(&shippingMethodID); err != nil {
+		t.Fatalf("insert shipping method: %v", err)
+	}
+
+	orderNumber := fmt.Sprintf("ORD-DET-%d", time.Now().UnixNano()%1000000)
+	var orderID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO orders (
+			number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents,
+			customer_id, shipping_method_id, shipping_terminal_id, shipping_price_cents,
+			shipping_full_name, shipping_phone, shipping_address1, shipping_address2, shipping_city, shipping_state, shipping_postcode, shipping_country,
+			billing_full_name, billing_address1, billing_address2, billing_city, billing_state, billing_postcode, billing_country,
+			company_name, company_vat, invoice_email, payment_method, payment_provider
+		) VALUES (
+			$1, 'pending_payment', 'USD', 2000, 700, 100, 2800,
+			$2::uuid, $3::uuid, 'TERM-99', 700,
+			'Taylor Swift', '+1555000222', 'Street 1', 'Apt 9', 'Nashville', 'TN', '37201', 'US',
+			'Taylor Swift', 'Street 1', 'Apt 9', 'Nashville', 'TN', '37201', 'US',
+			'Swift LLC', 'US-VAT-999', 'invoice@example.com', 'cash_on_delivery', 'manual'
+		)
+		RETURNING id
+	`, orderNumber, customerID, shippingMethodID).Scan(&orderID); err != nil {
+		t.Fatalf("insert order: %v", err)
+	}
+
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO order_items (
+			order_id, product_variant_id, unit_price_cents, currency, quantity,
+			product_title, variant_sku, variant_attributes_json, custom_options_json
+		) VALUES (
+			$1::uuid, $2::uuid, 2000, 'USD', 1,
+			'Vintage Hoodie', 'HOOD-BLK-L', '{"color":"black","size":"L"}'::jsonb, '[{"title":"Gift","type":"checkbox","value_titles":["Yes"]}]'::jsonb
+		)
+	`, orderID, variantID); err != nil {
+		t.Fatalf("insert order item: %v", err)
+	}
+
+	order, err := store.GetOrderByID(ctx, orderID)
+	if err != nil {
+		t.Fatalf("GetOrderByID error: %v", err)
+	}
+
+	if order.CustomerID != customerID || order.CustomerEmail != email || order.CustomerPhone != phone {
+		t.Fatalf("unexpected customer fields: %+v", order)
+	}
+	if order.ShippingMethodID != shippingMethodID || order.ShippingMethodTitle != "Parcel Terminal" || order.ShippingProviderKey != providerKey || order.ShippingServiceCode != "parcel" {
+		t.Fatalf("unexpected shipping method fields: %+v", order)
+	}
+	if order.ShippingTerminalID != "TERM-99" || order.ShippingPriceCents != 700 || order.ShippingAddress1 != "Street 1" {
+		t.Fatalf("unexpected shipping address fields: %+v", order)
+	}
+	if order.BillingAddress1 != "Street 1" || order.CompanyName != "Swift LLC" || order.InvoiceEmail != "invoice@example.com" {
+		t.Fatalf("unexpected billing/invoice fields: %+v", order)
+	}
+	if order.PaymentMethod != "cash_on_delivery" || order.PaymentProvider != "manual" {
+		t.Fatalf("unexpected payment fields: %+v", order)
+	}
+	if len(order.Items) != 1 {
+		t.Fatalf("expected one item, got %d", len(order.Items))
+	}
+	if order.Items[0].ProductTitle != "Vintage Hoodie" || order.Items[0].VariantSKU != "HOOD-BLK-L" {
+		t.Fatalf("unexpected order item snapshot fields: %+v", order.Items[0])
+	}
+}

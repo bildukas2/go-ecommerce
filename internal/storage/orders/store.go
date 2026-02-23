@@ -12,21 +12,52 @@ import (
 )
 
 type Order struct {
-	ID            string
-	Number        string
-	Status        string
-	Currency      string
-	SubtotalCents int
-	ShippingCents int
-	TaxCents      int
-	TotalCents    int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	CustomerName  string
-	CustomerInfo  string
-	ShipmentType  string
-	PaymentType   string
-	Items         []OrderItem
+	ID                  string
+	Number              string
+	Status              string
+	Currency            string
+	SubtotalCents       int
+	ShippingCents       int
+	TaxCents            int
+	TotalCents          int
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	CustomerName        string
+	CustomerInfo        string
+	ShipmentType        string
+	PaymentType         string
+	CustomerID          string
+	CustomerEmail       string
+	CustomerPhone       string
+	CustomerFirstName   string
+	CustomerLastName    string
+	ShippingMethodID    string
+	ShippingMethodTitle string
+	ShippingProviderKey string
+	ShippingServiceCode string
+	ShippingTerminalID  string
+	ShippingPriceCents  int
+	ShippingFullName    string
+	ShippingPhone       string
+	ShippingAddress1    string
+	ShippingAddress2    string
+	ShippingCity        string
+	ShippingState       string
+	ShippingPostcode    string
+	ShippingCountry     string
+	BillingFullName     string
+	BillingAddress1     string
+	BillingAddress2     string
+	BillingCity         string
+	BillingState        string
+	BillingPostcode     string
+	BillingCountry      string
+	CompanyName         string
+	CompanyVAT          string
+	InvoiceEmail        string
+	PaymentMethod       string
+	PaymentProvider     string
+	Items               []OrderItem
 }
 
 type OrderItem struct {
@@ -261,7 +292,96 @@ func (s *Store) GetOrderMetrics(ctx context.Context) (OrderMetrics, error) {
 
 func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
 	var o Order
-	if err := s.db.QueryRowContext(ctx, "SELECT id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at FROM orders WHERE id = $1", id).Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT
+			o.id,
+			o.number,
+			o.status,
+			o.currency,
+			o.subtotal_cents,
+			o.shipping_cents,
+			o.tax_cents,
+			o.total_cents,
+			o.created_at,
+			o.updated_at,
+			COALESCE(o.customer_id::text, '') AS customer_id,
+			COALESCE(NULLIF(TRIM(COALESCE(c.email, '')), ''), NULLIF(TRIM(COALESCE(o.invoice_email, '')), ''), '') AS customer_email,
+			COALESCE(NULLIF(TRIM(COALESCE(c.phone, '')), ''), NULLIF(TRIM(COALESCE(o.shipping_phone, '')), ''), '') AS customer_phone,
+			COALESCE(NULLIF(TRIM(COALESCE(c.first_name, '')), ''), '') AS customer_first_name,
+			COALESCE(NULLIF(TRIM(COALESCE(c.last_name, '')), ''), '') AS customer_last_name,
+			COALESCE(o.shipping_method_id::text, '') AS shipping_method_id,
+			COALESCE(NULLIF(TRIM(COALESCE(sm.title, '')), ''), '') AS shipping_method_title,
+			COALESCE(NULLIF(TRIM(COALESCE(sm.provider_key, '')), ''), '') AS shipping_provider_key,
+			COALESCE(NULLIF(TRIM(COALESCE(sm.service_code, '')), ''), '') AS shipping_service_code,
+			COALESCE(NULLIF(TRIM(COALESCE(o.shipping_terminal_id, '')), ''), '') AS shipping_terminal_id,
+			COALESCE(o.shipping_price_cents, 0) AS shipping_price_cents,
+			COALESCE(o.shipping_full_name, ''),
+			COALESCE(o.shipping_phone, ''),
+			COALESCE(o.shipping_address1, ''),
+			COALESCE(o.shipping_address2, ''),
+			COALESCE(o.shipping_city, ''),
+			COALESCE(o.shipping_state, ''),
+			COALESCE(o.shipping_postcode, ''),
+			COALESCE(o.shipping_country, ''),
+			COALESCE(o.billing_full_name, ''),
+			COALESCE(o.billing_address1, ''),
+			COALESCE(o.billing_address2, ''),
+			COALESCE(o.billing_city, ''),
+			COALESCE(o.billing_state, ''),
+			COALESCE(o.billing_postcode, ''),
+			COALESCE(o.billing_country, ''),
+			COALESCE(o.company_name, ''),
+			COALESCE(o.company_vat, ''),
+			COALESCE(o.invoice_email, ''),
+			COALESCE(o.payment_method, ''),
+			COALESCE(o.payment_provider, '')
+		FROM orders o
+		LEFT JOIN customers c ON c.id = o.customer_id
+		LEFT JOIN shipping_methods sm ON sm.id = o.shipping_method_id
+		WHERE o.id = $1
+	`, id).Scan(
+		&o.ID,
+		&o.Number,
+		&o.Status,
+		&o.Currency,
+		&o.SubtotalCents,
+		&o.ShippingCents,
+		&o.TaxCents,
+		&o.TotalCents,
+		&o.CreatedAt,
+		&o.UpdatedAt,
+		&o.CustomerID,
+		&o.CustomerEmail,
+		&o.CustomerPhone,
+		&o.CustomerFirstName,
+		&o.CustomerLastName,
+		&o.ShippingMethodID,
+		&o.ShippingMethodTitle,
+		&o.ShippingProviderKey,
+		&o.ShippingServiceCode,
+		&o.ShippingTerminalID,
+		&o.ShippingPriceCents,
+		&o.ShippingFullName,
+		&o.ShippingPhone,
+		&o.ShippingAddress1,
+		&o.ShippingAddress2,
+		&o.ShippingCity,
+		&o.ShippingState,
+		&o.ShippingPostcode,
+		&o.ShippingCountry,
+		&o.BillingFullName,
+		&o.BillingAddress1,
+		&o.BillingAddress2,
+		&o.BillingCity,
+		&o.BillingState,
+		&o.BillingPostcode,
+		&o.BillingCountry,
+		&o.CompanyName,
+		&o.CompanyVAT,
+		&o.InvoiceEmail,
+		&o.PaymentMethod,
+		&o.PaymentProvider,
+	); err != nil {
 		return Order{}, err
 	}
 	rows, err := s.db.QueryContext(ctx, "SELECT id, order_id, product_variant_id, unit_price_cents, currency, quantity, product_title, variant_sku, variant_attributes_json, custom_options_json, created_at, updated_at FROM order_items WHERE order_id = $1 ORDER BY created_at ASC", o.ID)

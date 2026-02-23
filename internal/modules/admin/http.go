@@ -324,13 +324,163 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusInternalServerError, "get error")
 		return
 	}
-	// Return the raw order struct; frontend admin can render fields and items
-	_ = platformhttp.JSON(w, http.StatusOK, o)
+	items := make([]adminOrderDetailItemResponse, 0, len(o.Items))
+	for _, it := range o.Items {
+		items = append(items, adminOrderDetailItemResponse{
+			ID:                it.ID,
+			OrderID:           it.OrderID,
+			ProductVariantID:  it.ProductVariantID,
+			UnitPriceCents:    it.UnitPriceCents,
+			Currency:          it.Currency,
+			Quantity:          it.Quantity,
+			ProductTitle:      it.ProductTitle,
+			VariantSKU:        it.VariantSKU,
+			VariantAttributes: json.RawMessage(it.VariantAttrsJSON),
+			CustomOptions:     json.RawMessage(it.CustomOptionsJSON),
+			CreatedAt:         it.CreatedAt,
+			UpdatedAt:         it.UpdatedAt,
+		})
+	}
+	resp := adminOrderDetailResponse{
+		Order: adminOrderCoreResponse{
+			ID:            o.ID,
+			Number:        o.Number,
+			Status:        o.Status,
+			Currency:      o.Currency,
+			SubtotalCents: o.SubtotalCents,
+			ShippingCents: o.ShippingCents,
+			TaxCents:      o.TaxCents,
+			TotalCents:    o.TotalCents,
+			CreatedAt:     o.CreatedAt,
+			UpdatedAt:     o.UpdatedAt,
+		},
+		Customer: adminOrderCustomerResponse{
+			ID:        o.CustomerID,
+			Email:     o.CustomerEmail,
+			Phone:     o.CustomerPhone,
+			FirstName: o.CustomerFirstName,
+			LastName:  o.CustomerLastName,
+		},
+		Shipping: adminOrderShippingResponse{
+			MethodID:    o.ShippingMethodID,
+			MethodTitle: o.ShippingMethodTitle,
+			ProviderKey: o.ShippingProviderKey,
+			ServiceCode: o.ShippingServiceCode,
+			TerminalID:  o.ShippingTerminalID,
+			PriceCents:  o.ShippingPriceCents,
+			FullName:    o.ShippingFullName,
+			Phone:       o.ShippingPhone,
+			Address1:    o.ShippingAddress1,
+			Address2:    o.ShippingAddress2,
+			City:        o.ShippingCity,
+			State:       o.ShippingState,
+			Postcode:    o.ShippingPostcode,
+			Country:     o.ShippingCountry,
+		},
+		Billing: adminOrderBillingResponse{
+			FullName:     o.BillingFullName,
+			Address1:     o.BillingAddress1,
+			Address2:     o.BillingAddress2,
+			City:         o.BillingCity,
+			State:        o.BillingState,
+			Postcode:     o.BillingPostcode,
+			Country:      o.BillingCountry,
+			CompanyName:  o.CompanyName,
+			CompanyVAT:   o.CompanyVAT,
+			InvoiceEmail: o.InvoiceEmail,
+		},
+		Payment: adminOrderPaymentResponse{
+			Method:   o.PaymentMethod,
+			Provider: o.PaymentProvider,
+		},
+		Items: items,
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, resp)
 }
 
 type updateOrderStatusRequest struct {
 	OrderID string `json:"order_id"`
 	Status  string `json:"status"`
+}
+
+type adminOrderDetailResponse struct {
+	Order    adminOrderCoreResponse         `json:"order"`
+	Customer adminOrderCustomerResponse     `json:"customer"`
+	Shipping adminOrderShippingResponse     `json:"shipping"`
+	Billing  adminOrderBillingResponse      `json:"billing"`
+	Payment  adminOrderPaymentResponse      `json:"payment"`
+	Items    []adminOrderDetailItemResponse `json:"items"`
+}
+
+type adminOrderCoreResponse struct {
+	ID            string    `json:"id"`
+	Number        string    `json:"number"`
+	Status        string    `json:"status"`
+	Currency      string    `json:"currency"`
+	SubtotalCents int       `json:"subtotal_cents"`
+	ShippingCents int       `json:"shipping_cents"`
+	TaxCents      int       `json:"tax_cents"`
+	TotalCents    int       `json:"total_cents"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type adminOrderCustomerResponse struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+type adminOrderShippingResponse struct {
+	MethodID    string `json:"method_id"`
+	MethodTitle string `json:"method_title"`
+	ProviderKey string `json:"provider_key"`
+	ServiceCode string `json:"service_code"`
+	TerminalID  string `json:"terminal_id"`
+	PriceCents  int    `json:"price_cents"`
+	FullName    string `json:"full_name"`
+	Phone       string `json:"phone"`
+	Address1    string `json:"address1"`
+	Address2    string `json:"address2"`
+	City        string `json:"city"`
+	State       string `json:"state"`
+	Postcode    string `json:"postcode"`
+	Country     string `json:"country"`
+}
+
+type adminOrderBillingResponse struct {
+	FullName     string `json:"full_name"`
+	Address1     string `json:"address1"`
+	Address2     string `json:"address2"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	Postcode     string `json:"postcode"`
+	Country      string `json:"country"`
+	CompanyName  string `json:"company_name"`
+	CompanyVAT   string `json:"company_vat"`
+	InvoiceEmail string `json:"invoice_email"`
+}
+
+type adminOrderPaymentResponse struct {
+	Method   string `json:"method"`
+	Provider string `json:"provider"`
+}
+
+type adminOrderDetailItemResponse struct {
+	ID                string          `json:"id"`
+	OrderID           string          `json:"order_id"`
+	ProductVariantID  string          `json:"product_variant_id"`
+	UnitPriceCents    int             `json:"unit_price_cents"`
+	Currency          string          `json:"currency"`
+	Quantity          int             `json:"quantity"`
+	ProductTitle      string          `json:"product_title"`
+	VariantSKU        string          `json:"variant_sku"`
+	VariantAttributes json.RawMessage `json:"variant_attributes_json"`
+	CustomOptions     json.RawMessage `json:"custom_options_json"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
 }
 
 func (m *module) handleUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
