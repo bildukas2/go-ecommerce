@@ -38,13 +38,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<CartState>({ open: false, cart: null, loading: false, error: null, mutatingItemIds: [] });
 
   const refresh = React.useCallback(async () => {
+    if (window.location.pathname === "/blocked") return;
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       await ensureCart();
       const c = await getCart();
       setState((s) => ({ ...s, cart: c, loading: false }));
     } catch (e: unknown) {
-      if (isBlockedIPError(e)) {
+      if (isBlockedIPError(e) && window.location.pathname !== "/blocked") {
         window.location.href = e.redirectTo;
         return;
       }

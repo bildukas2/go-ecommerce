@@ -3,10 +3,10 @@ package customers
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"net/http"
 	"strings"
 
+	platformhttp "goecommerce/internal/platform/http"
 	storcustomers "goecommerce/internal/storage/customers"
 )
 
@@ -27,7 +27,7 @@ func (m *module) writeCustomerActionLog(r *http.Request, action string, customer
 	if !ok {
 		return
 	}
-	ip := requestIP(r)
+	ip := platformhttp.ClientIP(r)
 	if ip == "" {
 		ip = "unknown"
 	}
@@ -52,21 +52,4 @@ func (m *module) writeCustomerActionLog(r *http.Request, action string, customer
 		Severity:   severity,
 		MetaJSON:   metaJSON,
 	})
-}
-
-func requestIP(r *http.Request) string {
-	if r == nil {
-		return ""
-	}
-	forwardedFor := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
-	if forwardedFor != "" {
-		first := strings.TrimSpace(strings.Split(forwardedFor, ",")[0])
-		if first != "" {
-			return first
-		}
-	}
-	if host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil && host != "" {
-		return host
-	}
-	return strings.TrimSpace(r.RemoteAddr)
 }

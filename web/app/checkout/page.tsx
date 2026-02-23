@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { getCart, isBlockedIPError } from "@/lib/api";
 import type { Terminal } from "@/hooks/use-terminals";
 import { useCheckoutState, type CheckoutStep } from "@/hooks/use-checkout-state";
 import type { CheckoutShippingMethod } from "@/lib/checkout-api";
@@ -108,24 +107,27 @@ export default function CheckoutPage() {
     canPlaceOrder,
   } = useCheckoutState();
 
-  const { update: updateCart, remove: removeCart } = useCart();
+  const { update: updateCart, remove: removeCart, cart: contextCart } = useCart();
+
+  // Sync cart from context into checkout state when it changes
+  React.useEffect(() => {
+    if (contextCart) {
+      setCart(contextCart);
+    }
+  }, [contextCart, setCart]);
 
   const handleUpdateQuantity = React.useCallback(
     async (itemId: string, quantity: number) => {
       await updateCart(itemId, quantity);
-      const updatedCart = await getCart();
-      setCart(updatedCart);
     },
-    [updateCart, setCart]
+    [updateCart]
   );
 
   const handleRemoveItem = React.useCallback(
     async (itemId: string) => {
       await removeCart(itemId);
-      const updatedCart = await getCart();
-      setCart(updatedCart);
     },
-    [removeCart, setCart]
+    [removeCart]
   );
 
   const completedSteps = React.useMemo(() => {
@@ -140,24 +142,18 @@ export default function CheckoutPage() {
 
   const sectionPanel = "glass rounded-[28px] border border-surface-border bg-surface/80 p-6 shadow-[0_30px_60px_rgba(2,6,23,0.35)] backdrop-blur-xl transition-colors";
 
+  // Cart is loaded by CartProvider and synced via contextCart effect above.
+  // Just clear loading once context cart is available.
   React.useEffect(() => {
-    const loadCart = async () => {
-      try {
-        const cart = await getCart();
-        setCart(cart);
-      } catch (e) {
-        console.error("Failed to load cart:", e);
-      } finally {
-        setCartLoading(false);
-      }
-    };
-    loadCart();
-  }, [setCart, setCartLoading]);
+    if (contextCart !== undefined) {
+      setCartLoading(false);
+    }
+  }, [contextCart, setCartLoading]);
 
   React.useEffect(() => {
-    if (state.shippingCountry) {
-      fetchQuote();
-    }
+    if (!state.shippingCountry) return;
+    const timer = setTimeout(() => fetchQuote(), 400);
+    return () => clearTimeout(timer);
   }, [state.shippingCountry, fetchQuote]);
 
   const handleAddressContinue = async () => {

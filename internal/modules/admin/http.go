@@ -3,17 +3,22 @@ package admin
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/redis/go-redis/v9"
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
 	storcat "goecommerce/internal/storage/catalog"
@@ -22,11 +27,17 @@ import (
 	stororders "goecommerce/internal/storage/orders"
 )
 
+const (
+	adminAuthMaxAttempts = 5
+	adminAuthLockWindow  = 15 * time.Minute
+)
+
 type module struct {
 	orders              ordersStore
 	customers           customersStore
 	catalog             catalogStore
 	media               mediaStore
+	redis               *redis.Client
 	validateImportHost  func(context.Context, string) error
 	downloadImportImage func(context.Context, string) ([]byte, string, error)
 	uploadsDir          string
@@ -39,24 +50,32 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if s, err := stororders.NewStore(context.Background(), deps.DB); err == nil {
 			ost = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "admin", "store", "orders", "error", err)
 		}
 	}
 	var cust customersStore
 	if deps.DB != nil {
 		if s, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			cust = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "admin", "store", "customers", "error", err)
 		}
 	}
 	var cst catalogStore
 	if deps.DB != nil {
 		if s, err := storcat.NewStore(context.Background(), deps.DB); err == nil {
 			cst = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "admin", "store", "catalog", "error", err)
 		}
 	}
 	var mst mediaStore
 	if deps.DB != nil {
 		if s, err := stormedia.NewStore(context.Background(), deps.DB); err == nil {
 			mst = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "admin", "store", "media", "error", err)
 		}
 	}
 	uploadsDir := strings.TrimSpace(os.Getenv("UPLOADS_DIR"))
@@ -69,6 +88,7 @@ func NewModule(deps app.Deps) app.Module {
 		customers:  cust,
 		catalog:    cst,
 		media:      mst,
+		redis:      deps.Redis,
 		uploadsDir: uploadsDir,
 		user:       strings.TrimSpace(os.Getenv("ADMIN_USER")),
 		pass:       strings.TrimSpace(os.Getenv("ADMIN_PASS")),
@@ -134,14 +154,59 @@ func (m *module) wrapAuth(next http.HandlerFunc) http.HandlerFunc {
 			platformhttp.Error(w, http.StatusServiceUnavailable, "admin disabled")
 			return
 		}
+
+		ip := platformhttp.ClientIP(r)
+		if m.isAuthLocked(r.Context(), ip) {
+			platformhttp.Error(w, http.StatusTooManyRequests, "too many failed attempts, try again later")
+			return
+		}
+
 		u, p, ok := r.BasicAuth()
-		if !ok || u != m.user || p != m.pass {
+		userOK := subtle.ConstantTimeCompare([]byte(u), []byte(m.user)) == 1
+		passOK := subtle.ConstantTimeCompare([]byte(p), []byte(m.pass)) == 1
+		if !ok || !userOK || !passOK {
+			m.recordAuthFailure(r.Context(), ip)
 			w.Header().Set("WWW-Authenticate", "Basic realm=admin")
 			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+
+		m.clearAuthFailures(r.Context(), ip)
 		next(w, r)
 	}
+}
+
+func (m *module) authFailKey(ip string) string {
+	return fmt.Sprintf("admin:auth:fail:%s", ip)
+}
+
+func (m *module) isAuthLocked(ctx context.Context, ip string) bool {
+	if m.redis == nil || ip == "" {
+		return false
+	}
+	count, err := m.redis.Get(ctx, m.authFailKey(ip)).Int()
+	if err != nil {
+		return false
+	}
+	return count >= adminAuthMaxAttempts
+}
+
+func (m *module) recordAuthFailure(ctx context.Context, ip string) {
+	if m.redis == nil || ip == "" {
+		return
+	}
+	key := m.authFailKey(ip)
+	pipe := m.redis.Pipeline()
+	pipe.Incr(ctx, key)
+	pipe.Expire(ctx, key, adminAuthLockWindow)
+	_, _ = pipe.Exec(ctx)
+}
+
+func (m *module) clearAuthFailures(ctx context.Context, ip string) {
+	if m.redis == nil || ip == "" {
+		return
+	}
+	_ = m.redis.Del(ctx, m.authFailKey(ip)).Err()
 }
 
 func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {

@@ -109,7 +109,7 @@ type Action =
   | { type: "SET_SHIPPING_PRICE"; payload: number }
   | { type: "SET_QUOTE_LOADING"; payload: boolean }
   | { type: "SET_SELECTED_PAYMENT_METHOD"; payload: string | null }
-  | { type: "SET_TOTALS"; payload: { subtotal: number; total: number } }
+  | { type: "SET_TOTALS"; payload: { subtotal: number } }
   | { type: "SET_CURRENT_STEP"; payload: CheckoutStep }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
@@ -148,7 +148,7 @@ function checkoutReducer(state: CheckoutState, action: Action): CheckoutState {
     case "SET_SELECTED_PAYMENT_METHOD":
       return { ...state, selectedPaymentMethod: action.payload };
     case "SET_TOTALS":
-      return { ...state, subtotal: action.payload.subtotal, total: action.payload.total };
+      return { ...state, subtotal: action.payload.subtotal, total: action.payload.subtotal + state.shippingPrice };
     case "SET_CURRENT_STEP":
       return { ...state, currentStep: action.payload };
     case "SET_LOADING":
@@ -205,7 +205,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
   const setCart = React.useCallback((cart: Cart | null) => {
     dispatch({ type: "SET_CART", payload: cart });
     if (cart) {
-      dispatch({ type: "SET_TOTALS", payload: { subtotal: cart.Totals.SubtotalCents, total: cart.Totals.SubtotalCents } });
+      dispatch({ type: "SET_TOTALS", payload: { subtotal: cart.Totals.SubtotalCents } });
     }
   }, []);
 
@@ -264,9 +264,10 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       const response = await getCheckoutQuote(state.shippingCountry);
       dispatch({ type: "SET_SHIPPING_METHODS", payload: response.methods });
       if (response.totals) {
-        dispatch({ type: "SET_TOTALS", payload: { subtotal: response.totals.subtotal, total: response.totals.total } });
+        dispatch({ type: "SET_TOTALS", payload: { subtotal: response.totals.subtotal } });
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       const msg = e instanceof Error ? e.message : "Failed to fetch shipping options";
       dispatch({ type: "SET_ERROR", payload: msg });
     } finally {

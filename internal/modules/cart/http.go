@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -26,9 +27,13 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if st, err := storcart.NewStore(context.Background(), deps.DB); err == nil {
 			s = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "cart", "store", "cart", "error", err)
 		}
 		if st, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			cs = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "cart", "store", "customers", "error", err)
 		}
 	}
 	return &module{store: s, customerStore: cs}

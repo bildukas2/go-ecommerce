@@ -8,6 +8,19 @@ function apiJoin(path: string): string {
   return new URL(clean, base).toString();
 }
 
+function getCSRFToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function mutHeaders(extra?: Record<string, string>): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json", ...extra };
+  const csrf = getCSRFToken();
+  if (csrf) h["X-CSRF-Token"] = csrf;
+  return h;
+}
+
 export type Product = {
   id: string;
   slug: string;
@@ -404,7 +417,13 @@ export function isBlockedIPError(error: unknown): error is BlockedIPError {
 async function throwBlockedIPErrorIfNeeded(res: Response): Promise<void> {
   if (res.status !== 403) return;
 
-  let redirectTo = res.headers.get("X-Blocked-Redirect") || "/blocked";
+  // Only treat as IP block when the backend explicitly signals it via the
+  // X-Blocked-Redirect header. Other 403s (CSRF mismatch, account disabled,
+  // etc.) must not redirect to /blocked.
+  const headerRedirect = res.headers.get("X-Blocked-Redirect");
+  if (!headerRedirect) return;
+
+  let redirectTo = headerRedirect;
   let message = "IP blocked";
   try {
     const payload = asRecord(await res.clone().json());
@@ -480,10 +499,23 @@ export type Cart = {
 
 export async function ensureCart(): Promise<Cart> {
   const url = new URL(apiJoin("cart"));
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    credentials: "include",
-  });
+
+  const doFetch = () => {
+    const h: Record<string, string> = {};
+    const csrf = getCSRFToken();
+    if (csrf) h["X-CSRF-Token"] = csrf;
+    return fetch(url.toString(), { method: "POST", headers: h, credentials: "include" });
+  };
+
+  // On the very first visit no csrf_token cookie exists yet; the 403 response
+  // sets the cookie so a single retry is enough to bootstrap.
+  const hadToken = !!getCSRFToken();
+  let res = await doFetch();
+
+  if (res.status === 403 && !hadToken && getCSRFToken()) {
+    res = await doFetch();
+  }
+
   if (!res.ok) {
     await throwBlockedIPErrorIfNeeded(res);
     throw new Error(`Failed to initialize cart: ${res.status}`);
@@ -506,7 +538,7 @@ export async function addCartItem(
   const url = new URL(apiJoin("cart/items"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify({ variant_id: variantId, quantity, custom_options: customOptions }),
   });
@@ -521,7 +553,7 @@ export async function updateCartItem(itemId: string, quantity: number): Promise<
   const url = new URL(apiJoin(`cart/items/${encodeURIComponent(itemId)}`));
   const res = await fetch(url.toString(), {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify({ quantity }),
   });
@@ -534,7 +566,10 @@ export async function updateCartItem(itemId: string, quantity: number): Promise<
 
 export async function removeCartItem(itemId: string): Promise<Cart> {
   const url = new URL(apiJoin(`cart/items/${encodeURIComponent(itemId)}`));
-  const res = await fetch(url.toString(), { method: "DELETE", credentials: "include" });
+  const csrfHeaders: Record<string, string> = {};
+  const csrf = getCSRFToken();
+  if (csrf) csrfHeaders["X-CSRF-Token"] = csrf;
+  const res = await fetch(url.toString(), { method: "DELETE", headers: csrfHeaders, credentials: "include" });
   if (!res.ok) {
     await throwBlockedIPErrorIfNeeded(res);
     throw new Error(`Failed to remove item: ${res.status}`);
@@ -544,7 +579,10 @@ export async function removeCartItem(itemId: string): Promise<Cart> {
 
 export async function checkout(): Promise<{ order_id: string; checkout_url: string; status: string }> {
   const url = new URL(apiJoin("checkout"));
-  const res = await fetch(url.toString(), { method: "POST", credentials: "include" });
+  const csrfHeaders: Record<string, string> = {};
+  const csrf = getCSRFToken();
+  if (csrf) csrfHeaders["X-CSRF-Token"] = csrf;
+  const res = await fetch(url.toString(), { method: "POST", headers: csrfHeaders, credentials: "include" });
   if (!res.ok) {
     await throwBlockedIPErrorIfNeeded(res);
     throw new Error(`Failed to checkout: ${res.status}`);
@@ -688,7 +726,7 @@ export async function registerAccount(email: string, password: string, options?:
     accountFetchInit(
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: mutHeaders(),
         body: JSON.stringify({ email, password }),
       },
       options,
@@ -707,7 +745,7 @@ export async function loginAccount(email: string, password: string, options?: Ac
     accountFetchInit(
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: mutHeaders(),
         body: JSON.stringify({ email, password }),
       },
       options,
@@ -721,11 +759,15 @@ export async function loginAccount(email: string, password: string, options?: Ac
 }
 
 export async function logoutAccount(options?: AccountRequestOptions): Promise<void> {
+  const csrfHeaders: Record<string, string> = {};
+  const csrf = getCSRFToken();
+  if (csrf) csrfHeaders["X-CSRF-Token"] = csrf;
   const res = await fetch(
     apiJoin("auth/logout"),
     accountFetchInit(
       {
         method: "POST",
+        headers: csrfHeaders,
       },
       options,
     ),
@@ -784,7 +826,7 @@ export async function addAccountFavorite(productID: string, options?: AccountReq
     accountFetchInit(
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: mutHeaders(),
         body: JSON.stringify({ product_id: productID }),
       },
       options,
@@ -799,11 +841,15 @@ export async function addAccountFavorite(productID: string, options?: AccountReq
 }
 
 export async function removeAccountFavorite(productID: string, options?: AccountRequestOptions): Promise<void> {
+  const csrfHeaders: Record<string, string> = {};
+  const csrf = getCSRFToken();
+  if (csrf) csrfHeaders["X-CSRF-Token"] = csrf;
   const res = await fetch(
     apiJoin(`account/favorites/${encodeURIComponent(productID)}`),
     accountFetchInit(
       {
         method: "DELETE",
+        headers: csrfHeaders,
       },
       options,
     ),
@@ -848,7 +894,7 @@ export async function changeAccountPassword(currentPassword: string, newPassword
     accountFetchInit(
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: mutHeaders(),
         body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
       },
       options,
@@ -864,7 +910,7 @@ export async function submitBlockedReport(input: BlockedReportInput): Promise<vo
   const url = new URL(apiJoin("support/blocked-report"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify(input),
   });

@@ -26,9 +26,13 @@ func IPBlockMiddleware(next http.Handler, checker IPBlockChecker) http.Handler {
 			return
 		}
 
-		ip := requestIPFromHTTP(r)
+		ip := ClientIP(r)
 		if ip == "" {
 			ip = "unknown"
+		}
+		if isLoopback(ip) {
+			next.ServeHTTP(w, r)
+			return
 		}
 		blocked, err := checker.IsIPBlocked(r.Context(), ip)
 		if err != nil {
@@ -48,6 +52,11 @@ func IPBlockMiddleware(next http.Handler, checker IPBlockChecker) http.Handler {
 	})
 }
 
+func isLoopback(ip string) bool {
+	parsed := net.ParseIP(ip)
+	return parsed != nil && parsed.IsLoopback()
+}
+
 func isWriteMethod(method string) bool {
 	switch method {
 	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
@@ -55,32 +64,4 @@ func isWriteMethod(method string) bool {
 	default:
 		return false
 	}
-}
-
-func requestIPFromHTTP(r *http.Request) string {
-	if r == nil {
-		return ""
-	}
-	forwardedFor := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
-	if forwardedFor != "" {
-		parts := strings.Split(forwardedFor, ",")
-		if len(parts) > 0 {
-			first := strings.TrimSpace(parts[0])
-			if first != "" {
-				return stripPortFromIP(first)
-			}
-		}
-	}
-	return stripPortFromIP(strings.TrimSpace(r.RemoteAddr))
-}
-
-func stripPortFromIP(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	host, _, err := net.SplitHostPort(raw)
-	if err == nil && host != "" {
-		return host
-	}
-	return raw
 }

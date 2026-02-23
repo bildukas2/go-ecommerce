@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -24,6 +25,9 @@ type Deps struct {
 }
 
 func NewRouter(deps Deps) http.Handler {
+	if tp := os.Getenv("TRUSTED_PROXIES"); tp != "" {
+		platformhttp.SetTrustedProxies(strings.Split(tp, ","))
+	}
 	mux := http.NewServeMux()
 	uploadsDir := strings.TrimSpace(os.Getenv("UPLOADS_DIR"))
 	if uploadsDir == "" {
@@ -59,9 +63,12 @@ func NewRouter(deps Deps) http.Handler {
 	if deps.DB != nil {
 		if customerStore, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			ipBlockChecker = customerStore
+		} else {
+			slog.Error("module init: failed to create store", "module", "router", "store", "customers", "error", err)
 		}
 	}
 	wrapped := applyAdminMiddleware(mux, rateLimiter)
+	wrapped = platformhttp.CSRFProtection(wrapped)
 	wrapped = platformhttp.IPBlockMiddleware(wrapped, ipBlockChecker)
 	wrapped = platformhttp.CORS(wrapped, platformhttp.ParseAllowedOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")))
 	return wrapped

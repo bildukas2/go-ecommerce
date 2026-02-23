@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"strconv"
@@ -162,7 +162,7 @@ func calculateMethodPrice(method *storshiping.Method, cartValue int64, cartWeigh
 	var rules map[string]any
 	if len(method.PricingRulesJSON) > 0 {
 		if err := json.Unmarshal(method.PricingRulesJSON, &rules); err != nil {
-			log.Printf("error unmarshaling pricing rules for method %s: %v", method.ID, err)
+			slog.Error("error unmarshaling pricing rules", "method_id", method.ID, "error", err)
 			rules = make(map[string]any)
 		}
 	}
@@ -349,7 +349,7 @@ func (m *module) handleStorefrontTerminals(w http.ResponseWriter, r *http.Reques
 	// Check cache with TTL
 	terminals, err := m.getTerminals(r.Context(), provider, country)
 	if err != nil {
-		log.Printf("error fetching terminals for %s/%s: %v", provider, country, err)
+		slog.Error("error fetching terminals", "provider", provider, "country", country, "error", err)
 		platformhttp.Error(w, http.StatusServiceUnavailable, "error fetching terminals")
 		return
 	}
@@ -394,10 +394,10 @@ func (m *module) refreshTerminals(ctx context.Context, providerKey, country stri
 	// Cache the result
 	terminalsJSON, err := json.Marshal(terminals)
 	if err != nil {
-		log.Printf("error marshaling terminals for cache: %v", err)
+		slog.Warn("error marshaling terminals for cache", "error", err)
 	} else {
 		if err := m.store.UpsertCachedTerminals(ctx, providerKey, country, terminalsJSON); err != nil {
-			log.Printf("error caching terminals: %v", err)
+			slog.Warn("error caching terminals", "error", err)
 		}
 	}
 

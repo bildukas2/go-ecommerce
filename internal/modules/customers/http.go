@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"strconv"
@@ -49,9 +50,13 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if st, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			store = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "customers", "store", "customers", "error", err)
 		}
 		if st, err := storcart.NewStore(context.Background(), deps.DB); err == nil {
 			cartStore = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "customers", "store", "cart", "error", err)
 		}
 	}
 	return &module{store: store, cartStore: cartStore, sessionTTL: defaultSessionTTL, now: time.Now}

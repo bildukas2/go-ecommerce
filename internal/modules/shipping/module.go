@@ -3,7 +3,7 @@ package shipping
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"goecommerce/internal/app"
@@ -29,6 +29,8 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if s, err := storshiping.NewStore(context.Background(), deps.DB); err == nil {
 			store = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "shipping", "store", "shipping", "error", err)
 		}
 	}
 
@@ -46,7 +48,7 @@ func NewModule(deps app.Deps) app.Module {
 func initializeProviders(ctx context.Context, store storshiping.ProvidersStore, providers map[string]shipping.Provider) {
 	dbProviders, err := store.ListProviders(ctx)
 	if err != nil {
-		log.Printf("shipping: error loading providers from db: %v", err)
+		slog.Error("shipping: error loading providers from db", "error", err)
 		return
 	}
 
@@ -57,14 +59,14 @@ func initializeProviders(ctx context.Context, store storshiping.ProvidersStore, 
 
 		factory, err := shipping.Get(dbProv.Key)
 		if err != nil {
-			log.Printf("shipping: provider '%s' not registered: %v", dbProv.Key, err)
+			slog.Warn("shipping: provider not registered", "key", dbProv.Key, "error", err)
 			continue
 		}
 
 		var config map[string]any
 		if len(dbProv.ConfigJSON) > 0 {
 			if err := json.Unmarshal(dbProv.ConfigJSON, &config); err != nil {
-				log.Printf("shipping: error parsing config for provider '%s': %v", dbProv.Key, err)
+				slog.Error("shipping: error parsing config", "key", dbProv.Key, "error", err)
 				continue
 			}
 		} else {
@@ -73,12 +75,12 @@ func initializeProviders(ctx context.Context, store storshiping.ProvidersStore, 
 
 		prov, err := factory(config)
 		if err != nil {
-			log.Printf("shipping: error initializing provider '%s': %v", dbProv.Key, err)
+			slog.Error("shipping: error initializing provider", "key", dbProv.Key, "error", err)
 			continue
 		}
 
 		providers[dbProv.Key] = prov
-		log.Printf("shipping: initialized provider '%s'", dbProv.Key)
+		slog.Info("shipping: initialized provider", "key", dbProv.Key)
 	}
 }
 

@@ -2,17 +2,16 @@ package httpx
 
 import (
 	"context"
-	"net"
 	"net/http"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type rateLimitEntry struct {
-	count  int
+	count  atomic.Int64
 	expiry time.Time
 }
 
@@ -33,9 +32,13 @@ func NewRateLimiter(redis *redis.Client, limit int, window time.Duration) *RateL
 
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := extractIP(r)
+		ip := ClientIP(r)
 		if ip == "" {
 			Error(w, http.StatusBadRequest, "cannot determine client IP")
+			return
+		}
+		if isLoopback(ip) {
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -78,7 +81,10 @@ func (rl *RateLimiter) checkFallback(ip string) bool {
 	now := time.Now()
 	key := "fallback:" + ip
 
-	val, loaded := rl.fallbackStore.LoadOrStore(key, &rateLimitEntry{count: 1, expiry: now.Add(rl.window)})
+	newEntry := &rateLimitEntry{expiry: now.Add(rl.window)}
+	newEntry.count.Store(1)
+
+	val, loaded := rl.fallbackStore.LoadOrStore(key, newEntry)
 	entry := val.(*rateLimitEntry)
 
 	if !loaded {
@@ -86,34 +92,12 @@ func (rl *RateLimiter) checkFallback(ip string) bool {
 	}
 
 	if now.After(entry.expiry) {
-		rl.fallbackStore.Store(key, &rateLimitEntry{count: 1, expiry: now.Add(rl.window)})
+		fresh := &rateLimitEntry{expiry: now.Add(rl.window)}
+		fresh.count.Store(1)
+		rl.fallbackStore.Store(key, fresh)
 		return true
 	}
 
-	entry.count++
-	return entry.count <= rl.limit
-}
-
-func extractIP(r *http.Request) string {
-	// TODO: For production, only trust X-Forwarded-For if behind a known/trusted proxy.
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			ip := strings.TrimSpace(parts[0])
-			if ip != "" {
-				return stripPort(ip)
-			}
-		}
-	}
-
-	return stripPort(r.RemoteAddr)
-}
-
-func stripPort(addr string) string {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return addr
-	}
-	return host
+	current := entry.count.Add(1)
+	return current <= int64(rl.limit)
 }

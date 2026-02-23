@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -31,12 +32,18 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if s, err := storcart.NewStore(context.Background(), deps.DB); err == nil {
 			cst = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "orders", "store", "cart", "error", err)
 		}
 		if s, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			cust = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "orders", "store", "customers", "error", err)
 		}
 		if s, err := stororders.NewStore(context.Background(), deps.DB); err == nil {
 			ost = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "orders", "store", "orders", "error", err)
 		}
 	}
 	var p payments.Provider = payments.NewFromEnv()

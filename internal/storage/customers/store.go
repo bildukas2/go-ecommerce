@@ -1557,31 +1557,37 @@ func (s *Store) InsertCustomerActionLog(ctx context.Context, in CreateCustomerAc
 		metaRaw       []byte
 	)
 	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO customer_action_logs (
-			customer_id,
-			ip,
-			user_agent,
-			action,
-			severity,
-			meta_json
+		WITH inserted AS (
+			INSERT INTO customer_action_logs (
+				customer_id,
+				ip,
+				user_agent,
+				action,
+				severity,
+				meta_json
+			)
+			VALUES (
+				NULLIF($1, '')::uuid,
+				$2,
+				NULLIF($3, ''),
+				$4,
+				NULLIF($5, ''),
+				$6::jsonb
+			)
+			RETURNING id, customer_id, ip, user_agent, action, severity, meta_json, created_at
 		)
-		VALUES (
-			NULLIF($1, '')::uuid,
-			$2,
-			NULLIF($3, ''),
-			$4,
-			NULLIF($5, ''),
-			$6::jsonb
-		)
-		RETURNING
-			id,
-			customer_id::text,
-			ip,
-			user_agent,
-			action,
-			severity,
-			meta_json,
-			created_at
+		SELECT
+			inserted.id,
+			inserted.customer_id::text,
+			inserted.ip,
+			inserted.user_agent,
+			inserted.action,
+			inserted.severity,
+			inserted.meta_json,
+			inserted.created_at,
+			c.email
+		FROM inserted
+		LEFT JOIN customers c ON c.id = inserted.customer_id
 	`, customerID, ip, userAgent, action, severity, metaJSON).Scan(
 		&item.ID,
 		&customerIDOut,
@@ -1591,6 +1597,7 @@ func (s *Store) InsertCustomerActionLog(ctx context.Context, in CreateCustomerAc
 		&severityOut,
 		&metaRaw,
 		&item.CreatedAt,
+		&customerEmail,
 	)
 	if err != nil {
 		return CustomerActionLog{}, err
@@ -1598,13 +1605,9 @@ func (s *Store) InsertCustomerActionLog(ctx context.Context, in CreateCustomerAc
 
 	if customerIDOut.Valid {
 		item.CustomerID = &customerIDOut.String
-		if err := s.db.QueryRowContext(ctx, `
-			SELECT email
-			FROM customers
-			WHERE id = $1::uuid
-		`, customerIDOut.String).Scan(&customerEmail); err == nil && customerEmail.Valid {
-			item.CustomerEmail = &customerEmail.String
-		}
+	}
+	if customerEmail.Valid {
+		item.CustomerEmail = &customerEmail.String
 	}
 	if userAgentOut.Valid {
 		item.UserAgent = &userAgentOut.String

@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
 	"goecommerce/internal/app"
 	"goecommerce/internal/modules/admin"
 	"goecommerce/internal/modules/cart"
@@ -20,6 +19,8 @@ import (
 	"goecommerce/internal/modules/shipping"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {

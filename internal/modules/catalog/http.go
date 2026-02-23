@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +20,8 @@ func NewModule(deps app.Deps) app.Module {
 	if deps.DB != nil {
 		if st, err := storcat.NewStore(context.Background(), deps.DB); err == nil {
 			s = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "catalog", "store", "catalog", "error", err)
 		}
 	}
 	return &module{store: s}

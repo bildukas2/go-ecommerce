@@ -62,7 +62,7 @@ func (m *module) handleBlockedReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := requestIP(r)
+	ip := platformhttp.ClientIP(r)
 	if ip == "" {
 		ip = "unknown"
 	}

@@ -3,7 +3,7 @@ package checkout
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"strings"
@@ -394,7 +394,7 @@ func calculateMethodPrice(method *storshipping.Method, cartValue int64, cartWeig
 	var rules map[string]any
 	if len(method.PricingRulesJSON) > 0 {
 		if err := json.Unmarshal(method.PricingRulesJSON, &rules); err != nil {
-			log.Printf("error unmarshaling pricing rules for method %s: %v", method.ID, err)
+			slog.Error("error unmarshaling pricing rules", "method_id", method.ID, "error", err)
 			rules = make(map[string]any)
 		}
 	}

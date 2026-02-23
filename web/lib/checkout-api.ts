@@ -7,6 +7,33 @@ function apiJoin(path: string): string {
   return new URL(clean, base).toString();
 }
 
+function getCSRFToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function mutHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const csrf = getCSRFToken();
+  if (csrf) h["X-CSRF-Token"] = csrf;
+  return h;
+}
+
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
+}
+
 // Address types
 export interface CheckoutAddress {
   full_name: string;
@@ -87,9 +114,9 @@ export interface CheckoutPlaceOrderResponse {
 // Get shipping quote for a country
 export async function getCheckoutQuote(country: string): Promise<CheckoutQuoteResponse> {
   const url = new URL(apiJoin("checkout/quote"));
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify({ country }),
   });
@@ -107,9 +134,9 @@ export async function submitCheckoutAddress(data: {
   company?: CompanyInfo;
 }): Promise<{ valid: boolean }> {
   const url = new URL(apiJoin("checkout/address"));
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify(data),
   });
@@ -126,9 +153,9 @@ export async function selectCheckoutShipping(
   terminalId?: string
 ): Promise<CheckoutSelectShippingResponse> {
   const url = new URL(apiJoin("checkout/select-shipping"));
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify({ method_id: methodId, terminal_id: terminalId }),
   });
@@ -145,9 +172,9 @@ export async function selectCheckoutPayment(
   provider?: string
 ): Promise<{ success: boolean }> {
   const url = new URL(apiJoin("checkout/select-payment"));
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify({ method, provider }),
   });
@@ -171,9 +198,9 @@ export async function placeCheckoutOrder(data: {
   payment_provider?: string;
 }): Promise<CheckoutPlaceOrderResponse> {
   const url = new URL(apiJoin("checkout/place-order"));
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutHeaders(),
     credentials: "include",
     body: JSON.stringify(data),
   });
