@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
 import { ChevronDown, CreditCard, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 type NavItem = {
@@ -67,13 +67,19 @@ function SidebarNav({
 }) {
   const catalogActive = pathname.startsWith("/admin/catalog");
   const [catalogOpen, setCatalogOpen] = useState(false);
-  const isCatalogExpanded = catalogActive || catalogOpen;
+  const isCatalogExpanded = catalogOpen;
   const settingsActive = pathname.startsWith("/admin/settings");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isSettingsExpanded = settingsActive || settingsOpen;
   const customersActive = pathname.startsWith("/admin/customers") || pathname.startsWith("/admin/security");
   const [customersOpen, setCustomersOpen] = useState(false);
   const isCustomersExpanded = customersOpen;
+
+  useEffect(() => {
+    if (catalogActive) {
+      setCatalogOpen(true);
+    }
+  }, [catalogActive]);
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-2" aria-label="Admin navigation">
