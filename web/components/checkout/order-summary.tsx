@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Cart, CartItem } from "@/lib/api";
+import { Cart, CartItem, CartItemCustomOption } from "@/lib/api";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Truck, Tag, Minus, Plus } from "lucide-react";
@@ -15,6 +15,15 @@ interface OrderSummaryProps {
 
 function formatPrice(cents: number): string {
   return `€${(cents / 100).toFixed(2)}`;
+}
+
+function customOptionLabel(option: CartItemCustomOption): string {
+  if (option.ValueTitle) return option.ValueTitle;
+  if (Array.isArray(option.ValueTitles) && option.ValueTitles.length > 0) {
+    return option.ValueTitles.join(", ");
+  }
+  if (option.ValueText) return option.ValueText;
+  return "Selected";
 }
 
 function CartItemRow({
@@ -85,6 +94,15 @@ function CartItemRow({
             `Qty: ${item.Quantity}`
           )}
         </div>
+        {Array.isArray(item.CustomOptions) && item.CustomOptions.length > 0 ? (
+          <div className="space-y-1 text-xs text-muted-foreground">
+            {item.CustomOptions.map((option) => (
+              <div key={option.OptionID}>
+                {option.Title}: {customOptionLabel(option)}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="flex items-center gap-3">
         <div className="text-sm font-semibold text-foreground whitespace-nowrap">
