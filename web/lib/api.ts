@@ -2379,6 +2379,134 @@ export async function deleteShippingTerminals(provider: string, country: string)
   }
 }
 
+export type PaymentMethod = {
+  id: string;
+  key: string;
+  title: string;
+  description: string;
+  instructions: string;
+  enabled: boolean;
+  payment_type: "manual" | "provider";
+  config_json: Record<string, unknown>;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BankTransferConfig = {
+  account_name: string;
+  account_number: string;
+  bank_name: string;
+  sort_code?: string;
+  iban?: string;
+  bic_swift?: string;
+};
+
+function normalizePaymentMethod(raw: unknown): PaymentMethod | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  if (!id) return null;
+
+  const paymentType = asString(obj.payment_type ?? obj.paymentType).toLowerCase();
+  if (paymentType !== "manual" && paymentType !== "provider") return null;
+
+  return {
+    id,
+    key: asString(obj.key),
+    title: asString(obj.title),
+    description: asString(obj.description),
+    instructions: asString(obj.instructions),
+    enabled: asBoolean(obj.enabled),
+    payment_type: paymentType as "manual" | "provider",
+    config_json: asRecord(obj.config_json ?? obj.configJSON),
+    sort_order: asNumber(obj.sort_order ?? obj.sortOrder),
+    created_at: asString(obj.created_at ?? obj.createdAt),
+    updated_at: asString(obj.updated_at ?? obj.updatedAt),
+  };
+}
+
+export async function getPaymentMethods(): Promise<PaymentMethod[]> {
+  const url = new URL(apiJoin("admin/payments/methods"));
+  const res = await fetch(url.toString(), {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch payment methods: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.methods)
+      ? payload.methods
+      : [];
+  return itemsRaw.map(normalizePaymentMethod).filter((item): item is PaymentMethod => item !== null);
+}
+
+export async function createPaymentMethod(data: Omit<PaymentMethod, "id" | "created_at" | "updated_at">): Promise<PaymentMethod> {
+  const url = new URL(apiJoin("admin/payments/methods"));
+  const payload = {
+    key: data.key || "",
+    title: data.title || "",
+    description: data.description || "",
+    instructions: data.instructions || "",
+    enabled: data.enabled !== undefined ? data.enabled : false,
+    payment_type: data.payment_type || "manual",
+    config_json: data.config_json || {},
+    sort_order: data.sort_order || 0,
+  };
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: mutHeaders(),
+    credentials: "include",
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to create payment method: ${res.status}`));
+  }
+  const normalized = normalizePaymentMethod(await res.json());
+  if (!normalized) throw new Error("Failed to create payment method: invalid response");
+  return normalized;
+}
+
+export async function updatePaymentMethod(id: string, data: Partial<PaymentMethod>): Promise<PaymentMethod> {
+  const url = new URL(apiJoin(`admin/payments/methods/${encodeURIComponent(id)}`));
+  const payload = {
+    key: data.key || "",
+    title: data.title || "",
+    description: data.description || "",
+    instructions: data.instructions || "",
+    enabled: data.enabled !== undefined ? data.enabled : false,
+    payment_type: data.payment_type || "manual",
+    config_json: data.config_json || {},
+    sort_order: data.sort_order || 0,
+  };
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    headers: mutHeaders(),
+    credentials: "include",
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to update payment method: ${res.status}`));
+  }
+  const normalized = normalizePaymentMethod(await res.json());
+  if (!normalized) throw new Error("Failed to update payment method: invalid response");
+  return normalized;
+}
+
+export async function deletePaymentMethod(id: string): Promise<void> {
+  const url = new URL(apiJoin(`admin/payments/methods/${encodeURIComponent(id)}`));
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: mutHeaders(),
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to delete payment method: ${res.status}`));
+  }
+}
+
 // Storefront shipping types
 export type StorefrontShippingZone = {
   id: string;
