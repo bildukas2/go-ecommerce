@@ -431,7 +431,7 @@ export default function CheckoutPage() {
                     <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
                       <h4 className="font-medium text-sm mb-2">Payment Method</h4>
                       <p className="text-sm text-foreground/70">
-                        {paymentMethods.find(m => m.id === state.selectedPaymentMethod)?.title || state.selectedPaymentMethod}
+                        {paymentMethods.find(m => m.method_name === state.selectedPaymentMethod)?.title || state.selectedPaymentMethod}
                       </p>
                     </div>
                   )}
