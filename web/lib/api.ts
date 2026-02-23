@@ -1068,29 +1068,278 @@ export type DashboardResponse = {
 };
 
 export type AdminOrderDetailItem = {
-  ID: string;
-  OrderID: string;
-  ProductVariantID: string;
-  UnitPriceCents: number;
-  Currency: string;
-  Quantity: number;
-  CreatedAt?: string;
-  UpdatedAt?: string;
+  id: string;
+  order_id: string;
+  product_variant_id: string;
+  unit_price_cents: number;
+  currency: string;
+  quantity: number;
+  product_title: string;
+  variant_sku: string;
+  variant_attributes_json: Record<string, string | number | boolean | null>;
+  custom_options_json: AdminOrderItemCustomOption[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminOrderItemCustomOption = {
+  option_id: string;
+  title: string;
+  type: string;
+  value_id: string;
+  value_ids: string[];
+  value_text: string;
+  value_title: string;
+  value_titles: string[];
+  price_delta_cents: number;
+};
+
+export type AdminOrderCore = {
+  id: string;
+  number: string;
+  status: string;
+  currency: string;
+  subtotal_cents: number;
+  shipping_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminOrderCustomer = {
+  id: string;
+  email: string;
+  phone: string;
+  first_name: string;
+  last_name: string;
+};
+
+export type AdminOrderShipping = {
+  method_id: string;
+  method_title: string;
+  provider_key: string;
+  service_code: string;
+  terminal_id: string;
+  price_cents: number;
+  full_name: string;
+  phone: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+};
+
+export type AdminOrderBilling = {
+  full_name: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  company_name: string;
+  company_vat: string;
+  invoice_email: string;
+};
+
+export type AdminOrderPayment = {
+  method: string;
+  provider: string;
 };
 
 export type AdminOrderDetail = {
-  ID: string;
-  Number: string;
-  Status: string;
-  Currency: string;
-  SubtotalCents: number;
-  ShippingCents: number;
-  TaxCents: number;
-  TotalCents: number;
-  CreatedAt?: string;
-  UpdatedAt?: string;
-  Items: AdminOrderDetailItem[];
+  order: AdminOrderCore;
+  customer: AdminOrderCustomer;
+  shipping: AdminOrderShipping;
+  billing: AdminOrderBilling;
+  payment: AdminOrderPayment;
+  items: AdminOrderDetailItem[];
 };
+
+function normalizeAdminOrderCustomOption(raw: unknown): AdminOrderItemCustomOption | null {
+  const obj = asRecord(raw);
+  const title = asString(obj.title);
+  const type = asString(obj.type);
+  if (!title && !type) return null;
+
+  const valueIDsRaw = Array.isArray(obj.value_ids) ? obj.value_ids : [];
+  const valueTitlesRaw = Array.isArray(obj.value_titles) ? obj.value_titles : [];
+  return {
+    option_id: asString(obj.option_id),
+    title,
+    type,
+    value_id: asString(obj.value_id),
+    value_ids: valueIDsRaw.map((value) => asString(value)).filter((value) => value.length > 0),
+    value_text: asString(obj.value_text),
+    value_title: asString(obj.value_title),
+    value_titles: valueTitlesRaw.map((value) => asString(value)).filter((value) => value.length > 0),
+    price_delta_cents: asNumber(obj.price_delta_cents),
+  };
+}
+
+function normalizeAdminOrderVariantAttributes(raw: unknown): Record<string, string | number | boolean | null> {
+  const obj = asRecord(raw);
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+      out[key] = value;
+    } else {
+      out[key] = String(value);
+    }
+  }
+  return out;
+}
+
+function normalizeAdminOrderDetailItem(raw: unknown): AdminOrderDetailItem | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id ?? obj.ID);
+  if (!id) return null;
+
+  const customOptionsRaw = Array.isArray(obj.custom_options_json) ? obj.custom_options_json : [];
+  return {
+    id,
+    order_id: asString(obj.order_id ?? obj.OrderID),
+    product_variant_id: asString(obj.product_variant_id ?? obj.ProductVariantID),
+    unit_price_cents: asNumber(obj.unit_price_cents ?? obj.UnitPriceCents),
+    currency: asString(obj.currency ?? obj.Currency),
+    quantity: asNumber(obj.quantity ?? obj.Quantity),
+    product_title: asString(obj.product_title ?? obj.ProductTitle),
+    variant_sku: asString(obj.variant_sku ?? obj.VariantSKU),
+    variant_attributes_json: normalizeAdminOrderVariantAttributes(obj.variant_attributes_json),
+    custom_options_json: customOptionsRaw
+      .map(normalizeAdminOrderCustomOption)
+      .filter((option): option is AdminOrderItemCustomOption => option !== null),
+    created_at: asString(obj.created_at ?? obj.CreatedAt),
+    updated_at: asString(obj.updated_at ?? obj.UpdatedAt),
+  };
+}
+
+function normalizeAdminOrderDetail(raw: unknown): AdminOrderDetail {
+  const obj = asRecord(raw);
+  const rawItems = obj.items ?? obj.Items;
+  const itemsRaw: unknown[] = Array.isArray(rawItems) ? rawItems : [];
+
+  // Backward compatibility with legacy response shape.
+  if (obj.order === undefined && (obj.ID !== undefined || obj.id !== undefined)) {
+    return {
+      order: {
+        id: asString(obj.id ?? obj.ID),
+        number: asString(obj.number ?? obj.Number),
+        status: asString(obj.status ?? obj.Status),
+        currency: asString(obj.currency ?? obj.Currency),
+        subtotal_cents: asNumber(obj.subtotal_cents ?? obj.SubtotalCents),
+        shipping_cents: asNumber(obj.shipping_cents ?? obj.ShippingCents),
+        tax_cents: asNumber(obj.tax_cents ?? obj.TaxCents),
+        total_cents: asNumber(obj.total_cents ?? obj.TotalCents),
+        created_at: asString(obj.created_at ?? obj.CreatedAt),
+        updated_at: asString(obj.updated_at ?? obj.UpdatedAt),
+      },
+      customer: {
+        id: "",
+        email: "",
+        phone: "",
+        first_name: "",
+        last_name: "",
+      },
+      shipping: {
+        method_id: "",
+        method_title: "",
+        provider_key: "",
+        service_code: "",
+        terminal_id: "",
+        price_cents: asNumber(obj.shipping_cents ?? obj.ShippingCents),
+        full_name: "",
+        phone: "",
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        postcode: "",
+        country: "",
+      },
+      billing: {
+        full_name: "",
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        postcode: "",
+        country: "",
+        company_name: "",
+        company_vat: "",
+        invoice_email: "",
+      },
+      payment: {
+        method: "",
+        provider: "",
+      },
+      items: itemsRaw.map(normalizeAdminOrderDetailItem).filter((item): item is AdminOrderDetailItem => item !== null),
+    };
+  }
+
+  const orderObj = asRecord(obj.order);
+  const customerObj = asRecord(obj.customer);
+  const shippingObj = asRecord(obj.shipping);
+  const billingObj = asRecord(obj.billing);
+  const paymentObj = asRecord(obj.payment);
+  return {
+    order: {
+      id: asString(orderObj.id),
+      number: asString(orderObj.number),
+      status: asString(orderObj.status),
+      currency: asString(orderObj.currency),
+      subtotal_cents: asNumber(orderObj.subtotal_cents),
+      shipping_cents: asNumber(orderObj.shipping_cents),
+      tax_cents: asNumber(orderObj.tax_cents),
+      total_cents: asNumber(orderObj.total_cents),
+      created_at: asString(orderObj.created_at),
+      updated_at: asString(orderObj.updated_at),
+    },
+    customer: {
+      id: asString(customerObj.id),
+      email: asString(customerObj.email),
+      phone: asString(customerObj.phone),
+      first_name: asString(customerObj.first_name),
+      last_name: asString(customerObj.last_name),
+    },
+    shipping: {
+      method_id: asString(shippingObj.method_id),
+      method_title: asString(shippingObj.method_title),
+      provider_key: asString(shippingObj.provider_key),
+      service_code: asString(shippingObj.service_code),
+      terminal_id: asString(shippingObj.terminal_id),
+      price_cents: asNumber(shippingObj.price_cents),
+      full_name: asString(shippingObj.full_name),
+      phone: asString(shippingObj.phone),
+      address1: asString(shippingObj.address1),
+      address2: asString(shippingObj.address2),
+      city: asString(shippingObj.city),
+      state: asString(shippingObj.state),
+      postcode: asString(shippingObj.postcode),
+      country: asString(shippingObj.country),
+    },
+    billing: {
+      full_name: asString(billingObj.full_name),
+      address1: asString(billingObj.address1),
+      address2: asString(billingObj.address2),
+      city: asString(billingObj.city),
+      state: asString(billingObj.state),
+      postcode: asString(billingObj.postcode),
+      country: asString(billingObj.country),
+      company_name: asString(billingObj.company_name),
+      company_vat: asString(billingObj.company_vat),
+      invoice_email: asString(billingObj.invoice_email),
+    },
+    payment: {
+      method: asString(paymentObj.method),
+      provider: asString(paymentObj.provider),
+    },
+    items: itemsRaw.map(normalizeAdminOrderDetailItem).filter((item): item is AdminOrderDetailItem => item !== null),
+  };
+}
 
 function adminAuthHeader(): string {
   const user = process.env.ADMIN_USER;
@@ -1457,7 +1706,7 @@ export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch order: ${res.status}`);
-  return res.json();
+  return normalizeAdminOrderDetail(await res.json());
 }
 
 export async function updateAdminOrderStatus(orderID: string, status: string): Promise<{ status: string }> {
