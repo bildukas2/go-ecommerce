@@ -62,6 +62,10 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "auth unavailable")
 		return
 	}
+	if m.protect == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "auth unavailable")
+		return
+	}
 
 	var req loginRequest
 	if err := decodeAuthRequest(r, &req); err != nil {
@@ -74,18 +78,40 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, http.StatusBadRequest, "validation_error", "validation failed", validationErrs)
 		return
 	}
+	clientIP := platformhttp.ClientIP(r)
+	if allowed, err := m.protect.IsIPAllowed(r.Context(), clientIP); err != nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "auth unavailable")
+		return
+	} else if !allowed {
+		m.protect.SleepFailureDelay()
+		writeAuthError(w, http.StatusTooManyRequests, "too_many_attempts", "too many attempts", nil)
+		return
+	}
+	if locked, err := m.protect.IsEmailLocked(r.Context(), email); err != nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "auth unavailable")
+		return
+	} else if locked {
+		m.protect.SleepFailureDelay()
+		writeAuthError(w, http.StatusTooManyRequests, "too_many_attempts", "too many attempts", nil)
+		return
+	}
+	if ok, err := m.protect.VerifyCaptcha(r.Context(), req.CaptchaToken, clientIP); err != nil || !ok {
+		m.protect.SleepFailureDelay()
+		writeAuthError(w, http.StatusBadRequest, "captcha_failed", "captcha failed", nil)
+		return
+	}
 
 	user, err := m.store.GetUserByEmail(r.Context(), email)
 	if err != nil {
 		if errors.Is(err, storadminauth.ErrNotFound) {
-			writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid email or password", nil)
+			m.respondCredentialFailure(w, r, email)
 			return
 		}
 		platformhttp.Error(w, http.StatusInternalServerError, "login error")
 		return
 	}
 	if !user.IsActive || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
-		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid email or password", nil)
+		m.respondCredentialFailure(w, r, email)
 		return
 	}
 
@@ -95,7 +121,11 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !hasRole(roleCodes, "admin") {
-		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid email or password", nil)
+		m.respondCredentialFailure(w, r, email)
+		return
+	}
+	if err := m.protect.ResetEmailFailures(r.Context(), email); err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "login error")
 		return
 	}
 
@@ -116,6 +146,24 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	setSessionCookie(w, r, token, m.sessionTT)
 	_ = platformhttp.JSON(w, http.StatusOK, authMeResponse{User: sessionUser})
+}
+
+func (m *module) respondCredentialFailure(w http.ResponseWriter, r *http.Request, email string) {
+	if m.protect == nil {
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid email or password", nil)
+		return
+	}
+	locked, err := m.protect.RegisterEmailFailure(r.Context(), email)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "login error")
+		return
+	}
+	m.protect.SleepFailureDelay()
+	if locked {
+		writeAuthError(w, http.StatusTooManyRequests, "too_many_attempts", "too many attempts", nil)
+		return
+	}
+	writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid email or password", nil)
 }
 
 func (m *module) handleLogout(w http.ResponseWriter, r *http.Request) {

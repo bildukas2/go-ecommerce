@@ -29,6 +29,7 @@ type adminAuthStore interface {
 type module struct {
 	store     adminAuthStore
 	sessions  *SessionManager
+	protect   *loginProtection
 	sessionTT time.Duration
 	now       func() time.Time
 }
@@ -47,6 +48,7 @@ func NewModule(deps app.Deps) app.Module {
 	return &module{
 		store:     store,
 		sessions:  NewSessionManager(newRedisSessionCache(deps.Redis), sessionTTL),
+		protect:   newLoginProtection(deps.Redis, newTurnstileVerifierFromEnv()),
 		sessionTT: sessionTTL,
 		now:       time.Now,
 	}

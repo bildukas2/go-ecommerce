@@ -82,6 +82,7 @@ func TestHandleLoginAndMeSuccess(t *testing.T) {
 	m := &module{
 		store:     store,
 		sessions:  NewSessionManager(cache, 45*time.Minute),
+		protect:   newTestLoginProtection(),
 		sessionTT: 45 * time.Minute,
 		now:       time.Now,
 	}
@@ -128,6 +129,7 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 	m := &module{
 		store:     store,
 		sessions:  NewSessionManager(cache, 45*time.Minute),
+		protect:   newTestLoginProtection(),
 		sessionTT: 45 * time.Minute,
 		now:       time.Now,
 	}
@@ -180,5 +182,104 @@ func TestHandleLogout(t *testing.T) {
 	}
 	if _, err := manager.Resolve(req.Context(), token); !errors.Is(err, ErrSessionNotFound) {
 		t.Fatalf("expected session to be removed")
+	}
+}
+
+func TestHandleLoginCaptchaFailed(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("StrongPass!123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	store := &fakeAdminAuthStore{
+		userByEmail: map[string]storadminauth.User{
+			"admin@example.com": {
+				ID:           "user-1",
+				Email:        "admin@example.com",
+				PasswordHash: string(hash),
+				DisplayName:  "Admin",
+				IsActive:     true,
+			},
+		},
+		rolesByUser: map[string][]string{
+			"user-1": {"admin"},
+		},
+	}
+	cache := &memSessionCache{data: map[string]string{}}
+	protect := newTestLoginProtection()
+	protect.captchaVerifier = stubCaptchaVerifier{ok: false}
+	m := &module{
+		store:     store,
+		sessions:  NewSessionManager(cache, 45*time.Minute),
+		protect:   protect,
+		sessionTT: 45 * time.Minute,
+		now:       time.Now,
+	}
+
+	loginBody, _ := json.Marshal(loginRequest{
+		Email:        "admin@example.com",
+		Password:     "StrongPass!123",
+		CaptchaToken: "bad-token",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	m.handleLogin(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+	var out authErrorResponse
+	if err := json.NewDecoder(rr.Body).Decode(&out); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if out.Code != "captcha_failed" {
+		t.Fatalf("expected captcha_failed, got %s", out.Code)
+	}
+}
+
+func TestHandleLoginLockoutAfterFiveFailures(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("StrongPass!123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	store := &fakeAdminAuthStore{
+		userByEmail: map[string]storadminauth.User{
+			"admin@example.com": {
+				ID:           "user-1",
+				Email:        "admin@example.com",
+				PasswordHash: string(hash),
+				DisplayName:  "Admin",
+				IsActive:     true,
+			},
+		},
+		rolesByUser: map[string][]string{
+			"user-1": {"admin"},
+		},
+	}
+	cache := &memSessionCache{data: map[string]string{}}
+	m := &module{
+		store:     store,
+		sessions:  NewSessionManager(cache, 45*time.Minute),
+		protect:   newTestLoginProtection(),
+		sessionTT: 45 * time.Minute,
+		now:       time.Now,
+	}
+
+	for i := 1; i <= 5; i++ {
+		loginBody, _ := json.Marshal(loginRequest{
+			Email:        "admin@example.com",
+			Password:     "WrongPass!123",
+			CaptchaToken: "captcha-ok",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		m.handleLogin(rr, req)
+		if i < 5 && rr.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d expected 401, got %d", i, rr.Code)
+		}
+		if i == 5 && rr.Code != http.StatusTooManyRequests {
+			t.Fatalf("attempt %d expected 429, got %d", i, rr.Code)
+		}
 	}
 }
