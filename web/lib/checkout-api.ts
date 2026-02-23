@@ -71,14 +71,37 @@ export interface CheckoutShippingMethod {
 export interface CheckoutPaymentMethod {
   id: string;
   title: string;
-  icon?: string;
+  description?: string;
+  instructions?: string;
+  enabled: boolean;
+  payment_type: string;
+  config_json?: Record<string, unknown>;
+  sort_order?: number;
 }
 
-export const PAYMENT_METHODS: CheckoutPaymentMethod[] = [
-  { id: "card", title: "Credit/Debit Card", icon: "💳" },
-  { id: "banklink", title: "Bank Link", icon: "🏦" },
-  { id: "cash_on_delivery", title: "Cash on Delivery", icon: "💵" },
-];
+// Get payment methods for checkout
+export async function getPaymentMethods(): Promise<CheckoutPaymentMethod[]> {
+  const url = new URL(apiJoin("payments/methods"));
+  const res = await fetchWithTimeout(url.toString(), {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to get payment methods: ${res.status}`);
+  }
+  const data = await res.json();
+  return (data.items || []).map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    instructions: item.instructions,
+    enabled: item.enabled,
+    payment_type: item.payment_type,
+    config_json: item.config_json,
+    sort_order: item.sort_order,
+  }));
+}
 
 // Quote response
 export interface CheckoutQuoteResponse {

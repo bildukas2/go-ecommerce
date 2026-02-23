@@ -10,7 +10,6 @@ import {
   selectCheckoutShipping,
   selectCheckoutPayment,
   placeCheckoutOrder,
-  PAYMENT_METHODS,
 } from "@/lib/checkout-api";
 import type { Terminal } from "@/hooks/use-terminals";
 import type { Cart, CartItem } from "@/lib/api";
@@ -195,7 +194,6 @@ export interface UseCheckoutStateReturn {
   canProceedToShipping: boolean;
   canProceedToPayment: boolean;
   canPlaceOrder: boolean;
-  paymentMethods: typeof PAYMENT_METHODS;
 }
 
 export function useCheckoutState(): UseCheckoutStateReturn {
@@ -437,6 +435,5 @@ export function useCheckoutState(): UseCheckoutStateReturn {
     canProceedToShipping,
     canProceedToPayment,
     canPlaceOrder,
-    paymentMethods: PAYMENT_METHODS,
   };
 }

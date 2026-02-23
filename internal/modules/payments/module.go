@@ -37,6 +37,7 @@ func (m *module) Name() string {
 }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/payments/methods", m.handlePublicMethods)
 	mux.HandleFunc("/admin/payments/methods", m.wrapAuth(m.handleAdminMethods))
 	mux.HandleFunc("/admin/payments/methods/", m.wrapAuth(m.handleAdminMethods))
 }

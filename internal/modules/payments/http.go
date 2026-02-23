@@ -86,6 +86,32 @@ func toMethodResponse(method storpayments.PaymentMethod) methodResponse {
 	}
 }
 
+func (m *module) handlePublicMethods(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+
+	methods, err := m.store.ListMethods(r.Context())
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "list methods error")
+		return
+	}
+
+	items := make([]methodResponse, 0)
+	for _, method := range methods {
+		if method.Enabled {
+			items = append(items, toMethodResponse(method))
+		}
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
 func (m *module) handleAdminMethods(w http.ResponseWriter, r *http.Request) {
 	if m.store == nil {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")

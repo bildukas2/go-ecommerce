@@ -3,7 +3,8 @@
 import * as React from "react";
 import type { Terminal } from "@/hooks/use-terminals";
 import { useCheckoutState, type CheckoutStep } from "@/hooks/use-checkout-state";
-import type { CheckoutShippingMethod } from "@/lib/checkout-api";
+import type { CheckoutShippingMethod, CheckoutPaymentMethod } from "@/lib/checkout-api";
+import { getPaymentMethods } from "@/lib/checkout-api";
 import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { AddressSection } from "@/components/checkout/address-section";
@@ -108,6 +109,26 @@ export default function CheckoutPage() {
   } = useCheckoutState();
 
   const { update: updateCart, remove: removeCart, cart: contextCart } = useCart();
+
+  const [paymentMethods, setPaymentMethods] = React.useState<CheckoutPaymentMethod[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = React.useState(true);
+
+  // Fetch payment methods on mount
+  React.useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        setPaymentMethodsLoading(true);
+        const methods = await getPaymentMethods();
+        setPaymentMethods(methods);
+      } catch (err) {
+        console.error("Failed to fetch payment methods:", err);
+        setPaymentMethods([]);
+      } finally {
+        setPaymentMethodsLoading(false);
+      }
+    };
+    fetchPaymentMethods();
+  }, []);
 
   // Sync cart from context into checkout state when it changes
   React.useEffect(() => {
@@ -355,10 +376,12 @@ export default function CheckoutPage() {
               {state.currentStep === "payment" && (
                 <div className={`${sectionPanel} space-y-6`}>
                   <PaymentMethodSelector
+                    methods={paymentMethods}
                     selectedMethod={state.selectedPaymentMethod}
                     onSelect={setSelectedPaymentMethod}
                     onContinue={handlePaymentContinue}
                     loading={state.loading}
+                    methodsLoading={paymentMethodsLoading}
                     error={state.error}
                   />
                   <div className="flex gap-3 pt-4 border-t border-surface-border mt-6">
@@ -407,8 +430,8 @@ export default function CheckoutPage() {
                   {state.selectedPaymentMethod && (
                     <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
                       <h4 className="font-medium text-sm mb-2">Payment Method</h4>
-                      <p className="text-sm text-foreground/70 capitalize">
-                        {state.selectedPaymentMethod.replace("_", " ")}
+                      <p className="text-sm text-foreground/70">
+                        {paymentMethods.find(m => m.id === state.selectedPaymentMethod)?.title || state.selectedPaymentMethod}
                       </p>
                     </div>
                   )}
