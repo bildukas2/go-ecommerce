@@ -16,6 +16,7 @@ import (
 	"goecommerce/internal/modules/checkout"
 	"goecommerce/internal/modules/customers"
 	"goecommerce/internal/modules/orders"
+	"goecommerce/internal/modules/payments"
 	"goecommerce/internal/modules/shipping"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
@@ -61,6 +62,7 @@ func main() {
 	app.RegisterModule(customers.NewModule(deps))
 	app.RegisterModule(orders.NewModule(deps))
 	app.RegisterModule(shipping.NewModule(deps))
+	app.RegisterModule(payments.NewModule(deps))
 	app.RegisterModule(checkout.NewModule(deps))
 	app.RegisterModule(admin.NewModule(deps))
 	router := app.NewRouter(deps)
