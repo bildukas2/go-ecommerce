@@ -65,7 +65,7 @@ function SidebarNav({
   const isSettingsExpanded = settingsActive || settingsOpen;
   const customersActive = pathname.startsWith("/admin/customers") || pathname.startsWith("/admin/security");
   const [customersOpen, setCustomersOpen] = useState(false);
-  const isCustomersExpanded = customersActive || customersOpen;
+  const isCustomersExpanded = customersOpen;
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-2" aria-label="Admin navigation">
