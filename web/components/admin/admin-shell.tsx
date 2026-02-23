@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, Cog, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Truck, Users, UsersRound, X } from "lucide-react";
+import { ChevronDown, Cog, CreditCard, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Truck, Users, UsersRound, X } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -37,6 +37,7 @@ const customerItems: NavItem[] = [
 
 const settingsItems: NavItem[] = [
   { href: "/admin/settings/shipping", label: "Shipping", icon: <Truck size={16} /> },
+  { href: "/admin/settings/payments", label: "Payments", icon: <CreditCard size={16} /> },
 ];
 
 function isActivePath(pathname: string, href: string): boolean {
