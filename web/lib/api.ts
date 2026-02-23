@@ -2162,9 +2162,7 @@ export async function testShippingProvider(
   const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}/test`));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify({
       config_json: configJson,
@@ -2317,6 +2315,7 @@ export async function deleteShippingMethod(id: string): Promise<void> {
   const url = new URL(apiJoin(`admin/shipping/methods/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
+    headers: mutHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
