@@ -11,6 +11,7 @@ import (
 
 	"goecommerce/internal/app"
 	"goecommerce/internal/modules/admin"
+	"goecommerce/internal/modules/adminauth"
 	"goecommerce/internal/modules/cart"
 	"goecommerce/internal/modules/catalog"
 	"goecommerce/internal/modules/checkout"
@@ -64,6 +65,7 @@ func main() {
 	app.RegisterModule(shipping.NewModule(deps))
 	app.RegisterModule(payments.NewModule(deps))
 	app.RegisterModule(checkout.NewModule(deps))
+	app.RegisterModule(adminauth.NewModule(deps))
 	app.RegisterModule(admin.NewModule(deps))
 	router := app.NewRouter(deps)
 
