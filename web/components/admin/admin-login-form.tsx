@@ -156,40 +156,56 @@ export function AdminLoginForm() {
   const disabled = submitting || loadingCSRF || !csrfToken || !turnstileSiteKey;
 
   return (
-    <Card className="w-full max-w-md border border-surface-border bg-background/85 shadow-[0_22px_60px_rgba(2,6,23,0.22)]">
-      <CardHeader className="flex-col items-start gap-1 p-6 pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Admin login</h1>
+    <Card className="w-full max-w-md border border-white/20 bg-background/90 shadow-[0_24px_80px_rgba(2,6,23,0.24)] backdrop-blur-xl">
+      <CardHeader className="flex-col items-start gap-2 p-6 pb-1">
+        <h1 className="text-3xl font-semibold tracking-tight">Admin login</h1>
         <p className="text-sm text-foreground/70">Sign in to continue to the admin panel.</p>
       </CardHeader>
-      <CardBody className="p-6 pt-3">
-        <form onSubmit={onSubmit} className="space-y-5">
-          <Input
-            type="email"
-            label="Email"
-            labelPlacement="outside"
-            autoComplete="email"
-            isRequired
-            value={email}
-            onValueChange={setEmail}
-          />
-          <Input
-            type="password"
-            label="Password"
-            labelPlacement="outside"
-            autoComplete="current-password"
-            isRequired
-            value={password}
-            onValueChange={setPassword}
-          />
+      <CardBody className="p-6 pt-4">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground/80" htmlFor="admin-login-email">
+              Email
+            </label>
+            <Input
+              id="admin-login-email"
+              type="email"
+              autoComplete="email"
+              placeholder="admin@example.com"
+              variant="bordered"
+              radius="lg"
+              size="lg"
+              isRequired
+              value={email}
+              onValueChange={setEmail}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground/80" htmlFor="admin-login-password">
+              Password
+            </label>
+            <Input
+              id="admin-login-password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              variant="bordered"
+              radius="lg"
+              size="lg"
+              isRequired
+              value={password}
+              onValueChange={setPassword}
+            />
+          </div>
           <div className="rounded-xl border border-surface-border bg-background/50 p-3">
             {turnstileSiteKey ? (
               <div ref={captchaRef} />
             ) : (
-              <p className="text-sm text-danger">Captcha failed</p>
+              <p className="text-sm text-warning">Captcha is not configured.</p>
             )}
           </div>
           {errorCode ? <p className="text-sm text-danger">{errorMessage(errorCode)}</p> : null}
-          <Button type="submit" color="primary" className="w-full" isLoading={submitting} isDisabled={disabled}>
+          <Button type="submit" color="primary" radius="lg" className="mt-1 h-12 w-full font-medium" isLoading={submitting} isDisabled={disabled}>
             Sign in
           </Button>
         </form>
