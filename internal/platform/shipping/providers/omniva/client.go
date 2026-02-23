@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -94,16 +95,22 @@ func (c *Client) FetchTerminalsByCountry(ctx context.Context, country string) ([
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
+	req.Header.Set("User-Agent", "Go-Ecommerce/1.0")
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		slog.Error("failed to fetch omniva terminals", "country", country, "url", url, "error", err)
 		return nil, fmt.Errorf("executing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
+		slog.Error("omniva api error", "country", country, "status", resp.StatusCode, "body", string(body))
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
+
+	slog.Debug("successfully fetched omniva terminals", "country", country, "url", url)
 
 	var locations []omnivaLocation
 	if err := json.NewDecoder(resp.Body).Decode(&locations); err != nil {

@@ -3,6 +3,7 @@ package omniva
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"goecommerce/internal/platform/shipping"
 )
@@ -68,10 +69,15 @@ func (p *omnivaProvider) ListTerminals(ctx context.Context, country string) ([]s
 	// Try real API first - always use the public JSON endpoints
 	terminals, err := p.ListTerminalsFromAPI(ctx, country)
 	if err == nil && terminals != nil {
+		slog.Info("successfully fetched omniva terminals from real api", "country", country, "count", len(terminals))
 		return terminals, nil
 	}
 
 	// Fall back to mock data for development/testing if API fetch fails
+	if err != nil {
+		slog.Warn("omniva api fetch failed, using mock data", "country", country, "error", err)
+	}
+
 	switch country {
 	case "LT":
 		return mockTerminalsLT(), nil
