@@ -49,16 +49,16 @@ type PickupRequester interface {
 }
 
 type Terminal struct {
-	ID       string
-	Name     string
-	Country  string
-	City     string
-	Address  string
-	Postcode string
-	Lat      float64
-	Lon      float64
-	Hours    string
-	Type     string // parcel_locker, post_office, etc.
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Country  string  `json:"country"`
+	City     string  `json:"city"`
+	Address  string  `json:"address"`
+	Postcode string  `json:"postcode"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+	Hours    string  `json:"hours"`
+	Type     string  `json:"type"` // parcel_locker, post_office, etc.
 }
 
 type QuoteRequest struct {
