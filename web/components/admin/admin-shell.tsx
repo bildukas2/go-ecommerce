@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, Cog, CreditCard, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Truck, Users, UsersRound, X } from "lucide-react";
+import { ChevronDown, CreditCard, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, X } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -194,7 +194,7 @@ function SidebarNav({
         ].join(" ")}
       >
         <span className={settingsActive ? "text-blue-500" : "text-foreground/70 group-hover:text-blue-500"}>
-          <Cog size={18} />
+          <Store size={18} />
         </span>
         {!collapsed && (
           <>
