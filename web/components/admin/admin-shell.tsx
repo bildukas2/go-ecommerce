@@ -48,6 +48,14 @@ function isActivePath(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isCustomersSubItemActive(pathname: string, href: string): boolean {
+  if (href === "/admin/customers") {
+    return pathname === href;
+  }
+
+  return isActivePath(pathname, href);
+}
+
 function SidebarNav({
   collapsed,
   pathname,
@@ -292,7 +300,7 @@ function SidebarNav({
           >
             <div className="space-y-1 py-1">
               {customerItems.map((item) => {
-                const active = isActivePath(pathname, item.href);
+                const active = isCustomersSubItemActive(pathname, item.href);
 
                 return (
                   <Link
