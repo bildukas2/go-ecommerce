@@ -46,10 +46,10 @@ export function PaymentMethodSelector({
           {methods.map((method) => (
             <button
               key={method.id}
-              onClick={() => onSelect(method.id)}
+              onClick={() => onSelect(method.method_name)}
               className={cn(
                 "flex items-center gap-4 p-4 rounded-lg border-2 text-left transition-all",
-                selectedMethod === method.id
+                selectedMethod === method.method_name
                   ? "border-blue-500 bg-blue-500/5"
                   : "border-border hover:border-blue-300 hover:bg-muted/50"
               )}
@@ -57,7 +57,7 @@ export function PaymentMethodSelector({
               <div
                 className={cn(
                   "flex h-10 w-10 items-center justify-center rounded-full",
-                  selectedMethod === method.id
+                  selectedMethod === method.method_name
                     ? "bg-blue-500 text-white"
                     : "bg-muted text-muted-foreground"
                 )}
@@ -70,7 +70,7 @@ export function PaymentMethodSelector({
                   <div className="text-sm text-foreground/60">{method.description}</div>
                 )}
               </div>
-              {selectedMethod === method.id && (
+              {selectedMethod === method.method_name && (
                 <Check className="h-5 w-5 text-blue-500" />
               )}
             </button>

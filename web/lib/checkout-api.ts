@@ -75,6 +75,7 @@ export interface CheckoutPaymentMethod {
   instructions?: string;
   enabled: boolean;
   payment_type: string;
+  method_name: string;
   config_json?: Record<string, unknown>;
   sort_order?: number;
 }
@@ -98,6 +99,7 @@ export async function getPaymentMethods(): Promise<CheckoutPaymentMethod[]> {
     instructions: item.instructions,
     enabled: item.enabled,
     payment_type: item.payment_type,
+    method_name: item.method_name,
     config_json: item.config_json,
     sort_order: item.sort_order,
   }));

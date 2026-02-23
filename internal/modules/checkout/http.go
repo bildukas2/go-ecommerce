@@ -259,8 +259,7 @@ func (m *module) handleSelectPayment(w http.ResponseWriter, r *http.Request) {
 
 	// Validate payment method
 	validMethods := map[string]bool{
-		"card":             true,
-		"banklink":         true,
+		"bank_transfer":    true,
 		"cash_on_delivery": true,
 	}
 	if !validMethods[method] {
