@@ -62,25 +62,6 @@ function addressLines(address: {
 }
 
 export default async function AdminOrderDetailPage({ params }: Params) {
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASS;
-
-  if (!user || !pass) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="icon" className="rounded-full">
-            <Link href="/admin/orders">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Not Configured</h1>
-        </div>
-        <p className="text-foreground/70">Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.</p>
-      </div>
-    );
-  }
-
   const { id } = await params;
 
   let order: Awaited<ReturnType<typeof getAdminOrder>> | null = null;
@@ -90,7 +71,7 @@ export default async function AdminOrderDetailPage({ params }: Params) {
     order = await getAdminOrder(id);
   } catch (error) {
     if (isUnauthorizedAdminError(error)) {
-      fetchError = "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials.";
+      fetchError = "Unauthorized. Please sign in again.";
     } else if (isNotFoundAdminError(error)) {
       fetchError = "Order not found.";
     } else {

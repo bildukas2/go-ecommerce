@@ -7,6 +7,7 @@ import { Button, Input } from "@heroui/react";
 import { ChevronDown, CreditCard, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getAdminCSRFToken, logoutAdmin } from "@/lib/admin-auth";
 
 type NavItem = {
   href: string;
@@ -405,6 +406,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const prefersReducedMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  if (pathname === "/admin/login") {
+    return <div className="min-h-screen bg-background text-foreground">{children}</div>;
+  }
+
+  async function onLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const csrfToken = await getAdminCSRFToken();
+      await logoutAdmin(csrfToken);
+      window.location.href = "/admin/login";
+    } catch {
+      setLoggingOut(false);
+    }
+  }
 
   const sidebarTransition = prefersReducedMotion
     ? { duration: 0 }
@@ -479,6 +497,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               }}
             />
             <ThemeToggle />
+            <Button variant="flat" size="sm" onPress={onLogout} isLoading={loggingOut}>
+              Logout
+            </Button>
           </div>
           <div>{children}</div>
         </div>

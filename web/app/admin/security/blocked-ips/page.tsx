@@ -80,7 +80,7 @@ export default async function AdminBlockedIPsPage({ searchParams }: PageProps) {
     items = response.items;
   } catch (error) {
     fetchError = isUnauthorizedAdminError(error)
-      ? "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials."
+      ? "Unauthorized. Please sign in again."
       : "Failed to load blocked IPs. Please retry.";
   }
 

@@ -21,19 +21,6 @@ function formatLabel(value: string, fallback = "-"): string {
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASS;
-
-  if (!user || !pass) {
-    return (
-      <div className="mx-auto max-w-5xl p-6">
-        <h1 className="mb-2 text-2xl font-semibold">Admin Not Configured</h1>
-        <p className="text-sm text-foreground/70 text-gray-600">
-          Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.
-        </p>
-      </div>
-    );
-  }
 
   const page = parsePositiveIntParam(params.page, 1);
   const limit = parsePositiveIntParam(params.limit, 20);
@@ -46,7 +33,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     items = response.items;
   } catch (error) {
     if (isUnauthorizedAdminError(error)) {
-      fetchError = "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials.";
+      fetchError = "Unauthorized. Please sign in again.";
     } else {
       fetchError = "Failed to load orders. Please retry.";
     }

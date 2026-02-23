@@ -13,6 +13,14 @@ type ValidationError struct {
 	Message string `json:"message"`
 }
 
+func NormalizeAndValidateEmail(raw string) (string, error) {
+	return normalizeAndValidateEmail(raw)
+}
+
+func NormalizeAndValidatePassword(raw string) (string, error) {
+	return normalizeAndValidatePassword(raw)
+}
+
 func normalizeAndValidateEmail(raw string) (string, error) {
 	email := strings.ToLower(strings.TrimSpace(raw))
 	if email == "" {

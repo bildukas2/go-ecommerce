@@ -19,19 +19,6 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   const useMockDashboard = shouldUseMockDashboard(process.env.ADMIN_DASHBOARD_USE_MOCK);
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASS;
-
-  if (!useMockDashboard && (!user || !pass)) {
-    return (
-      <div className="mx-auto max-w-6xl p-4 md:p-8">
-        <h1 className="mb-2 text-2xl font-semibold md:text-3xl">Admin Not Configured</h1>
-        <p className="text-sm text-muted-foreground">
-          Set ADMIN_USER and ADMIN_PASS on the server, then reload this page.
-        </p>
-      </div>
-    );
-  }
 
   let fetchError: string | null = null;
   let dashboard = emptyDashboard();

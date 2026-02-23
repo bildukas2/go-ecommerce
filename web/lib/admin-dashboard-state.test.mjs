@@ -63,7 +63,7 @@ test("normalizeDashboardData sanitizes invalid payload and keeps valid recent or
 test("resolveDashboardErrorMessage handles unauthorized and generic failures", () => {
   assert.equal(
     resolveDashboardErrorMessage(new Error("Failed to fetch dashboard: 401")),
-    "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials."
+    "Unauthorized. Please sign in again."
   );
   assert.equal(
     resolveDashboardErrorMessage(new Error("Failed to fetch dashboard: 500")),

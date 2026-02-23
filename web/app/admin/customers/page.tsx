@@ -392,7 +392,7 @@ export default async function AdminCustomersPage({ searchParams }: PageProps) {
     groups = groupsResponse.items;
   } catch (error) {
     fetchError = isUnauthorizedAdminError(error)
-      ? "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials."
+      ? "Unauthorized. Please sign in again."
       : "Failed to load customers. Please retry.";
   }
 

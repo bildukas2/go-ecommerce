@@ -35,7 +35,7 @@ export function normalizeDashboardData(payload) {
 
 export function resolveDashboardErrorMessage(error) {
   if (isUnauthorizedAdminError(error)) {
-    return "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials.";
+    return "Unauthorized. Please sign in again.";
   }
   return "Failed to load dashboard metrics. Please retry.";
 }

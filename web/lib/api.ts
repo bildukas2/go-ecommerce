@@ -21,6 +21,52 @@ function mutHeaders(extra?: Record<string, string>): Record<string, string> {
   return h;
 }
 
+function getCookieValueFromHeader(cookieHeader: string, key: string): string {
+  const source = cookieHeader.trim();
+  if (!source) return "";
+  const pairs = source.split(";");
+  for (const pair of pairs) {
+    const trimmed = pair.trim();
+    const index = trimmed.indexOf("=");
+    if (index <= 0) continue;
+    if (trimmed.slice(0, index).trim() !== key) continue;
+    return decodeURIComponent(trimmed.slice(index + 1).trim());
+  }
+  return "";
+}
+
+async function getServerCookieHeader(): Promise<string> {
+  if (typeof window !== "undefined") return "";
+  try {
+    const mod = await import("next/headers");
+    const store = await mod.cookies();
+    return store.toString();
+  } catch {
+    return "";
+  }
+}
+
+async function adminRequestHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extra };
+  if (typeof window === "undefined") {
+    const cookieHeader = await getServerCookieHeader();
+    if (cookieHeader) headers.Cookie = cookieHeader;
+  }
+  return headers;
+}
+
+async function adminMutationHeaders(extra: Record<string, string> = {}, includeJSONContentType = true): Promise<Record<string, string>> {
+  const headers = await adminRequestHeaders({ ...extra });
+  if (includeJSONContentType && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+  const csrf = typeof window === "undefined"
+    ? getCookieValueFromHeader(headers.Cookie || "", "csrf_token")
+    : getCSRFToken();
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+  return headers;
+}
+
 export type Product = {
   id: string;
   slug: string;
@@ -438,7 +484,7 @@ async function throwBlockedIPErrorIfNeeded(res: Response): Promise<void> {
 export async function getAdminCategories(): Promise<{ items: AdminCategory[] }> {
   const url = new URL(apiJoin("admin/catalog/categories"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch admin categories: ${res.status}`);
@@ -1341,20 +1387,12 @@ function normalizeAdminOrderDetail(raw: unknown): AdminOrderDetail {
   };
 }
 
-function adminAuthHeader(): string {
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASS;
-  if (!user || !pass) throw new Error("Missing ADMIN_USER/ADMIN_PASS on server");
-  const token = Buffer.from(`${user}:${pass}`).toString("base64");
-  return `Basic ${token}`;
-}
-
 export async function getAdminOrders(params: { page?: number; limit?: number } = {}): Promise<{ items: AdminOrderSummary[]; page: number; limit: number; }> {
   const url = new URL(apiJoin("admin/orders"));
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
@@ -1422,7 +1460,7 @@ export async function getAdminCustomers(params: {
   if (params.anonymous) url.searchParams.set("anonymous", params.anonymous);
   if (params.sort) url.searchParams.set("sort", params.sort);
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch customers: ${res.status}`));
@@ -1440,10 +1478,7 @@ export async function createAdminCustomer(input: AdminCustomerMutationInput): Pr
   const url = new URL(apiJoin("admin/customers"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(input),
   });
@@ -1459,10 +1494,7 @@ export async function updateAdminCustomer(id: string, input: AdminCustomerMutati
   const url = new URL(apiJoin(`admin/customers/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "PATCH",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(input),
   });
@@ -1478,10 +1510,7 @@ export async function updateAdminCustomerStatus(id: string, status: "active" | "
   const url = new URL(apiJoin(`admin/customers/${encodeURIComponent(id)}/status`));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify({ status }),
   });
@@ -1548,7 +1577,7 @@ function normalizeAdminBlockedIP(raw: unknown): AdminBlockedIP | null {
 export async function getAdminCustomerGroups(): Promise<{ items: AdminCustomerGroup[] }> {
   const url = new URL(apiJoin("admin/customers/groups"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch customer groups: ${res.status}`);
@@ -1576,7 +1605,7 @@ export async function getAdminCustomerActionLogs(params: {
   if (params.to?.trim()) url.searchParams.set("to", params.to.trim());
 
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch customer action logs: ${res.status}`));
@@ -1594,7 +1623,7 @@ export async function getAdminCustomerActionLogs(params: {
 export async function getAdminBlockedIPs(): Promise<{ items: AdminBlockedIP[] }> {
   const url = new URL(apiJoin("admin/security/blocked-ips"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch blocked IPs: ${res.status}`));
@@ -1609,10 +1638,7 @@ export async function createAdminBlockedIP(input: AdminBlockedIPMutationInput): 
   const url = new URL(apiJoin("admin/security/blocked-ips"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(input),
   });
@@ -1626,7 +1652,7 @@ export async function deleteAdminBlockedIP(id: string): Promise<{ id: string; ip
   const url = new URL(apiJoin(`admin/security/blocked-ips/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to unblock IP: ${res.status}`));
@@ -1641,10 +1667,7 @@ export async function createAdminCustomerGroup(input: AdminCustomerGroupMutation
   const url = new URL(apiJoin("admin/customers/groups"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(input),
   });
@@ -1660,10 +1683,7 @@ export async function updateAdminCustomerGroup(id: string, input: AdminCustomerG
   const url = new URL(apiJoin(`admin/customers/groups/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "PATCH",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(input),
   });
@@ -1679,7 +1699,7 @@ export async function deleteAdminCustomerGroup(id: string): Promise<{ id: string
   const url = new URL(apiJoin(`admin/customers/groups/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -1692,7 +1712,7 @@ export async function deleteAdminCustomerGroup(id: string): Promise<{ id: string
 export async function getDashboard(): Promise<DashboardResponse> {
   const url = new URL(apiJoin("admin/dashboard"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch dashboard: ${res.status}`);
@@ -1702,7 +1722,7 @@ export async function getDashboard(): Promise<DashboardResponse> {
 export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
   const url = new URL(apiJoin(`admin/orders/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch order: ${res.status}`);
@@ -1713,10 +1733,7 @@ export async function updateAdminOrderStatus(orderID: string, status: string): P
   const url = new URL(apiJoin("admin/orders/status"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify({ order_id: orderID, status }),
   });
@@ -1736,10 +1753,7 @@ async function adminCatalogRequest<T>({ path, method, body }: AdminCatalogReques
   const url = new URL(apiJoin(path));
   const res = await fetch(url.toString(), {
     method,
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(body),
   });
@@ -1797,7 +1811,7 @@ export async function getAdminMedia(params: { limit?: number; offset?: number } 
   if (params.offset) url.searchParams.set("offset", String(params.offset));
 
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch media: ${res.status}`);
@@ -1826,7 +1840,7 @@ export async function uploadAdminMedia(file: File, alt: string): Promise<AdminMe
   const url = new URL(apiJoin("admin/media/upload"));
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders({}, false),
     cache: "no-store",
     body: form,
   });
@@ -1854,10 +1868,7 @@ export async function importAdminMediaURL(input: { url: string; alt?: string; co
 
   const res = await fetch(apiJoin("admin/media/import-url"), {
     method: "POST",
-    headers: {
-      Authorization: adminAuthHeader(),
-      "Content-Type": "application/json",
-    },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -1968,7 +1979,7 @@ export async function deleteAdminCategory(id: string): Promise<AdminDeleteCatego
   const url = new URL(apiJoin(`admin/catalog/categories/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2007,7 +2018,7 @@ export async function getAdminCustomOptions(params: { q?: string; type_group?: s
   if (typeGroup) url.searchParams.set("type_group", typeGroup);
 
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch custom options: ${res.status}`);
@@ -2021,7 +2032,7 @@ export async function getAdminCustomOptions(params: { q?: string; type_group?: s
 export async function getAdminCustomOption(id: string): Promise<AdminCustomOption> {
   const url = new URL(apiJoin(`admin/custom-options/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch custom option: ${res.status}`);
@@ -2056,7 +2067,7 @@ export async function deleteAdminCustomOption(id: string): Promise<{ id: string 
   const url = new URL(apiJoin(`admin/custom-options/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2075,7 +2086,7 @@ export async function deleteAdminCustomOption(id: string): Promise<{ id: string 
 export async function getAdminProductCustomOptions(productID: string): Promise<{ items: AdminProductCustomOptionAssignment[] }> {
   const url = new URL(apiJoin(`admin/products/${encodeURIComponent(productID)}/custom-options`));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch product custom options: ${res.status}`);
@@ -2107,7 +2118,7 @@ export async function detachAdminProductCustomOption(productID: string, optionID
   const url = new URL(apiJoin(`admin/products/${encodeURIComponent(productID)}/custom-options/${encodeURIComponent(optionID)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2139,7 +2150,7 @@ export async function deleteAdminProduct(id: string): Promise<{ id: string }> {
   const url = new URL(apiJoin(`admin/catalog/products/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminMutationHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2691,7 +2702,7 @@ function normalizePaymentMethod(raw: unknown): PaymentMethod | null {
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   const url = new URL(apiJoin("admin/payments/methods"));
   const res = await fetch(url.toString(), {
-    headers: { Authorization: adminAuthHeader() },
+    headers: await adminRequestHeaders(),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch payment methods: ${res.status}`);
@@ -2719,7 +2730,7 @@ export async function createPaymentMethod(data: Omit<PaymentMethod, "id" | "crea
   };
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: mutHeaders({ Authorization: adminAuthHeader() }),
+    headers: mutHeaders(),
     credentials: "include",
     cache: "no-store",
     body: JSON.stringify(payload),
@@ -2747,7 +2758,7 @@ export async function updatePaymentMethod(id: string, data: Partial<PaymentMetho
   };
   const res = await fetch(url.toString(), {
     method: "PUT",
-    headers: mutHeaders({ Authorization: adminAuthHeader() }),
+    headers: mutHeaders(),
     credentials: "include",
     cache: "no-store",
     body: JSON.stringify(payload),
@@ -2764,7 +2775,7 @@ export async function deletePaymentMethod(id: string): Promise<void> {
   const url = new URL(apiJoin(`admin/payments/methods/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: mutHeaders({ Authorization: adminAuthHeader() }),
+    headers: mutHeaders(),
     credentials: "include",
     cache: "no-store",
   });

@@ -58,7 +58,7 @@ export default async function AdminCustomerActionLogsPage({ searchParams }: Page
     total = response.total;
   } catch (error) {
     fetchError = isUnauthorizedAdminError(error)
-      ? "Unauthorized. Check ADMIN_USER and ADMIN_PASS server credentials."
+      ? "Unauthorized. Please sign in again."
       : "Failed to load action logs. Please retry.";
   }
 
@@ -180,4 +180,3 @@ export default async function AdminCustomerActionLogsPage({ searchParams }: Page
     </div>
   );
 }
-

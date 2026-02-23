@@ -14,7 +14,7 @@ This project is intentionally KISS: clean structure, easy setup, easy to extend 
 - Catalog: products, categories
 - Cart: cookie-based `cart_id` (HttpOnly)
 - Orders: checkout creates order (`pending_payment`)
-- Admin: Basic Auth protected endpoints + dashboard + orders views
+- Admin: session auth + CSRF + captcha protected endpoints + dashboard + orders views
 - Health:
     - `GET /health`
     - `GET /ready` (db/redis)
@@ -46,7 +46,12 @@ for migration
 go run ./cmd/migrate up
 ```
 
----
+Seed the backoffice admin user (idempotent):
+```bash
+ADMIN_SEED_EMAIL=admin@example.com ADMIN_SEED_PASSWORD='ChangeMe#2026' go run ./cmd/admin-seed
+```
+
+--- 
 
 # Contributing
 Small PRs, one feature per PR. Avoid big refactors.
