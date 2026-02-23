@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, CardBody, CardHeader, Checkbox, Input } from "@heroui/react";
 import { AdminAuthError, getAdminCSRFToken, loginAdmin } from "@/lib/admin-auth";
 
 declare global {
@@ -69,6 +68,7 @@ export function AdminLoginForm() {
   const captchaRef = useRef<HTMLDivElement | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [csrfToken, setCSRFToken] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
@@ -165,88 +165,86 @@ export function AdminLoginForm() {
   const disabled = submitting || loadingCSRF;
 
   return (
-    <Card className="w-full max-w-md border border-default-200/70 bg-content1/95 shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl dark:border-default-100/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.5)]">
-      <CardHeader className="flex-col items-start gap-1 p-8 pb-2">
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground">Log In</h1>
-        <p className="text-base text-foreground-500">Sign in to continue to admin.</p>
-      </CardHeader>
-      <CardBody className="space-y-5 p-8 pt-4">
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="admin-login-email">
-              Email <span className="text-danger">*</span>
-            </label>
-            <Input
-              id="admin-login-email"
-              type="email"
-              autoComplete="email"
-              placeholder="Enter your email"
-              variant="bordered"
-              radius="lg"
-              size="lg"
-              isRequired
-              value={email}
-              onValueChange={setEmail}
-              classNames={{
-                inputWrapper: "border-default-300/80 bg-transparent",
-              }}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="admin-login-password">
-              Password <span className="text-danger">*</span>
-            </label>
-            <Input
+    <div className="w-full max-w-md rounded-2xl border border-surface-border bg-surface/95 p-8 shadow-[0_18px_48px_rgba(2,6,23,0.14)]">
+      <h1 className="text-[46px] font-semibold leading-none tracking-tight text-foreground">Log In <span aria-hidden>👋</span></h1>
+      <p className="mt-4 text-[30px] font-medium text-foreground">Welcome back</p>
+      <form onSubmit={onSubmit} className="mt-6 space-y-5">
+        <div className="space-y-2">
+          <label className="block text-base font-medium text-foreground" htmlFor="admin-login-email">
+            Email<span className="text-danger">*</span>
+          </label>
+          <input
+            id="admin-login-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Enter your email"
+            className="h-12 w-full rounded-xl border border-surface-border bg-background/80 px-4 text-[22px] text-foreground outline-none transition focus:border-blue-500"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-base font-medium text-foreground" htmlFor="admin-login-password">
+            Password<span className="text-danger">*</span>
+          </label>
+          <div className="relative">
+            <input
               id="admin-login-password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
-              placeholder="Enter your password"
-              variant="bordered"
-              radius="lg"
-              size="lg"
-              isRequired
+              required
               value={password}
-              onValueChange={setPassword}
-              classNames={{
-                inputWrapper: "border-default-300/80 bg-transparent",
-              }}
-              endContent={
-                <button
-                  type="button"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="text-foreground-400 transition-colors hover:text-foreground-600"
-                  onClick={() => setShowPassword((value) => !value)}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M2 12C3.73 8.11 7.52 5.5 12 5.5C16.48 5.5 20.27 8.11 22 12C20.27 15.89 16.48 18.5 12 18.5C7.52 18.5 3.73 15.89 2 12Z" stroke="currentColor" strokeWidth="1.8" />
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                </button>
-              }
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              className="h-12 w-full rounded-xl border border-surface-border bg-background/80 px-4 pr-11 text-[22px] text-foreground outline-none transition focus:border-blue-500"
             />
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <Checkbox size="sm">Remember me</Checkbox>
-            <button type="button" className="text-foreground-500 hover:text-primary">
-              Forgot password?
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((value) => !value)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 hover:text-foreground/70"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2 12C3.73 8.11 7.52 5.5 12 5.5C16.48 5.5 20.27 8.11 22 12C20.27 15.89 16.48 18.5 12 18.5C7.52 18.5 3.73 15.89 2 12Z" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
             </button>
           </div>
-          {turnstileSiteKey ? (
-            <div className="rounded-xl border border-default-200 bg-default-50/40 p-3 dark:bg-default-100/5">
-              <div ref={captchaRef} />
-            </div>
-          ) : null}
-          {errorCode ? <p className="text-sm text-danger">{errorMessage(errorCode)}</p> : null}
-          <Button type="submit" color="primary" radius="lg" size="lg" className="h-12 w-full text-base font-medium" isLoading={submitting} isDisabled={disabled}>
-            Sign In
-          </Button>
-          <div className="text-center text-sm">
-            <a href="/" className="text-primary hover:underline">
-              Back to store
-            </a>
+        </div>
+        <div className="flex items-center justify-between pt-1 text-sm">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-foreground/90">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              className="size-4 rounded border-surface-border accent-blue-600"
+            />
+            Remember me
+          </label>
+          <button type="button" className="text-foreground/60 hover:text-foreground/90">
+            Forgot password?
+          </button>
+        </div>
+        {turnstileSiteKey ? (
+          <div className="rounded-xl border border-surface-border bg-background/50 p-3">
+            <div ref={captchaRef} />
           </div>
-        </form>
-      </CardBody>
-    </Card>
+        ) : null}
+        {errorCode ? <p className="text-sm text-danger">{errorMessage(errorCode)}</p> : null}
+        <button
+          type="submit"
+          disabled={disabled}
+          className="h-12 w-full rounded-xl bg-blue-600 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? "Signing in..." : "Log In"}
+        </button>
+        <div className="pt-1 text-center">
+          <a href="/account/register" className="text-base text-blue-600 hover:underline">
+            Create an account
+          </a>
+        </div>
+      </form>
+    </div>
   );
 }
