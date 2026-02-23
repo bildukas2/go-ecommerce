@@ -2382,6 +2382,7 @@ export async function deleteShippingTerminals(provider: string, country: string)
 export type PaymentMethod = {
   id: string;
   key: string;
+  method_name: "bank_transfer" | "cash_on_delivery";
   title: string;
   description: string;
   instructions: string;
@@ -2402,6 +2403,11 @@ export type BankTransferConfig = {
   bic_swift?: string;
 };
 
+export type CashOnDeliveryConfig = {
+  shipping_method_ids: string[];
+  accept_virtual_orders: boolean;
+};
+
 function normalizePaymentMethod(raw: unknown): PaymentMethod | null {
   const obj = asRecord(raw);
   const id = asString(obj.id);
@@ -2410,9 +2416,13 @@ function normalizePaymentMethod(raw: unknown): PaymentMethod | null {
   const paymentType = asString(obj.payment_type ?? obj.paymentType).toLowerCase();
   if (paymentType !== "manual" && paymentType !== "provider") return null;
 
+  const methodName = asString(obj.method_name ?? obj.methodName).toLowerCase();
+  if (methodName !== "bank_transfer" && methodName !== "cash_on_delivery") return null;
+
   return {
     id,
     key: asString(obj.key),
+    method_name: methodName as "bank_transfer" | "cash_on_delivery",
     title: asString(obj.title),
     description: asString(obj.description),
     instructions: asString(obj.instructions),
@@ -2445,6 +2455,7 @@ export async function createPaymentMethod(data: Omit<PaymentMethod, "id" | "crea
   const url = new URL(apiJoin("admin/payments/methods"));
   const payload = {
     key: data.key || "",
+    method_name: data.method_name || "",
     title: data.title || "",
     description: data.description || "",
     instructions: data.instructions || "",
@@ -2472,6 +2483,7 @@ export async function updatePaymentMethod(id: string, data: Partial<PaymentMetho
   const url = new URL(apiJoin(`admin/payments/methods/${encodeURIComponent(id)}`));
   const payload = {
     key: data.key || "",
+    method_name: data.method_name || "",
     title: data.title || "",
     description: data.description || "",
     instructions: data.instructions || "",

@@ -10,10 +10,22 @@ END
 $$;
 -- +goose StatementEnd
 
+-- Payment method name enum
+-- +goose StatementBegin
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_method_name') THEN
+    CREATE TYPE payment_method_name AS ENUM ('bank_transfer', 'cash_on_delivery');
+  END IF;
+END
+$$;
+-- +goose StatementEnd
+
 -- Payment methods table
 CREATE TABLE IF NOT EXISTS payment_methods (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   key text NOT NULL UNIQUE,
+  method_name payment_method_name NOT NULL,
   title text NOT NULL,
   description text,
   instructions text,
@@ -27,10 +39,13 @@ CREATE TABLE IF NOT EXISTS payment_methods (
 
 CREATE INDEX IF NOT EXISTS idx_payment_methods_key ON payment_methods(key);
 CREATE INDEX IF NOT EXISTS idx_payment_methods_enabled ON payment_methods(enabled);
+CREATE INDEX IF NOT EXISTS idx_payment_methods_method_name ON payment_methods(method_name);
 
 -- +goose Down
+DROP INDEX IF EXISTS idx_payment_methods_method_name;
 DROP INDEX IF EXISTS idx_payment_methods_enabled;
 DROP INDEX IF EXISTS idx_payment_methods_key;
 DROP TABLE IF EXISTS payment_methods;
 
+DROP TYPE IF EXISTS payment_method_name;
 DROP TYPE IF EXISTS payment_type;

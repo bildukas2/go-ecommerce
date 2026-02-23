@@ -15,6 +15,7 @@ import (
 
 type methodRequest struct {
 	Key          string          `json:"key"`
+	MethodName   string          `json:"method_name"`
 	Title        string          `json:"title"`
 	Description  string          `json:"description"`
 	Instructions string          `json:"instructions"`
@@ -27,6 +28,7 @@ type methodRequest struct {
 type methodResponse struct {
 	ID           string          `json:"id"`
 	Key          string          `json:"key"`
+	MethodName   string          `json:"method_name"`
 	Title        string          `json:"title"`
 	Description  string          `json:"description"`
 	Instructions string          `json:"instructions"`
@@ -74,6 +76,7 @@ func toMethodResponse(method storpayments.PaymentMethod) methodResponse {
 	return methodResponse{
 		ID:           method.ID,
 		Key:          method.Key,
+		MethodName:   method.MethodName,
 		Title:        method.Title,
 		Description:  method.Description,
 		Instructions: method.Instructions,
@@ -177,6 +180,10 @@ func (m *module) handleCreateMethod(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusBadRequest, "title is required")
 		return
 	}
+	if req.MethodName == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "method_name is required")
+		return
+	}
 
 	// Check if method with this key already exists
 	existing, err := m.store.GetMethodByKey(r.Context(), req.Key)
@@ -199,6 +206,7 @@ func (m *module) handleCreateMethod(w http.ResponseWriter, r *http.Request) {
 
 	method := storpayments.PaymentMethod{
 		Key:          req.Key,
+		MethodName:   req.MethodName,
 		Title:        req.Title,
 		Description:  req.Description,
 		Instructions: req.Instructions,
@@ -238,6 +246,10 @@ func (m *module) handleUpdateMethod(w http.ResponseWriter, r *http.Request, meth
 		platformhttp.Error(w, http.StatusBadRequest, "title is required")
 		return
 	}
+	if req.MethodName == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "method_name is required")
+		return
+	}
 
 	if req.PaymentType == "" {
 		req.PaymentType = "manual"
@@ -250,6 +262,7 @@ func (m *module) handleUpdateMethod(w http.ResponseWriter, r *http.Request, meth
 	method := storpayments.PaymentMethod{
 		ID:           methodID,
 		Key:          req.Key,
+		MethodName:   req.MethodName,
 		Title:        req.Title,
 		Description:  req.Description,
 		Instructions: req.Instructions,

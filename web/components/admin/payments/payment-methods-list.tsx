@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2, Edit2, Plus } from "lucide-react";
-import type { PaymentMethod } from "@/lib/api";
-import { deletePaymentMethod } from "@/lib/api";
-import { PaymentMethodForm } from "./payment-method-form";
+import { useState, useEffect } from "react";
+import { Trash2, Plus } from "lucide-react";
+import type { PaymentMethod, ShippingMethod } from "@/lib/api";
+import { deletePaymentMethod, getShippingMethods } from "@/lib/api";
+import { MethodTypeSelector } from "./method-type-selector";
 
 type Props = {
   initialMethods: PaymentMethod[];
@@ -13,24 +13,23 @@ type Props = {
 
 export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
   const [methods, setMethods] = useState(initialMethods);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const handleAddMethod = () => {
-    setSelectedMethod(null);
-    setIsFormOpen(true);
-  };
+  useEffect(() => {
+    getShippingMethods()
+      .then(setShippingMethods)
+      .catch((err) => console.error("Failed to fetch shipping methods:", err));
+  }, []);
 
-  const handleEditMethod = (method: PaymentMethod) => {
-    setSelectedMethod(method);
+  const handleAddMethod = () => {
     setIsFormOpen(true);
   };
 
   const handleFormClose = () => {
     setIsFormOpen(false);
-    setSelectedMethod(null);
   };
 
   const handleFormSuccess = (newMethods: PaymentMethod[]) => {
@@ -145,24 +144,14 @@ export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
                       <td className="px-4 py-3 text-foreground/70">{method.sort_order}</td>
                       <td className="px-4 py-3 text-foreground/70">{formatDate(method.updated_at)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleEditMethod(method)}
-                            title="Edit method"
-                            aria-label="Edit method"
-                            className="inline-flex size-8 items-center justify-center rounded-lg border border-blue-500/35 bg-blue-500/10 text-blue-700 hover:bg-blue-500/15 dark:text-blue-300"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(method.id, method.title)}
-                            title="Delete method"
-                            aria-label="Delete method"
-                            className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleDeleteClick(method.id, method.title)}
+                          title="Delete method"
+                          aria-label="Delete method"
+                          className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -174,11 +163,11 @@ export function PaymentMethodsList({ initialMethods, onMethodUpdated }: Props) {
       </div>
 
       {isFormOpen && (
-        <PaymentMethodForm
-          method={selectedMethod}
+        <MethodTypeSelector
+          methods={methods}
+          shippingMethods={shippingMethods}
           onClose={handleFormClose}
           onSuccess={handleFormSuccess}
-          currentMethods={methods}
         />
       )}
 

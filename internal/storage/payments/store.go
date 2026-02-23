@@ -10,6 +10,7 @@ import (
 type PaymentMethod struct {
 	ID           string          `json:"id"`
 	Key          string          `json:"key"`
+	MethodName   string          `json:"method_name"`
 	Title        string          `json:"title"`
 	Description  string          `json:"description"`
 	Instructions string          `json:"instructions"`
@@ -28,6 +29,11 @@ type BankTransferConfig struct {
 	SortCode      string `json:"sort_code,omitempty"`
 	IBAN          string `json:"iban,omitempty"`
 	BICSwift      string `json:"bic_swift,omitempty"`
+}
+
+type CashOnDeliveryConfig struct {
+	ShippingMethodIDs []string `json:"shipping_method_ids"`
+	AcceptVirtualOrders bool    `json:"accept_virtual_orders"`
 }
 
 type MethodsStore interface {
