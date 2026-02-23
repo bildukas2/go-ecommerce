@@ -74,10 +74,21 @@ func NewRouter(deps Deps) http.Handler {
 	return wrapped
 }
 
+type adminRoleGuard interface {
+	RequireRole(roleCode string) func(http.Handler) http.Handler
+}
+
 func applyAdminMiddleware(mux *http.ServeMux, rateLimiter *platformhttp.RateLimiter) http.Handler {
+	requireAdminRole := func(next http.Handler) http.Handler { return next }
+	if module, ok := modulesRegistry["adminauth"]; ok {
+		if guard, ok := module.(adminRoleGuard); ok {
+			requireAdminRole = guard.RequireRole("admin")
+		}
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/admin") {
+		if strings.HasPrefix(r.URL.Path, "/admin") || strings.HasPrefix(r.URL.Path, "/api/admin/") {
 			handler := platformhttp.SecurityHeaders(rateLimiter.Middleware(mux))
+			handler = requireAdminRole(handler)
 			handler.ServeHTTP(w, r)
 			return
 		}

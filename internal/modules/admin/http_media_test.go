@@ -45,7 +45,7 @@ func TestAdminMediaListSuccess(t *testing.T) {
 			return []stormedia.Asset{{ID: "asset-1", URL: "http://localhost:8080/uploads/a.png"}}, nil
 		},
 	}
-	m := &module{media: store, user: "admin", pass: "pass", uploadsDir: t.TempDir()}
+	m := &module{media: store, uploadsDir: t.TempDir()}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -84,7 +84,7 @@ func TestAdminMediaUploadSuccess(t *testing.T) {
 		},
 	}
 	uploadsDir := t.TempDir()
-	m := &module{media: store, user: "admin", pass: "pass", uploadsDir: uploadsDir}
+	m := &module{media: store, uploadsDir: uploadsDir}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -111,7 +111,7 @@ func TestAdminMediaUploadSuccess(t *testing.T) {
 
 func TestAdminMediaUploadRejectsUnsupportedType(t *testing.T) {
 	store := &fakeMediaStore{}
-	m := &module{media: store, user: "admin", pass: "pass", uploadsDir: t.TempDir()}
+	m := &module{media: store, uploadsDir: t.TempDir()}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -126,7 +126,7 @@ func TestAdminMediaUploadRejectsUnsupportedType(t *testing.T) {
 
 func TestAdminMediaImportURLRequiresConsent(t *testing.T) {
 	store := &fakeMediaStore{}
-	m := &module{media: store, user: "admin", pass: "pass", uploadsDir: t.TempDir()}
+	m := &module{media: store, uploadsDir: t.TempDir()}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -142,7 +142,7 @@ func TestAdminMediaImportURLRequiresConsent(t *testing.T) {
 
 func TestAdminMediaImportURLBlocksPrivateHost(t *testing.T) {
 	store := &fakeMediaStore{}
-	m := &module{media: store, user: "admin", pass: "pass", uploadsDir: t.TempDir()}
+	m := &module{media: store, uploadsDir: t.TempDir()}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -180,8 +180,6 @@ func TestAdminMediaImportURLSuccess(t *testing.T) {
 	uploadsDir := t.TempDir()
 	m := &module{
 		media:      store,
-		user:       "admin",
-		pass:       "pass",
 		uploadsDir: uploadsDir,
 		validateImportHost: func(_ context.Context, host string) error {
 			if host == "" {

@@ -3,11 +3,9 @@ package admin
 import (
 	"bytes"
 	"context"
-	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
 	storcat "goecommerce/internal/storage/catalog"
@@ -27,22 +24,14 @@ import (
 	stororders "goecommerce/internal/storage/orders"
 )
 
-const (
-	adminAuthMaxAttempts = 5
-	adminAuthLockWindow  = 15 * time.Minute
-)
-
 type module struct {
 	orders              ordersStore
 	customers           customersStore
 	catalog             catalogStore
 	media               mediaStore
-	redis               *redis.Client
 	validateImportHost  func(context.Context, string) error
 	downloadImportImage func(context.Context, string) ([]byte, string, error)
 	uploadsDir          string
-	user                string
-	pass                string
 }
 
 func NewModule(deps app.Deps) app.Module {
@@ -88,10 +77,7 @@ func NewModule(deps app.Deps) app.Module {
 		customers:  cust,
 		catalog:    cst,
 		media:      mst,
-		redis:      deps.Redis,
 		uploadsDir: uploadsDir,
-		user:       strings.TrimSpace(os.Getenv("ADMIN_USER")),
-		pass:       strings.TrimSpace(os.Getenv("ADMIN_PASS")),
 	}
 }
 
@@ -122,91 +108,30 @@ func (m *module) Close() error {
 func (m *module) Name() string { return "admin" }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/admin/dashboard", m.wrapAuth(m.handleDashboard))
-	mux.HandleFunc("/admin/orders", m.wrapAuth(m.handleOrders))
-	mux.HandleFunc("/admin/orders/", m.wrapAuth(m.handleOrderDetail))
-	mux.HandleFunc("/admin/orders/status", m.wrapAuth(m.handleUpdateOrderStatus))
-	mux.HandleFunc("/admin/customers", m.wrapAuth(m.handleCustomers))
-	mux.HandleFunc("/admin/customers/", m.wrapAuth(m.handleCustomerDetailActions))
-	mux.HandleFunc("/admin/customers/logs", m.wrapAuth(m.handleCustomerActionLogs))
-	mux.HandleFunc("/admin/customers/groups", m.wrapAuth(m.handleCustomerGroups))
-	mux.HandleFunc("/admin/customers/groups/", m.wrapAuth(m.handleCustomerGroupDetail))
-	mux.HandleFunc("/admin/security/blocked-ips", m.wrapAuth(m.handleBlockedIPs))
-	mux.HandleFunc("/admin/security/blocked-ips/", m.wrapAuth(m.handleBlockedIPDetail))
-	mux.HandleFunc("/admin/media", m.wrapAuth(m.handleMedia))
-	mux.HandleFunc("/admin/media/upload", m.wrapAuth(m.handleMediaUpload))
-	mux.HandleFunc("/admin/media/import-url", m.wrapAuth(m.handleMediaImportURL))
-	mux.HandleFunc("/admin/catalog/categories", m.wrapAuth(m.handleCatalogCategories))
-	mux.HandleFunc("/admin/catalog/categories/", m.wrapAuth(m.handleCatalogCategoryDetail))
-	mux.HandleFunc("/admin/catalog/products", m.wrapAuth(m.handleCatalogProducts))
-	mux.HandleFunc("/admin/catalog/products/categories/bulk-assign", m.wrapAuth(m.handleCatalogProductsBulkAssignCategories))
-	mux.HandleFunc("/admin/catalog/products/categories/bulk-remove", m.wrapAuth(m.handleCatalogProductsBulkRemoveCategories))
-	mux.HandleFunc("/admin/catalog/products/discount/bulk", m.wrapAuth(m.handleCatalogProductsBulkDiscount))
-	mux.HandleFunc("/admin/catalog/products/", m.wrapAuth(m.handleCatalogProductDetailActions))
-	mux.HandleFunc("/admin/custom-options", m.wrapAuth(m.handleCustomOptions))
-	mux.HandleFunc("/admin/custom-options/", m.wrapAuth(m.handleCustomOptionDetail))
-	mux.HandleFunc("/admin/products/", m.wrapAuth(m.handleProductCustomOptionAssignments))
-}
-
-func (m *module) wrapAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if m.user == "" || m.pass == "" {
-			platformhttp.Error(w, http.StatusServiceUnavailable, "admin disabled")
-			return
-		}
-
-		ip := platformhttp.ClientIP(r)
-		if m.isAuthLocked(r.Context(), ip) {
-			platformhttp.Error(w, http.StatusTooManyRequests, "too many failed attempts, try again later")
-			return
-		}
-
-		u, p, ok := r.BasicAuth()
-		userOK := subtle.ConstantTimeCompare([]byte(u), []byte(m.user)) == 1
-		passOK := subtle.ConstantTimeCompare([]byte(p), []byte(m.pass)) == 1
-		if !ok || !userOK || !passOK {
-			m.recordAuthFailure(r.Context(), ip)
-			w.Header().Set("WWW-Authenticate", "Basic realm=admin")
-			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
-			return
-		}
-
-		m.clearAuthFailures(r.Context(), ip)
-		next(w, r)
-	}
-}
-
-func (m *module) authFailKey(ip string) string {
-	return fmt.Sprintf("admin:auth:fail:%s", ip)
-}
-
-func (m *module) isAuthLocked(ctx context.Context, ip string) bool {
-	if m.redis == nil || ip == "" {
-		return false
-	}
-	count, err := m.redis.Get(ctx, m.authFailKey(ip)).Int()
-	if err != nil {
-		return false
-	}
-	return count >= adminAuthMaxAttempts
-}
-
-func (m *module) recordAuthFailure(ctx context.Context, ip string) {
-	if m.redis == nil || ip == "" {
-		return
-	}
-	key := m.authFailKey(ip)
-	pipe := m.redis.Pipeline()
-	pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, adminAuthLockWindow)
-	_, _ = pipe.Exec(ctx)
-}
-
-func (m *module) clearAuthFailures(ctx context.Context, ip string) {
-	if m.redis == nil || ip == "" {
-		return
-	}
-	_ = m.redis.Del(ctx, m.authFailKey(ip)).Err()
+	mux.HandleFunc("/admin/dashboard", m.handleDashboard)
+	mux.HandleFunc("/admin/orders", m.handleOrders)
+	mux.HandleFunc("/admin/orders/", m.handleOrderDetail)
+	mux.HandleFunc("/admin/orders/status", m.handleUpdateOrderStatus)
+	mux.HandleFunc("/admin/customers", m.handleCustomers)
+	mux.HandleFunc("/admin/customers/", m.handleCustomerDetailActions)
+	mux.HandleFunc("/admin/customers/logs", m.handleCustomerActionLogs)
+	mux.HandleFunc("/admin/customers/groups", m.handleCustomerGroups)
+	mux.HandleFunc("/admin/customers/groups/", m.handleCustomerGroupDetail)
+	mux.HandleFunc("/admin/security/blocked-ips", m.handleBlockedIPs)
+	mux.HandleFunc("/admin/security/blocked-ips/", m.handleBlockedIPDetail)
+	mux.HandleFunc("/admin/media", m.handleMedia)
+	mux.HandleFunc("/admin/media/upload", m.handleMediaUpload)
+	mux.HandleFunc("/admin/media/import-url", m.handleMediaImportURL)
+	mux.HandleFunc("/admin/catalog/categories", m.handleCatalogCategories)
+	mux.HandleFunc("/admin/catalog/categories/", m.handleCatalogCategoryDetail)
+	mux.HandleFunc("/admin/catalog/products", m.handleCatalogProducts)
+	mux.HandleFunc("/admin/catalog/products/categories/bulk-assign", m.handleCatalogProductsBulkAssignCategories)
+	mux.HandleFunc("/admin/catalog/products/categories/bulk-remove", m.handleCatalogProductsBulkRemoveCategories)
+	mux.HandleFunc("/admin/catalog/products/discount/bulk", m.handleCatalogProductsBulkDiscount)
+	mux.HandleFunc("/admin/catalog/products/", m.handleCatalogProductDetailActions)
+	mux.HandleFunc("/admin/custom-options", m.handleCustomOptions)
+	mux.HandleFunc("/admin/custom-options/", m.handleCustomOptionDetail)
+	mux.HandleFunc("/admin/products/", m.handleProductCustomOptionAssignments)
 }
 
 func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {

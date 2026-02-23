@@ -177,7 +177,7 @@ func TestAdminCustomersListSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -218,7 +218,7 @@ func TestAdminCustomersListSuccess(t *testing.T) {
 }
 
 func TestAdminCustomersUnavailableWithoutStore(t *testing.T) {
-	m := &module{user: "admin", pass: "pass"}
+	m := &module{}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -250,7 +250,7 @@ func TestAdminCustomersCreateSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -275,7 +275,7 @@ func TestAdminCustomersUpdateConflict(t *testing.T) {
 			return storcustomers.AdminCustomer{}, storcustomers.ErrConflict
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -297,7 +297,7 @@ func TestAdminCustomersStatusUpdateValidation(t *testing.T) {
 			return storcustomers.AdminCustomer{}, storcustomers.ErrInvalid
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -323,7 +323,7 @@ func TestAdminCustomerGroupsListSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -356,7 +356,7 @@ func TestAdminCustomerGroupsCreateConflict(t *testing.T) {
 			return storcustomers.CustomerGroup{}, storcustomers.ErrConflict
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -375,7 +375,7 @@ func TestAdminCustomerGroupsUpdateProtected(t *testing.T) {
 			return storcustomers.CustomerGroup{}, storcustomers.ErrProtected
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -394,7 +394,7 @@ func TestAdminCustomerGroupsDeleteAssignedConflict(t *testing.T) {
 			return storcustomers.ErrGroupAssigned
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -436,7 +436,7 @@ func TestAdminCustomerActionLogsListFiltersAndPagination(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -485,7 +485,7 @@ func TestAdminCustomerGroupsCreateWritesActionLogWithIP(t *testing.T) {
 			return storcustomers.CustomerActionLog{}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -529,7 +529,7 @@ func TestAdminBlockedIPsListSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -562,7 +562,7 @@ func TestAdminBlockedIPsCreateLogsSecurityAction(t *testing.T) {
 			return storcustomers.CustomerActionLog{}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -611,7 +611,7 @@ func TestAdminBlockedIPsDeleteLogsSecurityAction(t *testing.T) {
 			return storcustomers.CustomerActionLog{}, nil
 		},
 	}
-	m := &module{customers: store, user: "admin", pass: "pass"}
+	m := &module{customers: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -632,7 +632,7 @@ func TestAdminBlockedIPsDeleteLogsSecurityAction(t *testing.T) {
 }
 
 func TestAdminBlockedIPsCreateValidation(t *testing.T) {
-	m := &module{customers: &fakeCustomersStore{}, user: "admin", pass: "pass"}
+	m := &module{customers: &fakeCustomersStore{}}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 

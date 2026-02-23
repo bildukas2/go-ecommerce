@@ -170,7 +170,7 @@ func TestCatalogCreateCategorySuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -187,7 +187,7 @@ func TestCatalogCreateCategorySuccess(t *testing.T) {
 }
 
 func TestCatalogCreateCategoryValidationError(t *testing.T) {
-	m := &module{catalog: &fakeCatalogStore{}, user: "admin", pass: "pass"}
+	m := &module{catalog: &fakeCatalogStore{}}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -210,7 +210,7 @@ func TestCatalogBulkAssignCategoriesMapsNotFound(t *testing.T) {
 			return 0, storcat.ErrNotFound
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -239,7 +239,7 @@ func TestCatalogDeleteCategorySuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -266,7 +266,7 @@ func TestCatalogDeleteCategoryMapsNotFound(t *testing.T) {
 			return storcat.DeleteCategoryResult{}, storcat.ErrNotFound
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -280,7 +280,7 @@ func TestCatalogDeleteCategoryMapsNotFound(t *testing.T) {
 }
 
 func TestCatalogProductDiscountValidationError(t *testing.T) {
-	m := &module{catalog: &fakeCatalogStore{}, user: "admin", pass: "pass"}
+	m := &module{catalog: &fakeCatalogStore{}}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -302,7 +302,7 @@ func TestCatalogDeleteProductSuccess(t *testing.T) {
 			return nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -329,7 +329,7 @@ func TestCatalogDeleteProductMapsConflict(t *testing.T) {
 			return storcat.ErrConflict
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -355,7 +355,7 @@ func TestCatalogProductDiscountSuccess(t *testing.T) {
 			return 3, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -388,7 +388,7 @@ func TestCatalogCreateProductVariantSuccess(t *testing.T) {
 			return storcat.Variant{ID: "var-1", SKU: in.SKU, PriceCents: in.PriceCents, Currency: in.Currency, Stock: in.Stock}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 

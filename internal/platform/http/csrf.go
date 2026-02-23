@@ -37,12 +37,6 @@ func CSRFProtection(next http.Handler) http.Handler {
 			return
 		}
 
-		// Skip CSRF for requests with explicit Basic Auth (server-to-server calls)
-		if _, _, ok := r.BasicAuth(); ok {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		headerToken := r.Header.Get(csrfHeaderName)
 		if headerToken == "" || headerToken != cookie.Value {
 			Error(w, http.StatusForbidden, "csrf token mismatch")

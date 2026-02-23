@@ -22,7 +22,7 @@ func TestAdminListCustomOptionsSuccess(t *testing.T) {
 			return []storcat.ProductCustomOption{{ID: "opt-1", Title: "Gift Wrap", TypeGroup: "select", Type: "dropdown"}}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -36,7 +36,7 @@ func TestAdminListCustomOptionsSuccess(t *testing.T) {
 }
 
 func TestAdminCreateCustomOptionValidationError(t *testing.T) {
-	m := &module{catalog: &fakeCatalogStore{}, user: "admin", pass: "pass"}
+	m := &module{catalog: &fakeCatalogStore{}}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -63,7 +63,7 @@ func TestAdminCreateCustomOptionSuccess(t *testing.T) {
 			return storcat.ProductCustomOption{ID: "opt-1", Code: in.Code, Title: in.Title, TypeGroup: in.TypeGroup, Type: in.Type, Values: []storcat.ProductCustomOptionValue{{ID: "val-1", Title: "Red"}}}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -90,7 +90,7 @@ func TestAdminDeleteCustomOptionAssignedConflict(t *testing.T) {
 			return storcat.ErrConflict
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -124,7 +124,7 @@ func TestAdminProductCustomOptionAssignmentsListSuccess(t *testing.T) {
 			return storcat.ProductCustomOption{ID: id, Title: "Gift Message", TypeGroup: "text", Type: "field"}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -152,7 +152,7 @@ func TestAdminProductCustomOptionAssignmentsListSkipOrphaned(t *testing.T) {
 			return storcat.ProductCustomOption{}, storcat.ErrNotFound
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -180,7 +180,7 @@ func TestAdminProductCustomOptionAssignmentsListSkipOrphaned(t *testing.T) {
 }
 
 func TestAdminProductCustomOptionAttachValidationError(t *testing.T) {
-	m := &module{catalog: &fakeCatalogStore{}, user: "admin", pass: "pass"}
+	m := &module{catalog: &fakeCatalogStore{}}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -203,7 +203,7 @@ func TestAdminProductCustomOptionAttachSuccess(t *testing.T) {
 			return storcat.ProductCustomOptionAssignment{ProductID: productID, OptionID: optionID, SortOrder: *sortOrder}, nil
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -220,7 +220,7 @@ func TestAdminProductCustomOptionDetachNotFound(t *testing.T) {
 			return storcat.ErrNotFound
 		},
 	}
-	m := &module{catalog: store, user: "admin", pass: "pass"}
+	m := &module{catalog: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 

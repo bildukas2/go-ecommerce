@@ -115,7 +115,7 @@ func TestAdminOrderDetailReturnsStructuredPayload(t *testing.T) {
 			}, nil
 		},
 	}
-	m := &module{orders: store, user: "admin", pass: "pass"}
+	m := &module{orders: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
@@ -172,7 +172,7 @@ func TestAdminOrderDetailNotFound(t *testing.T) {
 			return stororders.Order{}, sql.ErrNoRows
 		},
 	}
-	m := &module{orders: store, user: "admin", pass: "pass"}
+	m := &module{orders: store}
 	mux := http.NewServeMux()
 	m.RegisterRoutes(mux)
 
