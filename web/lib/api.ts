@@ -928,6 +928,10 @@ export type AdminOrderSummary = {
   currency: string;
   total_cents: number;
   created_at: string;
+  customer_name: string;
+  customer_info: string;
+  shipment_type: string;
+  payment_type: string;
 };
 
 export type AdminCustomerSummary = {

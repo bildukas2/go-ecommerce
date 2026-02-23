@@ -9,6 +9,16 @@ export const dynamic = "force-dynamic";
 
 type PageProps = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
+function formatLabel(value: string, fallback = "-"): string {
+  const normalized = value.trim();
+  if (!normalized) return fallback;
+  return normalized
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const user = process.env.ADMIN_USER;
@@ -103,17 +113,20 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
           <table className="w-full caption-bottom text-sm">
             <thead>
               <tr className="border-b border-surface-border transition-colors">
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Customer</th>
                 <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Order Number</th>
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Shipment</th>
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Payment</th>
                 <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Status</th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Total</th>
                 <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Date</th>
+                <th className="h-12 px-4 text-left align-middle font-medium text-foreground/70">Total</th>
                 <th className="h-12 px-4 text-right align-middle font-medium text-foreground/70">Actions</th>
               </tr>
             </thead>
             <tbody className="[&_tr:last-child]:border-0">
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-foreground/60">
+                  <td colSpan={8} className="p-8 text-center text-foreground/60">
                     {fetchError ? "Failed to load orders" : "No orders found"}
                   </td>
                 </tr>
@@ -123,17 +136,27 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                     key={order.id}
                     className="border-b border-surface-border transition-colors hover:bg-foreground/[0.04]"
                   >
+                    <td className="p-4 align-middle">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium">
+                          {order.customer_name?.trim() || "Guest"}
+                        </span>
+                        <span className="text-xs text-foreground/60">
+                          {order.customer_info?.trim() || "-"}
+                        </span>
+                      </div>
+                    </td>
                     <td className="p-4 align-middle font-mono text-xs font-semibold md:text-sm">
                       {order.number}
                     </td>
+                    <td className="p-4 align-middle text-foreground/75">
+                      {order.shipment_type?.trim() || "-"}
+                    </td>
+                    <td className="p-4 align-middle text-foreground/75">
+                      {formatLabel(order.payment_type)}
+                    </td>
                     <td className="p-4 align-middle">
                       <StatusBadge status={order.status} />
-                    </td>
-                    <td className="p-4 align-middle font-medium">
-                      {(order.total_cents / 100).toLocaleString(undefined, {
-                        style: "currency",
-                        currency: order.currency || "USD",
-                      })}
                     </td>
                     <td className="p-4 align-middle text-foreground/70">
                       {new Date(order.created_at).toLocaleString(undefined, {
@@ -142,6 +165,12 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                         year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="p-4 align-middle font-medium">
+                      {(order.total_cents / 100).toLocaleString(undefined, {
+                        style: "currency",
+                        currency: order.currency || "USD",
                       })}
                     </td>
                     <td className="p-4 align-middle text-right">

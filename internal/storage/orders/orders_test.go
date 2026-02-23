@@ -223,3 +223,114 @@ func TestUpdateOrderStatusToNewStatuses(t *testing.T) {
 		}
 	}
 }
+
+func TestListOrdersIncludesCustomerShipmentAndPaymentFields(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping list orders summary test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var ordersTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.orders')").Scan(&ordersTable); err != nil || ordersTable == nil || *ordersTable == "" {
+		t.Skip("orders table not present; apply migrations to run this test")
+	}
+
+	var customersTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.customers')").Scan(&customersTable); err != nil || customersTable == nil || *customersTable == "" {
+		t.Skip("customers table not present; apply migrations to run this test")
+	}
+
+	var shippingMethodsTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.shipping_methods')").Scan(&shippingMethodsTable); err != nil || shippingMethodsTable == nil || *shippingMethodsTable == "" {
+		t.Skip("shipping_methods table not present; apply migrations to run this test")
+	}
+
+	store, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	email := fmt.Sprintf("admin-order-summary-%d@example.com", time.Now().UnixNano())
+	var customerID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO customers (email, password_hash, first_name, last_name)
+		VALUES ($1, 'hash', 'Alice', 'Walker')
+		RETURNING id
+	`, email).Scan(&customerID); err != nil {
+		t.Fatalf("insert customer: %v", err)
+	}
+
+	providerKey := fmt.Sprintf("prov-%d", time.Now().UnixNano())
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO shipping_providers (key, name, enabled, mode, config_json)
+		VALUES ($1, 'Test Provider', true, 'sandbox', '{}'::jsonb)
+	`, providerKey); err != nil {
+		t.Fatalf("insert shipping provider: %v", err)
+	}
+
+	var zoneID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO shipping_zones (name, countries_json, enabled)
+		VALUES ('Test Zone', '["US"]'::jsonb, true)
+		RETURNING id
+	`).Scan(&zoneID); err != nil {
+		t.Fatalf("insert shipping zone: %v", err)
+	}
+
+	var shippingMethodID string
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO shipping_methods (zone_id, provider_key, service_code, title, enabled, sort_order, pricing_mode, pricing_rules_json)
+		VALUES ($1, $2, 'door', 'Courier Delivery', true, 0, 'fixed', '{"base_price_cents":500}'::jsonb)
+		RETURNING id
+	`, zoneID, providerKey).Scan(&shippingMethodID); err != nil {
+		t.Fatalf("insert shipping method: %v", err)
+	}
+
+	orderNumber := fmt.Sprintf("ORD-TST-%d", time.Now().UnixNano()%1000000)
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO orders (
+			number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents,
+			customer_id, shipping_method_id, shipping_full_name, shipping_phone, payment_method, payment_provider
+		)
+		VALUES (
+			$1, 'pending_payment', 'USD', 1000, 500, 0, 1500,
+			$2::uuid, $3::uuid, 'Alice Walker', '+1555000111', 'cash_on_delivery', 'manual'
+		)
+	`, orderNumber, customerID, shippingMethodID); err != nil {
+		t.Fatalf("insert order: %v", err)
+	}
+
+	orders, err := store.ListOrders(ctx, 200, 0)
+	if err != nil {
+		t.Fatalf("ListOrders error: %v", err)
+	}
+
+	var found *Order
+	for i := range orders {
+		if orders[i].Number == orderNumber {
+			found = &orders[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected inserted order %s in list", orderNumber)
+	}
+	if found.CustomerName != "Alice Walker" {
+		t.Fatalf("expected customer name 'Alice Walker', got %q", found.CustomerName)
+	}
+	if found.CustomerInfo != email {
+		t.Fatalf("expected customer info %q, got %q", email, found.CustomerInfo)
+	}
+	if found.ShipmentType != "Courier Delivery" {
+		t.Fatalf("expected shipment type 'Courier Delivery', got %q", found.ShipmentType)
+	}
+	if found.PaymentType != "cash_on_delivery" {
+		t.Fatalf("expected payment type 'cash_on_delivery', got %q", found.PaymentType)
+	}
+}

@@ -274,12 +274,16 @@ func (m *module) handleOrders(w http.ResponseWriter, r *http.Request) {
 	outItems := make([]map[string]any, 0, len(items))
 	for _, o := range items {
 		outItems = append(outItems, map[string]any{
-			"id":          o.ID,
-			"number":      o.Number,
-			"status":      o.Status,
-			"currency":    o.Currency,
-			"total_cents": o.TotalCents,
-			"created_at":  o.CreatedAt,
+			"id":            o.ID,
+			"number":        o.Number,
+			"status":        o.Status,
+			"currency":      o.Currency,
+			"total_cents":   o.TotalCents,
+			"created_at":    o.CreatedAt,
+			"customer_name": o.CustomerName,
+			"customer_info": o.CustomerInfo,
+			"shipment_type": o.ShipmentType,
+			"payment_type":  o.PaymentType,
 		})
 	}
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{

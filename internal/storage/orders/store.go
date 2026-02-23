@@ -21,6 +21,10 @@ type Order struct {
 	TotalCents    int
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	CustomerName  string
+	CustomerInfo  string
+	ShipmentType  string
+	PaymentType   string
 	Items         []OrderItem
 }
 
@@ -115,7 +119,44 @@ func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, err
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := s.db.QueryContext(ctx, "SELECT id, number, status, currency, subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			o.id,
+			o.number,
+			o.status,
+			o.currency,
+			o.subtotal_cents,
+			o.shipping_cents,
+			o.tax_cents,
+			o.total_cents,
+			o.created_at,
+			o.updated_at,
+			COALESCE(
+				NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''),
+				NULLIF(TRIM(COALESCE(o.shipping_full_name, '')), ''),
+				'Guest'
+			) AS customer_name,
+			COALESCE(
+				NULLIF(TRIM(COALESCE(c.email, '')), ''),
+				NULLIF(TRIM(COALESCE(o.invoice_email, '')), ''),
+				NULLIF(TRIM(COALESCE(o.shipping_phone, '')), ''),
+				''
+			) AS customer_info,
+			COALESCE(
+				NULLIF(TRIM(COALESCE(sm.title, '')), ''),
+				''
+			) AS shipment_type,
+			COALESCE(
+				NULLIF(TRIM(COALESCE(o.payment_method, '')), ''),
+				NULLIF(TRIM(COALESCE(o.payment_provider, '')), ''),
+				''
+			) AS payment_type
+		FROM orders o
+		LEFT JOIN customers c ON c.id = o.customer_id
+		LEFT JOIN shipping_methods sm ON sm.id = o.shipping_method_id
+		ORDER BY o.created_at DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +164,22 @@ func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, err
 	var items []Order
 	for rows.Next() {
 		var o Order
-		if err := rows.Scan(&o.ID, &o.Number, &o.Status, &o.Currency, &o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&o.ID,
+			&o.Number,
+			&o.Status,
+			&o.Currency,
+			&o.SubtotalCents,
+			&o.ShippingCents,
+			&o.TaxCents,
+			&o.TotalCents,
+			&o.CreatedAt,
+			&o.UpdatedAt,
+			&o.CustomerName,
+			&o.CustomerInfo,
+			&o.ShipmentType,
+			&o.PaymentType,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, o)
