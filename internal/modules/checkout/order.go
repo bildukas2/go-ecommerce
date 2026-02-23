@@ -71,11 +71,7 @@ func (m *module) createOrderWithCheckoutData(ctx context.Context, c storcart.Car
 		if stock < it.Quantity {
 			return stororders.Order{}, errors.New("insufficient stock")
 		}
-		customOptions := it.CustomOptions
-		if customOptions == nil {
-			customOptions = []storcart.CartItemCustomOption{}
-		}
-		customOptionsJSON, err := json.Marshal(customOptions)
+		customOptionsJSON, err := marshalOrderItemCustomOptions(it.CustomOptions)
 		if err != nil {
 			return stororders.Order{}, fmt.Errorf("marshal custom options: %w", err)
 		}
@@ -168,6 +164,39 @@ func (m *module) createOrderWithCheckoutData(ctx context.Context, c storcart.Car
 	}
 
 	return o, nil
+}
+
+type orderItemCustomOptionSnapshot struct {
+	OptionID        string   `json:"option_id"`
+	Title           string   `json:"title"`
+	Type            string   `json:"type"`
+	ValueID         string   `json:"value_id"`
+	ValueIDs        []string `json:"value_ids"`
+	ValueText       string   `json:"value_text"`
+	ValueTitle      string   `json:"value_title"`
+	ValueTitles     []string `json:"value_titles"`
+	PriceDeltaCents int      `json:"price_delta_cents"`
+}
+
+func marshalOrderItemCustomOptions(options []storcart.CartItemCustomOption) ([]byte, error) {
+	if options == nil {
+		options = []storcart.CartItemCustomOption{}
+	}
+	out := make([]orderItemCustomOptionSnapshot, 0, len(options))
+	for _, option := range options {
+		out = append(out, orderItemCustomOptionSnapshot{
+			OptionID:        option.OptionID,
+			Title:           option.Title,
+			Type:            option.Type,
+			ValueID:         option.ValueID,
+			ValueIDs:        option.ValueIDs,
+			ValueText:       option.ValueText,
+			ValueTitle:      option.ValueTitle,
+			ValueTitles:     option.ValueTitles,
+			PriceDeltaCents: option.PriceDeltaCents,
+		})
+	}
+	return json.Marshal(out)
 }
 
 func getBillingField(input placeOrderInput, getter func(Address) string) string {

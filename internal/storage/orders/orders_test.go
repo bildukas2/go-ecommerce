@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -232,6 +233,42 @@ func TestCreateFromCartPersistsOrderItemSnapshotFields(t *testing.T) {
 	if _, err := cartStore.AddItem(ctx, c.ID, variantID, 1, nil); err != nil {
 		t.Fatalf("add item: %v", err)
 	}
+	// Simulate a cart item with custom options and adjusted unit price.
+	cartCustomOptions := []map[string]any{
+		{
+			"OptionID":        "22b18631-78c7-422e-8fa2-11557ab58f4b",
+			"Title":           "Vardas",
+			"Type":            "field",
+			"ValueID":         "",
+			"ValueIDs":        []string{},
+			"ValueText":       "TYasdasd",
+			"ValueTitle":      "",
+			"ValueTitles":     []string{},
+			"PriceDeltaCents": 200,
+		},
+		{
+			"OptionID":        "4568252c-826b-421c-97e2-49c0a5c808e5",
+			"Title":           "Size",
+			"Type":            "radio",
+			"ValueID":         "34945f9e-1f99-493d-b4b7-28647a58a879",
+			"ValueIDs":        []string{},
+			"ValueText":       "",
+			"ValueTitle":      "X",
+			"ValueTitles":     []string{},
+			"PriceDeltaCents": 300,
+		},
+	}
+	customOptionsJSON, err := json.Marshal(cartCustomOptions)
+	if err != nil {
+		t.Fatalf("marshal cart custom options: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		UPDATE cart_items
+		SET unit_price_cents = $1, custom_options_json = $2::jsonb, updated_at = now()
+		WHERE cart_id = $3::uuid AND product_variant_id = $4::uuid
+	`, 3030, customOptionsJSON, c.ID, variantID); err != nil {
+		t.Fatalf("update cart item custom options: %v", err)
+	}
 	c2, err := cartStore.GetCart(ctx, c.ID)
 	if err != nil {
 		t.Fatalf("get cart: %v", err)
@@ -248,21 +285,26 @@ func TestCreateFromCartPersistsOrderItemSnapshotFields(t *testing.T) {
 	var (
 		productTitle string
 		variantSKU   string
+		unitPrice    int
 		attrsMatch   bool
-		optionsMatch bool
+		optionsJSON  []byte
 	)
 	if err := db.QueryRowContext(ctx, `
 		SELECT
+			unit_price_cents,
 			product_title,
 			variant_sku,
 			variant_attributes_json = $2::jsonb AS attrs_match,
-			custom_options_json = '[]'::jsonb AS options_match
+			custom_options_json
 		FROM order_items
 		WHERE id = $1::uuid
-	`, order.Items[0].ID, expectedAttrs).Scan(&productTitle, &variantSKU, &attrsMatch, &optionsMatch); err != nil {
+	`, order.Items[0].ID, expectedAttrs).Scan(&unitPrice, &productTitle, &variantSKU, &attrsMatch, &optionsJSON); err != nil {
 		t.Fatalf("query saved order item snapshot: %v", err)
 	}
 
+	if unitPrice != 3030 {
+		t.Fatalf("expected unit_price_cents %d, got %d", 3030, unitPrice)
+	}
 	if productTitle != expectedTitle {
 		t.Fatalf("expected product_title %q, got %q", expectedTitle, productTitle)
 	}
@@ -272,8 +314,20 @@ func TestCreateFromCartPersistsOrderItemSnapshotFields(t *testing.T) {
 	if !attrsMatch {
 		t.Fatalf("expected variant_attributes_json to match source variant attributes")
 	}
-	if !optionsMatch {
-		t.Fatalf("expected custom_options_json to default to []")
+	var optionsOut []map[string]any
+	if err := json.Unmarshal(optionsJSON, &optionsOut); err != nil {
+		t.Fatalf("decode custom_options_json: %v", err)
+	}
+	if len(optionsOut) != 2 {
+		t.Fatalf("expected 2 custom options, got %d", len(optionsOut))
+	}
+	for _, option := range optionsOut {
+		if _, ok := option["option_id"]; !ok {
+			t.Fatalf("expected snake_case custom option keys, got %s", string(optionsJSON))
+		}
+		if _, ok := option["price_delta_cents"]; !ok {
+			t.Fatalf("expected price_delta_cents in custom options, got %s", string(optionsJSON))
+		}
 	}
 }
 

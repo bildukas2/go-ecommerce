@@ -90,6 +90,39 @@ func generateOrderNumber(now time.Time) string {
 	return fmt.Sprintf("ORD-%s-%d", now.UTC().Format("20060102"), now.UnixNano()%1000000)
 }
 
+type orderItemCustomOptionSnapshot struct {
+	OptionID        string   `json:"option_id"`
+	Title           string   `json:"title"`
+	Type            string   `json:"type"`
+	ValueID         string   `json:"value_id"`
+	ValueIDs        []string `json:"value_ids"`
+	ValueText       string   `json:"value_text"`
+	ValueTitle      string   `json:"value_title"`
+	ValueTitles     []string `json:"value_titles"`
+	PriceDeltaCents int      `json:"price_delta_cents"`
+}
+
+func marshalOrderItemCustomOptions(options []storcart.CartItemCustomOption) ([]byte, error) {
+	if options == nil {
+		options = []storcart.CartItemCustomOption{}
+	}
+	out := make([]orderItemCustomOptionSnapshot, 0, len(options))
+	for _, option := range options {
+		out = append(out, orderItemCustomOptionSnapshot{
+			OptionID:        option.OptionID,
+			Title:           option.Title,
+			Type:            option.Type,
+			ValueID:         option.ValueID,
+			ValueIDs:        option.ValueIDs,
+			ValueText:       option.ValueText,
+			ValueTitle:      option.ValueTitle,
+			ValueTitles:     option.ValueTitles,
+			PriceDeltaCents: option.PriceDeltaCents,
+		})
+	}
+	return json.Marshal(out)
+}
+
 func (s *Store) CreateFromCart(ctx context.Context, c storcart.Cart) (Order, error) {
 	return s.CreateFromCartForCustomer(ctx, c, "")
 }
@@ -135,11 +168,7 @@ func (s *Store) CreateFromCartForCustomer(ctx context.Context, c storcart.Cart, 
 		if stock < it.Quantity {
 			return Order{}, errors.New("insufficient stock")
 		}
-		customOptions := it.CustomOptions
-		if customOptions == nil {
-			customOptions = []storcart.CartItemCustomOption{}
-		}
-		customOptionsJSON, err := json.Marshal(customOptions)
+		customOptionsJSON, err := marshalOrderItemCustomOptions(it.CustomOptions)
 		if err != nil {
 			return Order{}, fmt.Errorf("marshal custom options: %w", err)
 		}
