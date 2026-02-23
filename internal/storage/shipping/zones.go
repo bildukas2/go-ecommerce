@@ -136,7 +136,7 @@ func (s *Store) GetZoneByCountry(ctx context.Context, country string) (*Zone, er
 		ctx,
 		`SELECT id, name, countries_json, enabled, created_at, updated_at 
 		 FROM shipping_zones 
-		 WHERE enabled = true AND countries_json @> to_jsonb($1::text)`,
+		 WHERE enabled = true AND countries_json @> jsonb_build_array($1::text)`,
 		country,
 	).Scan(&z.ID, &z.Name, &z.CountriesJSON, &z.Enabled, &z.CreatedAt, &z.UpdatedAt)
 

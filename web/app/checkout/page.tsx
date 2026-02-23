@@ -154,7 +154,7 @@ export default function CheckoutPage() {
     if (!state.shippingCountry) return;
     const timer = setTimeout(() => fetchQuote(), 400);
     return () => clearTimeout(timer);
-  }, [state.shippingCountry, fetchQuote]);
+  }, [state.shippingCountry, state.currentStep, fetchQuote]);
 
   const handleAddressContinue = async () => {
     const success = await submitAddress();

@@ -54,15 +54,10 @@ func filterByCountry(terminals []shipping.Terminal, country string) []shipping.T
 }
 
 // fetchAndCacheTerminals fetches terminals from API and caches them
-func (p *omnivaProvider) fetchTerminalsFromAPI(ctx context.Context) ([]shipping.Terminal, error) {
-	if p.username == "" || p.password == "" {
-		// No credentials configured, use mock data
-		return nil, nil
-	}
-
+func (p *omnivaProvider) fetchTerminalsFromAPI(ctx context.Context, country string) ([]shipping.Terminal, error) {
 	client := NewClient(p.username, p.password, p.baseURL)
 
-	points, err := client.FetchTerminals(ctx)
+	points, err := client.FetchTerminalsByCountry(ctx, country)
 	if err != nil {
 		return nil, err
 	}
@@ -72,25 +67,17 @@ func (p *omnivaProvider) fetchTerminalsFromAPI(ctx context.Context) ([]shipping.
 
 // TestConnection tests the provider connection
 func (p *omnivaProvider) TestConnection(ctx context.Context) error {
-	if p.username == "" || p.password == "" {
-		return nil // No credentials to test
-	}
-
 	client := NewClient(p.username, p.password, p.baseURL)
 	return client.TestConnection(ctx)
 }
 
-// ListTerminalsFromAPI fetches terminals from the real Omniva API
-// Returns nil if credentials are not configured (caller should use mock data)
+// ListTerminalsFromAPI fetches terminals from the real Omniva public JSON API
+// Always fetches from the public endpoints (no credentials needed)
 func (p *omnivaProvider) ListTerminalsFromAPI(ctx context.Context, country string) ([]shipping.Terminal, error) {
-	terminals, err := p.fetchTerminalsFromAPI(ctx)
+	terminals, err := p.fetchTerminalsFromAPI(ctx, country)
 	if err != nil {
 		return nil, err
 	}
 
-	if terminals == nil {
-		return nil, nil // No API credentials
-	}
-
-	return filterByCountry(terminals, country), nil
+	return terminals, nil
 }

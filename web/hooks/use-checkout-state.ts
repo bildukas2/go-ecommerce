@@ -16,7 +16,7 @@ import type { Terminal } from "@/hooks/use-terminals";
 import type { Cart, CartItem } from "@/lib/api";
 
 // Default country
-const DEFAULT_COUNTRY = "EE";
+const DEFAULT_COUNTRY = "LT";
 
 // Checkout step enum
 export type CheckoutStep = "address" | "shipping" | "payment" | "review";
@@ -262,7 +262,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
     dispatch({ type: "SET_ERROR", payload: null });
     try {
       const response = await getCheckoutQuote(state.shippingCountry);
-      dispatch({ type: "SET_SHIPPING_METHODS", payload: response.methods });
+      dispatch({ type: "SET_SHIPPING_METHODS", payload: response.methods || [] });
       if (response.totals) {
         dispatch({ type: "SET_TOTALS", payload: { subtotal: response.totals.subtotal } });
       }

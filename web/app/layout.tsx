@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentAccount } from "@/lib/api";
 import { LogoutButton } from "@/components/account/logout-button";
+import { AdminButton } from "@/components/admin-button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default async function RootLayout({
                 {isAuthenticated ? (
                   <>
                     <Link href="/account" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">Account</Link>
+                    <AdminButton />
                     <LogoutButton className="h-8 px-2 text-sm" />
                   </>
                 ) : (

@@ -65,18 +65,13 @@ func (p *omnivaProvider) Capabilities() shipping.Capabilities {
 }
 
 func (p *omnivaProvider) ListTerminals(ctx context.Context, country string) ([]shipping.Terminal, error) {
-	// Try real API first if credentials are configured
-	if p.username != "" && p.password != "" {
-		terminals, err := p.ListTerminalsFromAPI(ctx, country)
-		if err != nil {
-			// Log error but fall back to mock data
-			// In production, you might want to return the error
-		} else if terminals != nil {
-			return terminals, nil
-		}
+	// Try real API first - always use the public JSON endpoints
+	terminals, err := p.ListTerminalsFromAPI(ctx, country)
+	if err == nil && terminals != nil {
+		return terminals, nil
 	}
 
-	// Fall back to mock data for development/testing
+	// Fall back to mock data for development/testing if API fetch fails
 	switch country {
 	case "LT":
 		return mockTerminalsLT(), nil
