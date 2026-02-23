@@ -2121,9 +2121,7 @@ export async function updateShippingProvider(key: string, data: Partial<Shipping
   };
   const res = await fetch(url.toString(), {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -2139,6 +2137,7 @@ export async function deleteShippingProvider(key: string): Promise<void> {
   const url = new URL(apiJoin(`admin/shipping/providers/${encodeURIComponent(key)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
+    headers: mutHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2202,9 +2201,7 @@ export async function createShippingZone(data: Omit<ShippingZone, "id" | "create
   };
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -2225,9 +2222,7 @@ export async function updateShippingZone(id: string, data: Partial<ShippingZone>
   };
   const res = await fetch(url.toString(), {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -2243,6 +2238,7 @@ export async function deleteShippingZone(id: string): Promise<void> {
   const url = new URL(apiJoin(`admin/shipping/zones/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
+    headers: mutHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -2279,9 +2275,7 @@ export async function createShippingMethod(data: Omit<ShippingMethod, "id" | "cr
   };
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -2307,9 +2301,7 @@ export async function updateShippingMethod(id: string, data: Partial<ShippingMet
   };
   const res = await fetch(url.toString(), {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -2351,9 +2343,7 @@ export async function refreshShippingTerminals(provider: string, country: string
   url.searchParams.set("country", country);
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: mutHeaders(),
     cache: "no-store",
     body: JSON.stringify({ provider, country }),
   });
@@ -2371,6 +2361,7 @@ export async function deleteShippingTerminals(provider: string, country: string)
   url.searchParams.set("country", country);
   const res = await fetch(url.toString(), {
     method: "DELETE",
+    headers: mutHeaders(),
     cache: "no-store",
   });
   if (!res.ok) {
