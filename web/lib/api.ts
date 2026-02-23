@@ -2428,6 +2428,7 @@ function normalizePaymentMethod(raw: unknown): PaymentMethod | null {
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   const url = new URL(apiJoin("admin/payments/methods"));
   const res = await fetch(url.toString(), {
+    headers: { Authorization: adminAuthHeader() },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch payment methods: ${res.status}`);
@@ -2454,7 +2455,7 @@ export async function createPaymentMethod(data: Omit<PaymentMethod, "id" | "crea
   };
   const res = await fetch(url.toString(), {
     method: "POST",
-    headers: mutHeaders(),
+    headers: mutHeaders({ Authorization: adminAuthHeader() }),
     credentials: "include",
     cache: "no-store",
     body: JSON.stringify(payload),
@@ -2481,7 +2482,7 @@ export async function updatePaymentMethod(id: string, data: Partial<PaymentMetho
   };
   const res = await fetch(url.toString(), {
     method: "PUT",
-    headers: mutHeaders(),
+    headers: mutHeaders({ Authorization: adminAuthHeader() }),
     credentials: "include",
     cache: "no-store",
     body: JSON.stringify(payload),
@@ -2498,7 +2499,7 @@ export async function deletePaymentMethod(id: string): Promise<void> {
   const url = new URL(apiJoin(`admin/payments/methods/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     method: "DELETE",
-    headers: mutHeaders(),
+    headers: mutHeaders({ Authorization: adminAuthHeader() }),
     credentials: "include",
     cache: "no-store",
   });
