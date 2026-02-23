@@ -176,6 +176,107 @@ func TestCreateFromCartForCustomerPersistsCustomerID(t *testing.T) {
 	}
 }
 
+func TestCreateFromCartPersistsOrderItemSnapshotFields(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping order item snapshot test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var ordersTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.orders')").Scan(&ordersTable); err != nil || ordersTable == nil || *ordersTable == "" {
+		t.Skip("orders table not present; apply migrations to run this test")
+	}
+	var orderItemsTable *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.order_items')").Scan(&orderItemsTable); err != nil || orderItemsTable == nil || *orderItemsTable == "" {
+		t.Skip("order_items table not present; apply migrations to run this test")
+	}
+
+	cartStore, err := storcart.NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("cart store init: %v", err)
+	}
+	orderStore, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	c, err := cartStore.CreateCart(ctx)
+	if err != nil {
+		t.Fatalf("create cart: %v", err)
+	}
+
+	var (
+		variantID     string
+		expectedTitle string
+		expectedSKU   string
+		expectedAttrs []byte
+	)
+	if err := db.QueryRowContext(ctx, `
+		SELECT pv.id, p.title, pv.sku, pv.attributes_json
+		FROM product_variants pv
+		JOIN products p ON p.id = pv.product_id
+		LIMIT 1
+	`).Scan(&variantID, &expectedTitle, &expectedSKU, &expectedAttrs); err != nil {
+		if err == sql.ErrNoRows {
+			t.Skip("no product variants seeded; skipping")
+		}
+		t.Fatalf("query variant snapshot source: %v", err)
+	}
+
+	if _, err := cartStore.AddItem(ctx, c.ID, variantID, 1, nil); err != nil {
+		t.Fatalf("add item: %v", err)
+	}
+	c2, err := cartStore.GetCart(ctx, c.ID)
+	if err != nil {
+		t.Fatalf("get cart: %v", err)
+	}
+
+	order, err := orderStore.CreateFromCart(ctx, c2)
+	if err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+	if len(order.Items) == 0 {
+		t.Fatalf("expected at least one order item")
+	}
+
+	var (
+		productTitle string
+		variantSKU   string
+		attrsMatch   bool
+		optionsMatch bool
+	)
+	if err := db.QueryRowContext(ctx, `
+		SELECT
+			product_title,
+			variant_sku,
+			variant_attributes_json = $2::jsonb AS attrs_match,
+			custom_options_json = '[]'::jsonb AS options_match
+		FROM order_items
+		WHERE id = $1::uuid
+	`, order.Items[0].ID, expectedAttrs).Scan(&productTitle, &variantSKU, &attrsMatch, &optionsMatch); err != nil {
+		t.Fatalf("query saved order item snapshot: %v", err)
+	}
+
+	if productTitle != expectedTitle {
+		t.Fatalf("expected product_title %q, got %q", expectedTitle, productTitle)
+	}
+	if variantSKU != expectedSKU {
+		t.Fatalf("expected variant_sku %q, got %q", expectedSKU, variantSKU)
+	}
+	if !attrsMatch {
+		t.Fatalf("expected variant_attributes_json to match source variant attributes")
+	}
+	if !optionsMatch {
+		t.Fatalf("expected custom_options_json to default to []")
+	}
+}
+
 func TestUpdateOrderStatusToNewStatuses(t *testing.T) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

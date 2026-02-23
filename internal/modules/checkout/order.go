@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -40,15 +41,54 @@ func (m *module) createOrderWithCheckoutData(ctx context.Context, c storcart.Car
 		return stororders.Order{}, errors.New("invalid currency")
 	}
 
-	// Check stock
+	type orderItemSnapshot struct {
+		ProductVariantID  string
+		UnitPriceCents    int
+		Currency          string
+		Quantity          int
+		ProductTitle      string
+		VariantSKU        string
+		VariantAttributes []byte
+		CustomOptionsJSON []byte
+	}
+
+	snapshotItems := make([]orderItemSnapshot, 0, len(c.Items))
 	for _, it := range c.Items {
-		var stock int
-		if err := m.db.QueryRowContext(ctx, "SELECT stock FROM product_variants WHERE id = $1", it.ProductVariantID).Scan(&stock); err != nil {
+		var (
+			stock             int
+			productTitle      string
+			variantSKU        string
+			variantAttributes []byte
+		)
+		if err := m.db.QueryRowContext(ctx, `
+			SELECT pv.stock, p.title, pv.sku, COALESCE(pv.attributes_json, '{}'::jsonb)
+			FROM product_variants pv
+			JOIN products p ON p.id = pv.product_id
+			WHERE pv.id = $1
+		`, it.ProductVariantID).Scan(&stock, &productTitle, &variantSKU, &variantAttributes); err != nil {
 			return stororders.Order{}, err
 		}
 		if stock < it.Quantity {
 			return stororders.Order{}, errors.New("insufficient stock")
 		}
+		customOptions := it.CustomOptions
+		if customOptions == nil {
+			customOptions = []storcart.CartItemCustomOption{}
+		}
+		customOptionsJSON, err := json.Marshal(customOptions)
+		if err != nil {
+			return stororders.Order{}, fmt.Errorf("marshal custom options: %w", err)
+		}
+		snapshotItems = append(snapshotItems, orderItemSnapshot{
+			ProductVariantID:  it.ProductVariantID,
+			UnitPriceCents:    it.UnitPriceCents,
+			Currency:          it.Currency,
+			Quantity:          it.Quantity,
+			ProductTitle:      productTitle,
+			VariantSKU:        variantSKU,
+			VariantAttributes: variantAttributes,
+			CustomOptionsJSON: customOptionsJSON,
+		})
 	}
 
 	tx, err := m.db.BeginTx(ctx, nil)
@@ -111,12 +151,12 @@ func (m *module) createOrderWithCheckoutData(ctx context.Context, c storcart.Car
 
 	// Insert order items
 	items := make([]stororders.OrderItem, 0, len(c.Items))
-	for _, it := range c.Items {
+	for _, it := range snapshotItems {
 		var oi stororders.OrderItem
 		if err := tx.QueryRowContext(ctx,
-			"INSERT INTO order_items (order_id, product_variant_id, unit_price_cents, currency, quantity) VALUES ($1,$2,$3,$4,$5) RETURNING id, order_id, product_variant_id, unit_price_cents, currency, quantity, created_at, updated_at",
-			o.ID, it.ProductVariantID, it.UnitPriceCents, it.Currency, it.Quantity,
-		).Scan(&oi.ID, &oi.OrderID, &oi.ProductVariantID, &oi.UnitPriceCents, &oi.Currency, &oi.Quantity, &oi.CreatedAt, &oi.UpdatedAt); err != nil {
+			"INSERT INTO order_items (order_id, product_variant_id, unit_price_cents, currency, quantity, product_title, variant_sku, variant_attributes_json, custom_options_json) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb) RETURNING id, order_id, product_variant_id, unit_price_cents, currency, quantity, product_title, variant_sku, variant_attributes_json, custom_options_json, created_at, updated_at",
+			o.ID, it.ProductVariantID, it.UnitPriceCents, it.Currency, it.Quantity, it.ProductTitle, it.VariantSKU, it.VariantAttributes, it.CustomOptionsJSON,
+		).Scan(&oi.ID, &oi.OrderID, &oi.ProductVariantID, &oi.UnitPriceCents, &oi.Currency, &oi.Quantity, &oi.ProductTitle, &oi.VariantSKU, &oi.VariantAttrsJSON, &oi.CustomOptionsJSON, &oi.CreatedAt, &oi.UpdatedAt); err != nil {
 			return stororders.Order{}, fmt.Errorf("insert order item: %w", err)
 		}
 		items = append(items, oi)
