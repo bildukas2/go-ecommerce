@@ -37,7 +37,7 @@ func TestValidateLoginRequestRequiresCaptcha(t *testing.T) {
 		Email:        "admin@example.com",
 		Password:     "StrongPassword!123",
 		CaptchaToken: "",
-	})
+	}, true)
 	if len(errs) == 0 {
 		t.Fatalf("expected validation errors for missing captcha")
 	}
@@ -50,5 +50,16 @@ func TestValidateLoginRequestRequiresCaptcha(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected captchaToken validation error")
+	}
+}
+
+func TestValidateLoginRequestCaptchaOptional(t *testing.T) {
+	_, _, errs := validateLoginRequest(loginRequest{
+		Email:        "admin@example.com",
+		Password:     "StrongPassword!123",
+		CaptchaToken: "",
+	}, false)
+	if len(errs) != 0 {
+		t.Fatalf("expected no validation errors, got %d", len(errs))
 	}
 }

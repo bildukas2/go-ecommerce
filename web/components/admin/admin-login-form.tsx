@@ -123,7 +123,11 @@ export function AdminLoginForm() {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting || loadingCSRF) return;
-    if (!captchaToken || !csrfToken) {
+    if (!csrfToken) {
+      setErrorCode("captcha_failed");
+      return;
+    }
+    if (turnstileSiteKey && !captchaToken) {
       setErrorCode("captcha_failed");
       return;
     }
@@ -133,7 +137,7 @@ export function AdminLoginForm() {
       await loginAdmin({
         email,
         password,
-        captchaToken,
+        captchaToken: turnstileSiteKey ? captchaToken : "captcha-disabled",
         csrfToken,
       });
       router.push("/admin");
@@ -153,7 +157,7 @@ export function AdminLoginForm() {
     }
   }
 
-  const disabled = submitting || loadingCSRF || !csrfToken || !turnstileSiteKey;
+  const disabled = submitting || loadingCSRF || !csrfToken;
 
   return (
     <Card className="w-full max-w-md border border-white/20 bg-background/90 shadow-[0_24px_80px_rgba(2,6,23,0.24)] backdrop-blur-xl">

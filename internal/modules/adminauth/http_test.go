@@ -237,6 +237,52 @@ func TestHandleLoginCaptchaFailed(t *testing.T) {
 	}
 }
 
+func TestHandleLoginSuccessWithoutCaptchaWhenNotConfigured(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("StrongPass!123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	store := &fakeAdminAuthStore{
+		userByEmail: map[string]storadminauth.User{
+			"admin@example.com": {
+				ID:           "user-1",
+				Email:        "admin@example.com",
+				PasswordHash: string(hash),
+				DisplayName:  "Admin",
+				IsActive:     true,
+			},
+		},
+		rolesByUser: map[string][]string{
+			"user-1": {"admin"},
+		},
+	}
+	cache := &memSessionCache{data: map[string]string{}}
+	protect := newLoginProtection(nil, &turnstileVerifier{secret: ""})
+	protect.sleep = func(time.Duration) {}
+	protect.randomIntn = func(int) int { return 0 }
+	m := &module{
+		store:     store,
+		sessions:  NewSessionManager(cache, 45*time.Minute),
+		protect:   protect,
+		sessionTT: 45 * time.Minute,
+		now:       time.Now,
+	}
+
+	loginBody, _ := json.Marshal(loginRequest{
+		Email:        "admin@example.com",
+		Password:     "StrongPass!123",
+		CaptchaToken: "",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	m.handleLogin(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}
+
 func TestHandleLoginLockoutAfterFiveFailures(t *testing.T) {
 	hash, err := bcrypt.GenerateFromPassword([]byte("StrongPass!123"), bcrypt.DefaultCost)
 	if err != nil {

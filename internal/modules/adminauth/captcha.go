@@ -202,6 +202,7 @@ func (s *memoryLoginProtectionStore) Del(_ context.Context, keys ...string) erro
 type loginProtection struct {
 	store           loginProtectionStore
 	captchaVerifier CaptchaVerifier
+	captchaRequired bool
 	ipLimit         int64
 	ipWindow        time.Duration
 	emailFailureMax int64
@@ -218,9 +219,17 @@ func newLoginProtection(redisClient *redis.Client, verifier CaptchaVerifier) *lo
 	} else {
 		store = newMemoryLoginProtectionStore()
 	}
+	captchaRequired := true
+	if verifier == nil {
+		captchaRequired = false
+	}
+	if v, ok := verifier.(*turnstileVerifier); ok && strings.TrimSpace(v.secret) == "" {
+		captchaRequired = false
+	}
 	return &loginProtection{
 		store:           store,
 		captchaVerifier: verifier,
+		captchaRequired: captchaRequired,
 		ipLimit:         defaultLoginIPLimit,
 		ipWindow:        defaultLoginIPWindow,
 		emailFailureMax: defaultLoginEmailLimit,
@@ -231,7 +240,17 @@ func newLoginProtection(redisClient *redis.Client, verifier CaptchaVerifier) *lo
 	}
 }
 
+func (p *loginProtection) IsCaptchaRequired() bool {
+	if p == nil {
+		return false
+	}
+	return p.captchaRequired
+}
+
 func (p *loginProtection) VerifyCaptcha(ctx context.Context, token string, remoteIP string) (bool, error) {
+	if p != nil && !p.captchaRequired {
+		return true, nil
+	}
 	if p == nil || p.captchaVerifier == nil {
 		return false, errCaptchaSecretMissing
 	}

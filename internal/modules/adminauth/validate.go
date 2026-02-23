@@ -75,7 +75,7 @@ func hasIllegalRune(r rune) bool {
 	return false
 }
 
-func validateLoginRequest(in loginRequest) (email string, password string, errs []ValidationError) {
+func validateLoginRequest(in loginRequest, captchaRequired bool) (email string, password string, errs []ValidationError) {
 	email, err := normalizeAndValidateEmail(in.Email)
 	if err != nil {
 		errs = append(errs, ValidationError{Field: "email", Message: err.Error()})
@@ -84,7 +84,7 @@ func validateLoginRequest(in loginRequest) (email string, password string, errs 
 	if err != nil {
 		errs = append(errs, ValidationError{Field: "password", Message: err.Error()})
 	}
-	if strings.TrimSpace(in.CaptchaToken) == "" {
+	if captchaRequired && strings.TrimSpace(in.CaptchaToken) == "" {
 		errs = append(errs, ValidationError{Field: "captchaToken", Message: "captchaToken is required"})
 	}
 	return email, password, errs

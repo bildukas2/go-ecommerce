@@ -73,7 +73,7 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, password, validationErrs := validateLoginRequest(req)
+	email, password, validationErrs := validateLoginRequest(req, m.protect.IsCaptchaRequired())
 	if len(validationErrs) > 0 {
 		writeAuthError(w, http.StatusBadRequest, "validation_error", "validation failed", validationErrs)
 		return
