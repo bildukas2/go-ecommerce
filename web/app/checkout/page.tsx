@@ -232,17 +232,59 @@ export default function CheckoutPage() {
   }, [state.error]);
 
   if (state.orderPlaced) {
+    const selectedPaymentMethod = paymentMethods.find(m => m.method_name === state.selectedPaymentMethod);
+    const isBankTransfer = selectedPaymentMethod?.method_name === "bank_transfer";
+
     return (
-      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
-        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
-        <h1 className="text-2xl font-semibold mb-2">Order Placed!</h1>
-        <p className="text-muted-foreground mb-4">
-          Your order #{state.orderNumber} has been placed successfully.
-        </p>
-        {state.checkoutUrl && (
-          <Button onClick={() => { if (state.checkoutUrl) window.location.href = state.checkoutUrl; }}>
-            Complete Payment
-          </Button>
+      <div className="mx-auto max-w-2xl px-6 py-16">
+        <div className="text-center mb-8">
+          <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
+          <h1 className="text-2xl font-semibold mb-2">Order Placed!</h1>
+          <p className="text-muted-foreground mb-4">
+            Your order #{state.orderNumber} has been placed successfully.
+          </p>
+        </div>
+
+        {isBankTransfer ? (
+          <div className="rounded-[28px] border border-surface-border bg-surface/80 p-8 shadow-[0_30px_60px_rgba(2,6,23,0.35)] backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">Bank Transfer Instructions</h2>
+              <p className="text-muted-foreground text-sm">
+                Please complete your payment using the information below:
+              </p>
+            </div>
+
+            {selectedPaymentMethod?.instructions && (
+              <div className="bg-surface/60 rounded-xl p-6 border border-surface-border mb-6 whitespace-pre-wrap text-sm text-foreground/80 font-mono">
+                {selectedPaymentMethod.instructions}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Once you have completed the bank transfer, we will verify the payment and process your order.
+              </p>
+              <Button
+                onClick={() => window.location.href = "/"}
+                className="w-full"
+              >
+                Continue Shopping
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {state.checkoutUrl && (
+              <div className="text-center">
+                <p className="text-muted-foreground mb-6">
+                  Click the button below to complete your payment securely.
+                </p>
+                <Button onClick={() => { if (state.checkoutUrl) window.location.href = state.checkoutUrl; }}>
+                  Complete Payment
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     );
