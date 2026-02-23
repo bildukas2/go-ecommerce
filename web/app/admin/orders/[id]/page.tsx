@@ -419,23 +419,7 @@ export default async function AdminOrderDetailPage({ params }: Params) {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Variant Attributes</p>
-                  <div className="mt-2 space-y-1 text-sm">
-                    {Object.keys(item.variant_attributes_json).length === 0 ? (
-                      <p className="text-foreground/60">-</p>
-                    ) : (
-                      Object.entries(item.variant_attributes_json).map(([key, value]) => (
-                        <div key={key} className="flex gap-2">
-                          <span className="font-medium">{key}:</span>
-                          <span>{String(value)}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
+              <div className="mt-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Selected Custom Options</p>
                   <div className="mt-2 space-y-2 text-sm">
