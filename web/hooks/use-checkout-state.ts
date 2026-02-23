@@ -237,6 +237,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
 
   const setSelectedShippingMethod = React.useCallback((method: SelectedShippingMethod | null) => {
     dispatch({ type: "SET_SELECTED_SHIPPING_METHOD", payload: method });
+    dispatch({ type: "SET_SHIPPING_PRICE", payload: method?.price ?? 0 });
     if (!method?.requires_terminal) {
       dispatch({ type: "SET_SELECTED_TERMINAL", payload: null });
     }
