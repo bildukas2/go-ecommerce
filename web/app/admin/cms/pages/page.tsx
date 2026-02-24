@@ -22,15 +22,15 @@ export default async function AdminPagesPage({
 
   const { pages, total } = await getAdminPages({ query, status, limit, offset });
 
-  async function deletePageAction(formData: FormData) {
+  async function deletePageAction(id: string) {
     "use server";
-    const id = formData.get("id") as string;
-    if (!id) return;
     try {
       await deleteAdminPage(id);
       revalidatePath("/admin/cms/pages");
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error("Failed to delete page:", error);
+      return { success: false, error: error.message || "Failed to delete page" };
     }
   }
 

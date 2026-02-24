@@ -1,22 +1,53 @@
 "use client";
 
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button, Tooltip } from "@heroui/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button, Tooltip, Alert } from "@heroui/react";
 import { Edit, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { AdminPage } from "@/lib/api";
+import { useState } from "react";
 
 type Props = {
   pages: AdminPage[];
-  deleteAction: (formData: FormData) => Promise<void>;
+  deleteAction: (id: string) => Promise<{ success: boolean; error?: string }>;
 };
 
 export function PagesTable({ pages, deleteAction }: Props) {
+  const [error, setError] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this page?")) {
+      return;
+    }
+    
+    setLoadingId(id);
+    setError(null);
+    try {
+      const result = await deleteAction(id);
+      if (!result.success) {
+        setError(result.error || "Failed to delete page");
+      }
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   return (
-    <Table 
-      aria-label="Pages table"
-      removeWrapper
-      className="min-h-[400px]"
-    >
+    <div className="flex flex-col gap-4">
+      {error && (
+        <div className="px-4 pt-4">
+          <Alert color="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        </div>
+      )}
+      <Table 
+        aria-label="Pages table"
+        removeWrapper
+        className="min-h-[400px]"
+      >
       <TableHeader>
         <TableColumn>Title</TableColumn>
         <TableColumn>Slug</TableColumn>
@@ -70,30 +101,24 @@ export function PagesTable({ pages, deleteAction }: Props) {
                     <Edit size={18} className="text-default-400" />
                   </Button>
                 </Tooltip>
-                <form action={deleteAction}>
-                  <input type="hidden" name="id" value={page.id} />
-                  <Tooltip color="danger" content="Delete page">
-                    <Button
-                      type="submit"
-                      isIconOnly
-                      size="sm"
-                      variant="light"
-                      color="danger"
-                      onPress={(e: any) => {
-                        if (!confirm("Are you sure you want to delete this page?")) {
-                          e.preventDefault();
-                        }
-                      }}
-                    >
-                      <Trash2 size={18} />
-                    </Button>
-                  </Tooltip>
-                </form>
+                <Tooltip color="danger" content="Delete page">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    color="danger"
+                    onPress={() => handleDelete(page.id)}
+                    isLoading={loadingId === page.id}
+                  >
+                    <Trash2 size={18} />
+                  </Button>
+                </Tooltip>
               </div>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }
