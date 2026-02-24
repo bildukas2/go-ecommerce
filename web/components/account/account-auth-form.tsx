@@ -14,7 +14,7 @@ type AccountAuthFormProps = {
 };
 
 const modeLabel: Record<AuthMode, string> = {
-  login: "Login",
+  login: "Log In",
   register: "Create account",
 };
 
@@ -22,6 +22,7 @@ export function AccountAuthForm({ mode, nextPath = "/account", uiVariant = "defa
   const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [rememberMe, setRememberMe] = React.useState(true);
   const [showPassword, setShowPassword] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -108,6 +109,23 @@ export function AccountAuthForm({ mode, nextPath = "/account", uiVariant = "defa
           ) : null}
         </div>
       </div>
+
+      {isHero && mode === "login" ? (
+        <div className="flex items-center justify-between pt-1 text-sm">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-foreground/90">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              className="size-4 rounded border-surface-border accent-blue-600"
+            />
+            Remember me
+          </label>
+          <button type="button" className="text-foreground/60 hover:text-foreground/90">
+            Forgot password?
+          </button>
+        </div>
+      ) : null}
 
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
