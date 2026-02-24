@@ -239,11 +239,7 @@ export function AdminLoginForm() {
         >
           {submitting ? "Signing in..." : "Log In"}
         </button>
-        <div className="pt-1 text-center">
-          <a href="/account/register" className="text-base text-blue-600 hover:underline">
-            Create an account
-          </a>
-        </div>
+
       </form>
     </div>
   );

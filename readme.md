@@ -35,6 +35,14 @@ Copy example env:
 cp .env.example .env
 ```
 
+## Admin setup
+### Admin bootstrap seed (used by: go run ./cmd/adminseed)
+```bash
+inside .env  config params then you can remove it 
+ADMIN_SEED_EMAIL=
+ADMIN_SEED_PASSWORD=
+ADMIN_SEED_DISPLAY_NAME=
+```
 
 Install goose CLI (once):
 ``` 

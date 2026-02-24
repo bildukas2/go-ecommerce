@@ -22,6 +22,7 @@ func main() {
 
 	emailRaw := os.Getenv("ADMIN_SEED_EMAIL")
 	passwordRaw := os.Getenv("ADMIN_SEED_PASSWORD")
+	displayNameRaw := os.Getenv("ADMIN_SEED_DISPLAY_NAME")
 	dsn := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 
 	if strings.TrimSpace(emailRaw) == "" {
@@ -54,12 +55,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialize auth store: %v", err)
 	}
+
+	hasAdmin, err := store.HasAnyAdmin(ctx)
+	if err != nil {
+		log.Fatalf("failed to check existing admins: %v", err)
+	}
+	if hasAdmin {
+		log.Println("Admin user already exists. Skipping bootstrap.")
+		return
+	}
+
 	role, err := store.GetRoleByCode(ctx, "admin")
 	if err != nil {
 		log.Fatalf("failed to load admin role: %v", err)
 	}
 
-	user, created, err := findOrCreateUser(ctx, store, email, password)
+	user, created, err := findOrCreateUser(ctx, store, email, password, displayNameRaw)
 	if err != nil {
 		log.Fatalf("failed to create seed admin: %v", err)
 	}
@@ -75,7 +86,7 @@ func main() {
 	log.Printf("admin role ensured for user: %s", user.Email)
 }
 
-func findOrCreateUser(ctx context.Context, store *storadminauth.Store, email, password string) (storadminauth.User, bool, error) {
+func findOrCreateUser(ctx context.Context, store *storadminauth.Store, email, password, displayName string) (storadminauth.User, bool, error) {
 	existing, err := store.GetUserByEmail(ctx, email)
 	if err == nil {
 		return existing, false, nil
@@ -89,7 +100,10 @@ func findOrCreateUser(ctx context.Context, store *storadminauth.Store, email, pa
 		return storadminauth.User{}, false, err
 	}
 
-	displayName := deriveDisplayNameFromEmail(email)
+	if strings.TrimSpace(displayName) == "" {
+		displayName = deriveDisplayNameFromEmail(email)
+	}
+
 	created, err := store.CreateUser(ctx, email, string(hash), displayName)
 	if err != nil {
 		if errors.Is(err, storadminauth.ErrConflict) {

@@ -2363,6 +2363,8 @@ function normalizeTerminalsCacheItem(raw: unknown): TerminalsCacheItem | null {
 export async function getShippingProviders(): Promise<ShippingProvider[]> {
   const url = new URL(apiJoin("admin/shipping/providers"));
   const res = await fetch(url.toString(), {
+    headers: await adminRequestHeaders(),
+    credentials: "include",
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping providers: ${res.status}`);
@@ -2445,6 +2447,8 @@ export async function testShippingProvider(
 export async function getShippingZones(): Promise<ShippingZone[]> {
   const url = new URL(apiJoin("admin/shipping/zones"));
   const res = await fetch(url.toString(), {
+    headers: await adminRequestHeaders(),
+    credentials: "include",
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping zones: ${res.status}`);
@@ -2517,6 +2521,8 @@ export async function deleteShippingZone(id: string): Promise<void> {
 export async function getShippingMethods(): Promise<ShippingMethod[]> {
   const url = new URL(apiJoin("admin/shipping/methods"));
   const res = await fetch(url.toString(), {
+    headers: await adminRequestHeaders(),
+    credentials: "include",
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Failed to fetch shipping methods: ${res.status}`);

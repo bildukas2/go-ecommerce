@@ -199,6 +199,20 @@ func (s *Store) ListRoleCodesByUserID(ctx context.Context, userID string) ([]str
 	return out, nil
 }
 
+func (s *Store) HasAnyAdmin(ctx context.Context) (bool, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM user_roles ur
+		JOIN roles r ON r.id = ur.role_id
+		WHERE r.code = 'admin'
+	`).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (s *Store) UpdateLastLoginAt(ctx context.Context, userID string, at time.Time) error {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
