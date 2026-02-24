@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -42,7 +43,8 @@ type turnstileVerifier struct {
 }
 
 type turnstileVerifyResponse struct {
-	Success bool `json:"success"`
+	Success    bool     `json:"success"`
+	ErrorCodes []string `json:"error-codes"`
 }
 
 func newTurnstileVerifierFromEnv() CaptchaVerifier {
@@ -79,15 +81,21 @@ func (v *turnstileVerifier) Verify(ctx context.Context, token string, remoteIP s
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := v.client.Do(req)
 	if err != nil {
+		log.Printf("[captcha] verification request failed: %v", err)
 		return false, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[captcha] verification service returned status: %d", resp.StatusCode)
 		return false, errors.New("captcha verification failed")
 	}
 	var payload turnstileVerifyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		log.Printf("[captcha] failed to decode response: %v", err)
 		return false, err
+	}
+	if !payload.Success {
+		log.Printf("[captcha] verification failed: %v", payload.ErrorCodes)
 	}
 	return payload.Success, nil
 }
