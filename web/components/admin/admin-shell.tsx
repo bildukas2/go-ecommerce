@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, CreditCard, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, X } from "lucide-react";
+import { ChevronDown, Compass, CreditCard, FileText, FolderTree, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdminCSRFToken, logoutAdmin } from "@/lib/admin-auth";
@@ -27,6 +27,11 @@ const catalogItems: NavItem[] = [
   { href: "/admin/catalog/categories", label: "Categories", icon: <FolderTree size={16} /> },
   { href: "/admin/catalog/products", label: "Products", icon: <ShoppingCart size={16} /> },
   { href: "/admin/catalog/custom-options", label: "Customizable Options", icon: <SlidersHorizontal size={16} /> },
+];
+
+const cmsItems: NavItem[] = [
+  { href: "/admin/cms/pages", label: "Pages", icon: <FileText size={16} /> },
+  { href: "/admin/cms/navigation", label: "Navigation", icon: <Compass size={16} /> },
 ];
 
 const customerItems: NavItem[] = [
@@ -69,6 +74,9 @@ function SidebarNav({
   const catalogActive = pathname.startsWith("/admin/catalog");
   const [catalogOpen, setCatalogOpen] = useState(false);
   const isCatalogExpanded = catalogOpen;
+  const cmsActive = pathname.startsWith("/admin/cms");
+  const [cmsOpen, setCmsOpen] = useState(false);
+  const isCmsExpanded = cmsActive || cmsOpen;
   const settingsActive = pathname.startsWith("/admin/settings");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isSettingsExpanded = settingsActive || settingsOpen;
@@ -80,7 +88,10 @@ function SidebarNav({
     if (catalogActive) {
       setCatalogOpen(true);
     }
-  }, [catalogActive]);
+    if (cmsActive) {
+      setCmsOpen(true);
+    }
+  }, [catalogActive, cmsActive]);
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-2" aria-label="Admin navigation">
@@ -158,6 +169,78 @@ function SidebarNav({
             >
               <div className="space-y-1 py-1">
                 {catalogItems.map((item) => {
+                  const active = isActivePath(pathname, item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onNavigate}
+                      className={[
+                        "group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
+                        active
+                          ? "border-blue-500/30 bg-blue-500/12 text-foreground"
+                          : "border-transparent text-foreground/75 hover:border-surface-border hover:bg-foreground/5",
+                      ].join(" ")}
+                    >
+                      <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
+                        {item.icon}
+                      </span>
+                      <span className={active ? "font-medium" : ""}>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setCmsOpen((value) => !value)}
+        aria-expanded={!collapsed && isCmsExpanded}
+        aria-controls="admin-cms-submenu"
+        aria-label="Toggle CMS menu"
+        className={[
+          "group flex items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
+          cmsActive
+            ? "border-blue-500/30 bg-blue-500/12 text-foreground"
+            : "border-transparent text-foreground/80 hover:border-surface-border hover:bg-foreground/5",
+        ].join(" ")}
+      >
+        <span className={cmsActive ? "text-blue-500" : "text-foreground/70 group-hover:text-blue-500"}>
+          <FileText size={18} />
+        </span>
+        {!collapsed && (
+          <>
+            <span className={cmsActive ? "font-medium" : ""}>Pages & Content</span>
+            <ChevronDown
+              size={16}
+              className={`ml-auto transition-transform duration-200 ${isCmsExpanded ? "rotate-180" : ""}`}
+            />
+          </>
+        )}
+        {cmsActive && collapsed && (
+          <span aria-hidden className="ml-auto size-2 rounded-full bg-blue-500 shadow-[0_0_14px_rgba(0,114,245,0.8)]" />
+        )}
+      </button>
+
+      {!collapsed && (
+        <AnimatePresence initial={false}>
+          {isCmsExpanded && (
+            <motion.div
+              id="admin-cms-submenu"
+              className="ml-3 overflow-hidden border-l border-surface-border/80 pl-3"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="space-y-1 py-1">
+                {cmsItems.map((item) => {
                   const active = isActivePath(pathname, item.href);
 
                   return (
