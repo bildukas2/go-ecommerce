@@ -2323,10 +2323,11 @@ function normalizeAdminMediaAsset(raw: unknown): AdminMediaAsset | null {
   };
 }
 
-export async function getAdminMedia(params: { limit?: number; offset?: number } = {}): Promise<AdminMediaListResponse> {
+export async function getAdminMedia(params: { limit?: number; offset?: number; media_type?: "image" | "video" } = {}): Promise<AdminMediaListResponse> {
   const url = new URL(apiJoin("admin/media"));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
   if (params.offset) url.searchParams.set("offset", String(params.offset));
+  if (params.media_type) url.searchParams.set("media_type", params.media_type);
 
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
@@ -2374,6 +2375,33 @@ export async function uploadAdminMedia(file: File, alt: string): Promise<AdminMe
 
   const normalized = normalizeAdminMediaAsset(await res.json());
   if (!normalized) throw new Error("Media upload failed: invalid media response");
+  return normalized;
+}
+
+export async function uploadAdminVideo(file: File, alt: string): Promise<AdminMediaAsset> {
+  if (!file || file.size <= 0) throw new Error("Video file is required");
+  const form = new FormData();
+  form.set("file", file);
+  const normalizedAlt = alt.trim();
+  if (normalizedAlt) form.set("alt", normalizedAlt);
+  const url = new URL(apiJoin("admin/media/video/upload"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    ...(await adminMutationHeaders({}, false)),
+    cache: "no-store",
+    body: form,
+  });
+  if (!res.ok) {
+    let detail = `Video upload failed: ${res.status}`;
+    try {
+      const payload = asRecord(await res.json());
+      const errorMessage = asString(payload.error);
+      if (errorMessage) detail = `${detail} (${errorMessage})`;
+    } catch {}
+    throw new Error(detail);
+  }
+  const normalized = normalizeAdminMediaAsset(await res.json());
+  if (!normalized) throw new Error("Video upload failed: invalid response");
   return normalized;
 }
 
@@ -2682,6 +2710,38 @@ export async function deleteAdminProduct(id: string): Promise<{ id: string }> {
   }
   const payload = asRecord(await res.json());
   return { id: asString(payload.id) };
+}
+
+export async function deleteAdminMedia(id: string): Promise<void> {
+  const res = await fetch(
+    new URL(apiJoin(`admin/media/${encodeURIComponent(id)}`)).toString(),
+    { method: "DELETE", ...(await adminMutationHeaders()), cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Delete media failed: ${res.status}`);
+}
+
+export async function addAdminProductImage(productID: string, url: string, alt: string): Promise<ProductImage> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/catalog/products/${encodeURIComponent(productID)}/images`,
+    method: "POST",
+    body: { url, alt },
+  });
+  const obj = asRecord(out);
+  return {
+    id: asString(obj.id),
+    url: asString(obj.url),
+    alt: asString(obj.alt),
+    sort: asNumber(obj.sort),
+    isDefault: Boolean(obj.isDefault ?? obj.is_default),
+  };
+}
+
+export async function removeAdminProductImage(productID: string, imageID: string): Promise<void> {
+  const res = await fetch(
+    new URL(apiJoin(`admin/catalog/products/${encodeURIComponent(productID)}/images/${encodeURIComponent(imageID)}`)).toString(),
+    { method: "DELETE", ...(await adminMutationHeaders()), cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Remove image failed: ${res.status}`);
 }
 
 export async function createAdminProductVariant(productID: string, input: AdminCreateVariantInput): Promise<ProductVariant> {

@@ -35,8 +35,9 @@ type CreateAssetInput struct {
 }
 
 type ListAssetsParams struct {
-	Limit  int
-	Offset int
+	Limit           int
+	Offset          int
+	MimeTypePrefix  string // e.g. "image/" or "video/" — empty = all
 }
 
 type Store struct {
@@ -44,6 +45,7 @@ type Store struct {
 
 	stmtCreateAsset *sql.Stmt
 	stmtListAssets  *sql.Stmt
+	stmtDeleteAsset *sql.Stmt
 }
 
 func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
@@ -69,16 +71,33 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		return nil, err
 	}
 
+	stmtDeleteAsset, err := db.PrepareContext(ctx, `
+		DELETE FROM media_assets WHERE id = $1 RETURNING storage_path`)
+	if err != nil {
+		_ = stmtCreateAsset.Close()
+		_ = stmtListAssets.Close()
+		return nil, err
+	}
+
 	return &Store{
 		db:              db,
 		stmtCreateAsset: stmtCreateAsset,
 		stmtListAssets:  stmtListAssets,
+		stmtDeleteAsset: stmtDeleteAsset,
 	}, nil
+}
+
+func (s *Store) DeleteAsset(ctx context.Context, id string) (storagePath string, err error) {
+	err = s.stmtDeleteAsset.QueryRowContext(ctx, id).Scan(&storagePath)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errors.New("asset not found")
+	}
+	return storagePath, err
 }
 
 func (s *Store) Close() error {
 	var firstErr error
-	for _, stmt := range []*sql.Stmt{s.stmtCreateAsset, s.stmtListAssets} {
+	for _, stmt := range []*sql.Stmt{s.stmtCreateAsset, s.stmtListAssets, s.stmtDeleteAsset} {
 		if stmt == nil {
 			continue
 		}
@@ -127,7 +146,21 @@ func (s *Store) CreateAsset(ctx context.Context, in CreateAssetInput) (Asset, er
 func (s *Store) ListAssets(ctx context.Context, in ListAssetsParams) ([]Asset, error) {
 	limit, offset := sanitizePagination(in)
 
-	rows, err := s.stmtListAssets.QueryContext(ctx, limit, offset)
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if in.MimeTypePrefix != "" {
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT id, url, storage_path, mime_type, size_bytes, alt, source_type, source_url, created_at
+			FROM media_assets
+			WHERE mime_type LIKE $3
+			ORDER BY created_at DESC, id DESC
+			LIMIT $1 OFFSET $2`,
+			limit, offset, in.MimeTypePrefix+"%")
+	} else {
+		rows, err = s.stmtListAssets.QueryContext(ctx, limit, offset)
+	}
 	if err != nil {
 		return nil, err
 	}

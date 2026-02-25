@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, ArrowLeft, Globe, Settings, FileText, Code, CheckCircle2 } from "lucide-react";
+import { Save, ArrowLeft, Globe, FileText, Code, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { AdminPage, checkAdminPageSlug } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(
+  () => import("./rich-text-editor").then((m) => m.RichTextEditor),
+  { ssr: false, loading: () => <div className="min-h-[400px] rounded-xl border border-surface-border bg-background/50 animate-pulse" /> }
+);
 
 type Props = {
   initialData?: AdminPage;
@@ -30,6 +36,7 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [editorMode, setEditorMode] = useState<"html" | "visual">(initialData?.editor_mode || "html");
+  const [contentHtml, setContentHtml] = useState(initialData?.content_html || "");
   const [internalSubmitting, setInternalSubmitting] = useState(false);
 
   const isSubmitting = externalSubmitting || internalSubmitting;
@@ -223,19 +230,15 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
                 <textarea
                   name="content_html"
                   placeholder="Write your HTML content here..."
-                  defaultValue={initialData?.content_html}
+                  value={contentHtml}
+                  onChange={(e) => setContentHtml(e.target.value)}
                   className="min-h-[400px] w-full resize-none rounded-xl border border-surface-border bg-background/50 p-4 font-mono text-sm outline-none focus:border-blue-500/50"
                 />
               ) : (
-                <div className="flex min-h-[400px] flex-col items-center justify-center gap-2 text-center">
-                  <div className="rounded-full bg-foreground/5 p-4">
-                    <Settings size={32} className="text-foreground/40" />
-                  </div>
-                  <p className="font-medium">Visual Editor Coming Soon</p>
-                  <p className="max-w-xs text-sm text-foreground/50">
-                    The visual editor is currently under development. Please use the HTML editor for now.
-                  </p>
-                </div>
+                <>
+                  <RichTextEditor value={contentHtml} onChange={setContentHtml} />
+                  <input type="hidden" name="content_html" value={contentHtml} />
+                </>
               )}
             </div>
             <input type="hidden" name="editor_mode" value={editorMode} />

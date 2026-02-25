@@ -121,7 +121,9 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/security/blocked-ips/", m.handleBlockedIPDetail)
 	mux.HandleFunc("/admin/media", m.handleMedia)
 	mux.HandleFunc("/admin/media/upload", m.handleMediaUpload)
+	mux.HandleFunc("/admin/media/video/upload", m.handleMediaVideoUpload)
 	mux.HandleFunc("/admin/media/import-url", m.handleMediaImportURL)
+	mux.HandleFunc("/admin/media/", m.handleMediaDetail)
 	mux.HandleFunc("/admin/catalog/categories", m.handleCatalogCategories)
 	mux.HandleFunc("/admin/catalog/categories/", m.handleCatalogCategoryDetail)
 	mux.HandleFunc("/admin/catalog/products", m.handleCatalogProducts)
@@ -501,11 +503,14 @@ type catalogStore interface {
 	ListProductCustomOptionAssignments(ctx context.Context, productID string) ([]storcat.ProductCustomOptionAssignment, error)
 	AttachProductCustomOption(ctx context.Context, productID, optionID string, sortOrder *int) (storcat.ProductCustomOptionAssignment, error)
 	DetachProductCustomOption(ctx context.Context, productID, optionID string) error
+	AddProductImage(ctx context.Context, productID, url, alt string) (storcat.Image, error)
+	RemoveProductImage(ctx context.Context, imageID, productID string) error
 }
 
 type mediaStore interface {
 	CreateAsset(ctx context.Context, in stormedia.CreateAssetInput) (stormedia.Asset, error)
 	ListAssets(ctx context.Context, in stormedia.ListAssetsParams) ([]stormedia.Asset, error)
+	DeleteAsset(ctx context.Context, id string) (storagePath string, err error)
 }
 
 type upsertCategoryRequest struct {
@@ -815,6 +820,29 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Handle 3-part paths: /admin/catalog/products/{id}/images/{imageID}
+	if len(parts) == 3 && parts[1] == "images" {
+		imageID := strings.TrimSpace(parts[2])
+		if imageID == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodDelete {
+			platformhttp.Error(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if err := m.catalog.RemoveProductImage(r.Context(), imageID, id); err != nil {
+			if err.Error() == "image not found" {
+				platformhttp.Error(w, http.StatusNotFound, "image not found")
+			} else {
+				platformhttp.Error(w, http.StatusInternalServerError, "remove image error")
+			}
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"id": imageID})
+		return
+	}
+
 	if len(parts) != 2 {
 		http.NotFound(w, r)
 		return
@@ -878,6 +906,31 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 			return
 		}
 		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"updated_variants": updated})
+	case "images":
+		if r.Method != http.MethodPost {
+			platformhttp.Error(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		var req struct {
+			URL string `json:"url"`
+			Alt string `json:"alt"`
+		}
+		if err := decodeRequest(r, &req); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		req.URL = strings.TrimSpace(req.URL)
+		req.Alt = strings.TrimSpace(req.Alt)
+		if req.URL == "" || !isValidOptionalURL(&req.URL) {
+			platformhttp.Error(w, http.StatusBadRequest, "url must be a valid http/https URL")
+			return
+		}
+		img, err := m.catalog.AddProductImage(r.Context(), id, req.URL, req.Alt)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "add image error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusCreated, img)
 	default:
 		http.NotFound(w, r)
 	}

@@ -11,7 +11,9 @@
       "Bash(cd H:/Projects/go-ecommerce && go build ./internal/modules/shipping/ 2>&1)",
       "Bash(cd H:/Projects/go-ecommerce && go build ./internal/modules/checkout/ 2>&1)",
       "Bash(cd /h/Projects/go-ecommerce && go build ./... 2>&1)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(cd H:/Projects/go-ecommerce && go build ./... 2>&1)"
     ]
   }
 }

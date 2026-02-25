@@ -453,6 +453,37 @@ func (s *Store) listProductImages(ctx context.Context, productID string) ([]Imag
 	return images, nil
 }
 
+func (s *Store) AddProductImage(ctx context.Context, productID, url, alt string) (Image, error) {
+	var im Image
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO images (product_id, url, alt, sort, is_default)
+		 VALUES ($1, $2, $3,
+		   COALESCE((SELECT MAX(sort)+1 FROM images WHERE product_id = $1), 0),
+		   false)
+		 RETURNING id, url, alt, sort, is_default`,
+		productID, url, alt,
+	).Scan(&im.ID, &im.URL, &im.Alt, &im.Sort, &im.IsDefault)
+	return im, err
+}
+
+func (s *Store) RemoveProductImage(ctx context.Context, imageID, productID string) error {
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM images WHERE id = $1 AND product_id = $2`,
+		imageID, productID,
+	)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("image not found")
+	}
+	return nil
+}
+
 func (s *Store) ListCategories(ctx context.Context) ([]Category, error) {
 	rows, err := s.stmtListCategories.QueryContext(ctx)
 	if err != nil {

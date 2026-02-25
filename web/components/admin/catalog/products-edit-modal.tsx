@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { AdminCustomOption, AdminProductCustomOptionAssignment } from "@/lib/api";
+import type { AdminCustomOption, AdminProductCustomOptionAssignment, ProductImage } from "@/lib/api";
 import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
+import { ProductImagesManager } from "./product-images-manager";
 
 type ActionFn = (formData: FormData) => void | Promise<void>;
 
@@ -27,9 +28,10 @@ type Props = {
   customOptions: Array<Pick<AdminCustomOption, "id" | "title" | "type_group" | "type">>;
   assignments: AdminProductCustomOptionAssignment[];
   product: EditableProduct;
+  images?: ProductImage[];
 };
 
-export function ProductsEditModal({ updateAction, returnTo, categories, customOptions, assignments, product }: Props) {
+export function ProductsEditModal({ updateAction, returnTo, categories, customOptions, assignments, product, images = [] }: Props) {
   const [open, setOpen] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
@@ -66,6 +68,10 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
             <form action={updateAction} className="grid gap-3 p-4 md:grid-cols-2">
               <input type="hidden" name="return_to" value={returnTo} />
               <input type="hidden" name="product_id" value={product.id} />
+              <div className="space-y-1 text-sm md:col-span-2">
+                <span className="font-medium">Images</span>
+                <ProductImagesManager productID={product.id} initialImages={images} />
+              </div>
               <label className="space-y-1 text-sm">
                 <span>Title</span>
                 <input

@@ -21,6 +21,7 @@ import (
 
 const (
 	maxMediaImageBytes  = 5 << 20
+	maxMediaVideoBytes  = 200 << 20 // 200 MB
 	maxMediaImportBytes = maxMediaImageBytes + 1024
 	maxMediaListLimit   = 100
 	mediaListDefault    = 50
@@ -33,6 +34,13 @@ var allowedMediaMIMEs = map[string]string{
 	"image/webp": ".webp",
 	"image/avif": ".avif",
 	"image/gif":  ".gif",
+}
+
+var allowedVideoMIMEs = map[string]string{
+	"video/mp4":       ".mp4",
+	"video/webm":      ".webm",
+	"video/ogg":       ".ogv",
+	"video/quicktime": ".mov",
 }
 
 type importURLRequest struct {
@@ -60,9 +68,18 @@ func (m *module) handleMedia(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
+	var mimeTypePrefix string
+	switch strings.TrimSpace(r.URL.Query().Get("media_type")) {
+	case "image":
+		mimeTypePrefix = "image/"
+	case "video":
+		mimeTypePrefix = "video/"
+	}
+
 	items, err := m.media.ListAssets(r.Context(), stormedia.ListAssetsParams{
-		Limit:  limit,
-		Offset: offset,
+		Limit:          limit,
+		Offset:         offset,
+		MimeTypePrefix: mimeTypePrefix,
 	})
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "list media error")
@@ -74,6 +91,86 @@ func (m *module) handleMedia(w http.ResponseWriter, r *http.Request) {
 		"limit":  limit,
 		"offset": offset,
 	})
+}
+
+func (m *module) handleMediaVideoUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/admin/media/video/upload" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.media == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxMediaVideoBytes+1024)
+	if err := r.ParseMultipartForm(maxMediaVideoBytes + 1024); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid multipart form")
+		return
+	}
+
+	file, fileHeader, err := r.FormFile("file")
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "file is required")
+		return
+	}
+	defer file.Close()
+
+	// Validate by Content-Type header from multipart part and file extension.
+	partMIME := strings.ToLower(strings.TrimSpace(fileHeader.Header.Get("Content-Type")))
+	// Strip params (e.g. "video/mp4; codecs=...")
+	if idx := strings.Index(partMIME, ";"); idx >= 0 {
+		partMIME = strings.TrimSpace(partMIME[:idx])
+	}
+	ext, ok := allowedVideoMIMEs[partMIME]
+	if !ok {
+		platformhttp.Error(w, http.StatusBadRequest, "unsupported video type; allowed: mp4, webm, ogg, mov")
+		return
+	}
+
+	// Also validate file extension matches.
+	fname := strings.ToLower(fileHeader.Filename)
+	if !strings.HasSuffix(fname, ext) && !strings.HasSuffix(fname, "."+strings.TrimPrefix(ext, ".")) {
+		// Soft check — allow mismatched extension if MIME is valid (some browsers report inconsistently)
+		_ = fname
+	}
+
+	data, err := io.ReadAll(io.LimitReader(file, maxMediaVideoBytes+1))
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "unable to read file")
+		return
+	}
+	if int64(len(data)) > maxMediaVideoBytes {
+		platformhttp.Error(w, http.StatusBadRequest, "video exceeds 200MB limit")
+		return
+	}
+	if len(data) == 0 {
+		platformhttp.Error(w, http.StatusBadRequest, "video file is empty")
+		return
+	}
+
+	alt := strings.TrimSpace(r.FormValue("alt"))
+	storagePath, publicURL, err := m.writeUploadFileWithExt(r, data, ext)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "store upload error")
+		return
+	}
+
+	item, err := m.media.CreateAsset(r.Context(), stormedia.CreateAssetInput{
+		URL:         publicURL,
+		StoragePath: storagePath,
+		MIMEType:    partMIME,
+		SizeBytes:   int64(len(data)),
+		Alt:         alt,
+		SourceType:  stormedia.SourceTypeUpload,
+	})
+	if err != nil {
+		_ = os.Remove(filepath.Join(m.uploadsDir, filepath.FromSlash(storagePath)))
+		platformhttp.Error(w, http.StatusInternalServerError, "create media asset error")
+		return
+	}
+
+	_ = platformhttp.JSON(w, http.StatusCreated, item)
 }
 
 func (m *module) handleMediaUpload(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +299,37 @@ func (m *module) handleMediaImportURL(w http.ResponseWriter, r *http.Request) {
 	_ = platformhttp.JSON(w, http.StatusCreated, item)
 }
 
+func (m *module) handleMediaDetail(w http.ResponseWriter, r *http.Request) {
+	if m.media == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	id := strings.TrimPrefix(r.URL.Path, "/admin/media/")
+	id = strings.TrimSpace(id)
+	if id == "" || strings.Contains(id, "/") || id == "upload" || id == "video" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodDelete {
+		platformhttp.Error(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	storagePath, err := m.media.DeleteAsset(r.Context(), id)
+	if err != nil {
+		if err.Error() == "asset not found" {
+			platformhttp.Error(w, http.StatusNotFound, "asset not found")
+		} else {
+			platformhttp.Error(w, http.StatusInternalServerError, "delete asset error")
+		}
+		return
+	}
+	if storagePath != "" {
+		absPath := filepath.Join(m.uploadsDir, filepath.FromSlash(storagePath))
+		_ = os.Remove(absPath)
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"id": id})
+}
+
 func readAndValidateImage(r io.Reader, maxBytes int64) ([]byte, string, error) {
 	content, err := io.ReadAll(io.LimitReader(r, maxBytes+1))
 	if err != nil {
@@ -311,6 +439,24 @@ func isBlockedIP(ip net.IP) bool {
 		ip.IsLinkLocalUnicast() ||
 		ip.IsMulticast() ||
 		ip.IsUnspecified()
+}
+
+func (m *module) writeUploadFileWithExt(r *http.Request, content []byte, ext string) (storagePath string, publicURL string, err error) {
+	filename, err := randomHexFilename(ext)
+	if err != nil {
+		return "", "", err
+	}
+	now := time.Now().UTC()
+	storagePath = fmt.Sprintf("%04d/%02d/%s", now.Year(), int(now.Month()), filename)
+	absolutePath := filepath.Join(m.uploadsDir, filepath.FromSlash(storagePath))
+	if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(absolutePath, content, 0o644); err != nil {
+		return "", "", err
+	}
+	publicURL = buildPublicUploadURL(r, storagePath)
+	return storagePath, publicURL, nil
 }
 
 func (m *module) writeUploadFile(r *http.Request, content []byte, mimeType string) (storagePath string, publicURL string, err error) {

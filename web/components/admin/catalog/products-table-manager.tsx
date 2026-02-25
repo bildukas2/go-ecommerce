@@ -228,6 +228,7 @@ export function ProductsTableManager({
                           categories={categories}
                           customOptions={availableCustomOptions}
                           assignments={assignments}
+                          images={product.images}
                           product={{
                             id: product.id,
                             title: product.title,

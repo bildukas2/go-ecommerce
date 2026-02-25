@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @plugin "../hero.ts";
 @source "../node_modules/@heroui/**/*.{js,mjs,ts,jsx,tsx}";
 @source "../components/**/*.{js,ts,jsx,tsx}";
