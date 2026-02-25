@@ -107,9 +107,9 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		JOIN product_variants pv ON ci.product_variant_id = pv.id
 		JOIN products p ON pv.product_id = p.id
 		LEFT JOIN LATERAL (
-			SELECT url FROM images 
-			WHERE product_id = p.id 
-			ORDER BY sort ASC 
+			SELECT url FROM images
+			WHERE product_id = p.id
+			ORDER BY is_default DESC, sort ASC
 			LIMIT 1
 		) img ON true
 		WHERE ci.cart_id = $1
