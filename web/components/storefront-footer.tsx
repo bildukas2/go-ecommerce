@@ -2,8 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { StorefrontNavigationItem } from "@/lib/api";
 
-export function StorefrontFooter() {
+type Props = {
+  shopItems?: StorefrontNavigationItem[];
+  infoItems?: StorefrontNavigationItem[];
+};
+
+function FooterLinks({ items }: { items: StorefrontNavigationItem[] }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-neutral-400 dark:text-neutral-600">No links assigned yet.</p>;
+  }
+
+  return (
+    <nav className="flex flex-col gap-2">
+      {items.map((item) => (
+        <Link
+          key={`${item.href}-${item.label}`}
+          href={item.href}
+          target={item.open_in_new_tab ? "_blank" : undefined}
+          rel={item.open_in_new_tab ? "noopener noreferrer" : undefined}
+          className="text-sm text-neutral-500 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors"
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+export function StorefrontFooter({ shopItems = [], infoItems = [] }: Props) {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
 
@@ -27,19 +55,13 @@ export function StorefrontFooter() {
           {/* Quick Links */}
           <div className="flex flex-col gap-4">
             <h4 className="text-sm font-semibold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">Shop</h4>
-            <nav className="flex flex-col gap-2">
-              <Link href="/products" className="text-sm text-neutral-500 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors">All Products</Link>
-              <Link href="/categories" className="text-sm text-neutral-500 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors">Categories</Link>
-            </nav>
+            <FooterLinks items={shopItems} />
           </div>
 
           {/* Support / Info */}
           <div className="flex flex-col gap-4">
             <h4 className="text-sm font-semibold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">Info</h4>
-            <nav className="flex flex-col gap-2">
-              <Link href="/page/about-us" className="text-sm text-neutral-500 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors">About Us</Link>
-              <Link href="/page/shipping" className="text-sm text-neutral-500 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 transition-colors">Shipping Policy</Link>
-            </nav>
+            <FooterLinks items={infoItems} />
           </div>
         </div>
 

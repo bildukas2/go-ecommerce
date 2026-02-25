@@ -209,6 +209,26 @@ export type AdminNavigationLocation = {
   assignment_updated_at?: string | null;
 };
 
+export type StorefrontNavigationItem = {
+  label: string;
+  href: string;
+  type: "page" | "url" | "category";
+  open_in_new_tab: boolean;
+};
+
+export type StorefrontNavigationMenu = {
+  id: string;
+  code: string;
+  name: string;
+  items: StorefrontNavigationItem[];
+};
+
+export type StorefrontNavigationLocation = {
+  code: string;
+  name: string;
+  menu: StorefrontNavigationMenu | null;
+};
+
 export type AdminPageListResponse = {
   pages: AdminPage[];
   total: number;
@@ -539,6 +559,57 @@ function normalizeAdminNavigationLocation(raw: unknown): AdminNavigationLocation
   };
 }
 
+function normalizeStorefrontNavigationItem(raw: unknown): StorefrontNavigationItem | null {
+  const obj = asRecord(raw);
+  const label = asString(obj.label);
+  const href = asString(obj.href);
+  if (!label || !href) return null;
+
+  const typeRaw = asString(obj.type).toLowerCase();
+  const type = (typeRaw === "url" || typeRaw === "category" ? typeRaw : "page") as StorefrontNavigationItem["type"];
+
+  return {
+    label,
+    href,
+    type,
+    open_in_new_tab: asBoolean(obj.open_in_new_tab),
+  };
+}
+
+function normalizeStorefrontNavigationMenu(raw: unknown): StorefrontNavigationMenu | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const code = asString(obj.code);
+  const name = asString(obj.name);
+  if (!id || !code || !name) return null;
+
+  const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
+  return {
+    id,
+    code,
+    name,
+    items: itemsRaw
+      .map(normalizeStorefrontNavigationItem)
+      .filter((item): item is StorefrontNavigationItem => item !== null),
+  };
+}
+
+function normalizeStorefrontNavigationLocation(raw: unknown): StorefrontNavigationLocation | null {
+  const obj = asRecord(raw);
+  const code = asString(obj.code);
+  const name = asString(obj.name);
+  if (!code || !name) return null;
+
+  const menuRaw = obj.menu;
+  const menu = menuRaw === undefined || menuRaw === null ? null : normalizeStorefrontNavigationMenu(menuRaw);
+
+  return {
+    code,
+    name,
+    menu,
+  };
+}
+
 export async function getProducts(params: { page?: number; limit?: number; category?: string } = {}): Promise<ProductListResponse> {
   const url = new URL(apiJoin("products"));
   if (params.page) url.searchParams.set("page", String(params.page));
@@ -587,6 +658,15 @@ export async function getPage(slug: string): Promise<AdminPage | null> {
   if (!res.ok) throw new Error(`Failed to fetch page: ${res.status}`);
   const payload = await res.json();
   return normalizeAdminPage(payload);
+}
+
+export async function getStorefrontNavigationLocation(code: string): Promise<StorefrontNavigationLocation | null> {
+  const url = apiJoin(`navigation/location/${encodeURIComponent(code)}`);
+  const res = await fetch(url, { next: { revalidate: 60 } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch navigation location: ${res.status}`);
+  const payload = await res.json();
+  return normalizeStorefrontNavigationLocation(payload);
 }
 
 async function apiErrorMessage(res: Response, fallback: string): Promise<string> {

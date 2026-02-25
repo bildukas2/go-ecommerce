@@ -5,7 +5,8 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { StorefrontFooter } from "@/components/storefront-footer";
-import { getCurrentAccount } from "@/lib/api";
+import { getCurrentAccount, getStorefrontNavigationLocation } from "@/lib/api";
+import type { StorefrontNavigationItem } from "@/lib/api";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +29,20 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   let isAuthenticated = false;
+  let footerShopItems: StorefrontNavigationItem[] = [];
+  let footerInfoItems: StorefrontNavigationItem[] = [];
   try {
     const cookieHeader = (await cookies()).toString();
     await getCurrentAccount({ cookieHeader });
     isAuthenticated = true;
+  } catch {}
+  try {
+    const [footerShop, footerInfo] = await Promise.all([
+      getStorefrontNavigationLocation("footer_shop"),
+      getStorefrontNavigationLocation("footer_info"),
+    ]);
+    footerShopItems = footerShop?.menu?.items ?? [];
+    footerInfoItems = footerInfo?.menu?.items ?? [];
   } catch {}
 
   return (
@@ -42,7 +53,7 @@ export default async function RootLayout({
           <div className="flex-grow">
             {children}
           </div>
-          <StorefrontFooter />
+          <StorefrontFooter shopItems={footerShopItems} infoItems={footerInfoItems} />
         </Providers>
       </body>
     </html>
