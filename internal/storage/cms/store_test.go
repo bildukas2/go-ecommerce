@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -132,7 +133,10 @@ func TestNavigationCRUD(t *testing.T) {
 	}
 	defer db.Close()
 
+	assertTableExists(t, ctx, db, "navigation_menus")
 	assertTableExists(t, ctx, db, "navigation_items")
+	assertTableExists(t, ctx, db, "navigation_locations")
+	assertTableExists(t, ctx, db, "navigation_location_assignments")
 
 	store, err := NewStore(ctx, db)
 	if err != nil {
@@ -140,82 +144,163 @@ func TestNavigationCRUD(t *testing.T) {
 	}
 	defer store.Close()
 
-	// 1. Create
-	n := NavigationItem{
+	menuCode := fmt.Sprintf("test-menu-%d", time.Now().UnixNano())
+	secondaryMenuCode := fmt.Sprintf("test-menu-alt-%d", time.Now().UnixNano())
+	createdMenu, err := store.CreateNavigationMenu(ctx, NavigationMenu{
+		Code: menuCode,
+		Name: "Test Menu",
+	})
+	if err != nil {
+		t.Fatalf("create navigation menu: %v", err)
+	}
+	createdMenu2, err := store.CreateNavigationMenu(ctx, NavigationMenu{
+		Code: secondaryMenuCode,
+		Name: "Secondary Menu",
+	})
+	if err != nil {
+		t.Fatalf("create secondary menu: %v", err)
+	}
+
+	categoryID := createTestCategory(t, ctx, db)
+	page := createTestPage(t, ctx, store)
+
+	// URL item
+	urlItem, err := store.CreateNavigationItem(ctx, NavigationItem{
+		MenuID:    createdMenu.ID,
 		Label:     "Home",
 		Type:      NavItemTypeURL,
 		URL:       stringPtr("/"),
-		SortOrder: 10,
+		SortOrder: 20,
 		IsActive:  true,
-	}
-
-	created, err := store.CreateNavigationItem(ctx, n)
-	if err != nil {
-		t.Fatalf("create nav item: %v", err)
-	}
-	if created.ID == "" {
-		t.Fatal("expected non-empty ID")
-	}
-
-	// 2. Get
-	got, err := store.GetNavigationItem(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("get nav item: %v", err)
-	}
-	if got.Label != n.Label {
-		t.Errorf("expected label %s, got %s", n.Label, got.Label)
-	}
-
-	// 3. Update
-	got.Label = "New Label"
-	updated, err := store.UpdateNavigationItem(ctx, got)
-	if err != nil {
-		t.Fatalf("update nav item: %v", err)
-	}
-	if updated.Label != "New Label" {
-		t.Errorf("expected updated label, got %s", updated.Label)
-	}
-
-	// 4. List
-	items, err := store.ListNavigationItems(ctx)
-	if err != nil {
-		t.Fatalf("list nav items: %v", err)
-	}
-	found := false
-	for _, it := range items {
-		if it.ID == created.ID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("expected to find nav item in list")
-	}
-
-	// 5. Reorder
-	n2 := NavigationItem{Label: "Contact", Type: NavItemTypeURL, URL: stringPtr("/contact"), SortOrder: 20}
-	created2, _ := store.CreateNavigationItem(ctx, n2)
-
-	err = store.UpdateNavigationOrder(ctx, []NavOrderUpdate{
-		{ID: created.ID, SortOrder: 50},
-		{ID: created2.ID, SortOrder: 40},
 	})
 	if err != nil {
-		t.Fatalf("update nav order: %v", err)
+		t.Fatalf("create url nav item: %v", err)
 	}
 
-	items, _ = store.ListNavigationItems(ctx)
-	// it should be sorted by sort_order ASC
-	if items[0].ID != created2.ID {
-		t.Errorf("expected item 2 to be first after reorder, got %s", items[0].ID)
-	}
-
-	// 6. Delete
-	err = store.DeleteNavigationItem(ctx, created.ID)
+	// Page item
+	pageItem, err := store.CreateNavigationItem(ctx, NavigationItem{
+		MenuID:    createdMenu.ID,
+		Label:     "About",
+		Type:      NavItemTypePage,
+		PageID:    &page.ID,
+		SortOrder: 30,
+		IsActive:  true,
+	})
 	if err != nil {
-		t.Fatalf("delete nav item: %v", err)
+		t.Fatalf("create page nav item: %v", err)
 	}
-	store.DeleteNavigationItem(ctx, created2.ID)
+
+	// Category item
+	categoryItem, err := store.CreateNavigationItem(ctx, NavigationItem{
+		MenuID:     createdMenu.ID,
+		Label:      "Category",
+		Type:       NavItemTypeCategory,
+		CategoryID: &categoryID,
+		SortOrder:  40,
+		IsActive:   true,
+	})
+	if err != nil {
+		t.Fatalf("create category nav item: %v", err)
+	}
+
+	// Legacy fallback path: menu omitted should resolve to default legacy menu.
+	legacyItem, err := store.CreateNavigationItem(ctx, NavigationItem{
+		Label:     "Legacy",
+		Type:      NavItemTypeURL,
+		URL:       stringPtr("/legacy"),
+		SortOrder: 10,
+		IsActive:  true,
+	})
+	if err != nil {
+		t.Fatalf("create legacy nav item: %v", err)
+	}
+	if legacyItem.MenuID == "" {
+		t.Fatal("expected legacy item menu_id to be resolved")
+	}
+
+	// target validation behavior
+	_, err = store.CreateNavigationItem(ctx, NavigationItem{
+		MenuID:    createdMenu.ID,
+		Label:     "Invalid page",
+		Type:      NavItemTypePage,
+		SortOrder: 50,
+		IsActive:  true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "invalid target") {
+		t.Fatalf("expected invalid target error, got: %v", err)
+	}
+
+	// list by menu
+	menuItems, err := store.ListNavigationItemsByMenu(ctx, createdMenu.ID)
+	if err != nil {
+		t.Fatalf("list nav items by menu: %v", err)
+	}
+	if len(menuItems) < 3 {
+		t.Fatalf("expected >= 3 menu items, got %d", len(menuItems))
+	}
+
+	// update item
+	pageItem.Label = "About Us"
+	updatedItem, err := store.UpdateNavigationItem(ctx, pageItem)
+	if err != nil {
+		t.Fatalf("update page nav item: %v", err)
+	}
+	if updatedItem.Label != "About Us" {
+		t.Fatalf("expected updated label, got %s", updatedItem.Label)
+	}
+
+	// reorder menu with explicit menu-scoped method
+	err = store.UpdateNavigationMenuOrder(ctx, createdMenu.ID, []string{categoryItem.ID, pageItem.ID, urlItem.ID})
+	if err != nil {
+		t.Fatalf("update nav menu order: %v", err)
+	}
+	menuItems, err = store.ListNavigationItemsByMenu(ctx, createdMenu.ID)
+	if err != nil {
+		t.Fatalf("list nav items by menu after reorder: %v", err)
+	}
+	if len(menuItems) < 3 || menuItems[0].ID != categoryItem.ID {
+		t.Fatalf("unexpected order after reorder, first=%v", firstNavID(menuItems))
+	}
+
+	// location assignment
+	err = store.AssignNavigationLocation(ctx, "footer_info", createdMenu.ID)
+	if err != nil {
+		t.Fatalf("assign location: %v", err)
+	}
+	locations, err := store.ListNavigationLocations(ctx)
+	if err != nil {
+		t.Fatalf("list locations: %v", err)
+	}
+	if !locationAssignedToMenu(locations, "footer_info", createdMenu.ID) {
+		t.Fatal("expected footer_info to be assigned to created menu")
+	}
+
+	// delete menu should fail while assigned
+	err = store.DeleteNavigationMenu(ctx, createdMenu.ID)
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("expected ErrConflict when deleting assigned menu, got %v", err)
+	}
+
+	// unassign and delete
+	err = store.AssignNavigationLocation(ctx, "footer_info", "")
+	if err != nil {
+		t.Fatalf("clear location assignment: %v", err)
+	}
+	err = store.DeleteNavigationMenu(ctx, createdMenu2.ID)
+	if err != nil {
+		t.Fatalf("delete secondary menu: %v", err)
+	}
+	err = store.DeleteNavigationMenu(ctx, createdMenu.ID)
+	if err != nil {
+		t.Fatalf("delete menu after unassign: %v", err)
+	}
+
+	_ = store.DeleteNavigationItem(ctx, legacyItem.ID)
+	_ = store.DeleteNavigationItem(ctx, categoryItem.ID)
+	_ = store.DeleteNavigationItem(ctx, pageItem.ID)
+	_ = store.DeleteNavigationItem(ctx, urlItem.ID)
+	_ = store.DeletePage(ctx, page.ID)
+	_, _ = db.ExecContext(ctx, "DELETE FROM categories WHERE id = $1", categoryID)
 }
 
 func assertTableExists(t *testing.T, ctx context.Context, db *sql.DB, tableName string) {
@@ -232,4 +317,51 @@ func assertTableExists(t *testing.T, ctx context.Context, db *sql.DB, tableName 
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func createTestCategory(t *testing.T, ctx context.Context, db *sql.DB) string {
+	t.Helper()
+	slug := fmt.Sprintf("test-category-%d", time.Now().UnixNano())
+	var id string
+	err := db.QueryRowContext(ctx, `
+		INSERT INTO categories (slug, name)
+		VALUES ($1, $2)
+		RETURNING id
+	`, slug, "Test Category").Scan(&id)
+	if err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+	return id
+}
+
+func createTestPage(t *testing.T, ctx context.Context, store *Store) Page {
+	t.Helper()
+	slug := fmt.Sprintf("/page-%d", time.Now().UnixNano())
+	page, err := store.CreatePage(ctx, Page{
+		Title:       "Nav Target Page",
+		Slug:        slug,
+		Status:      PageStatusPublished,
+		ContentHTML: "<p>Nav target</p>",
+		EditorMode:  EditorModeHTML,
+	})
+	if err != nil {
+		t.Fatalf("create page target: %v", err)
+	}
+	return page
+}
+
+func locationAssignedToMenu(locations []NavigationLocation, code, menuID string) bool {
+	for _, location := range locations {
+		if location.Code == code && location.MenuID != nil && *location.MenuID == menuID {
+			return true
+		}
+	}
+	return false
+}
+
+func firstNavID(items []NavigationItem) string {
+	if len(items) == 0 {
+		return ""
+	}
+	return items[0].ID
 }
