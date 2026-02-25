@@ -5,6 +5,7 @@ import { Upload, Link as LinkIcon, X, Star, ImageIcon, Loader2 } from "lucide-re
 import {
   addAdminProductImage,
   removeAdminProductImage,
+  setDefaultAdminProductImage,
   uploadAdminMedia,
   getAdminMedia,
   type ProductImage,
@@ -27,6 +28,7 @@ export function ProductImagesManager({ productID, initialImages }: Props) {
   const [urlInput, setUrlInput] = useState("");
   const [altInput, setAltInput] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
+  const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -74,6 +76,19 @@ export function ProductImagesManager({ productID, initialImages }: Props) {
     }
   }
 
+  async function handleSetDefault(imageID: string) {
+    setSettingDefault(imageID);
+    setError(null);
+    try {
+      await setDefaultAdminProductImage(productID, imageID);
+      setImages((prev) => prev.map((img) => ({ ...img, isDefault: img.id === imageID })));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to set default image");
+    } finally {
+      setSettingDefault(null);
+    }
+  }
+
   async function handleRemove(imageID: string) {
     setRemoving(imageID);
     setError(null);
@@ -105,14 +120,27 @@ export function ProductImagesManager({ productID, initialImages }: Props) {
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {images.map((img) => (
-            <div key={img.id} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-surface-border bg-foreground/[0.03]">
+            <div key={img.id} className={`group relative h-20 w-20 overflow-hidden rounded-xl border bg-foreground/[0.03] ${img.isDefault ? "border-yellow-400/60 ring-1 ring-yellow-400/40" : "border-surface-border"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt={img.alt || ""} className="h-full w-full object-cover" loading="lazy" />
-              {img.isDefault && (
-                <div className="absolute left-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-400/90">
-                  <Star size={9} className="text-yellow-900" />
-                </div>
-              )}
+              {/* Set default star */}
+              <button
+                type="button"
+                title={img.isDefault ? "Default image" : "Set as default"}
+                onClick={() => !img.isDefault && handleSetDefault(img.id)}
+                disabled={settingDefault === img.id || img.isDefault}
+                className={`absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full transition-opacity ${
+                  img.isDefault
+                    ? "bg-yellow-400/90 opacity-100"
+                    : "bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-yellow-400/80"
+                } disabled:cursor-default`}
+              >
+                {settingDefault === img.id
+                  ? <Loader2 size={9} className="animate-spin text-white" />
+                  : <Star size={9} className={img.isDefault ? "text-yellow-900 fill-yellow-900" : "text-white"} />
+                }
+              </button>
+              {/* Remove button */}
               <button
                 type="button"
                 onClick={() => handleRemove(img.id)}

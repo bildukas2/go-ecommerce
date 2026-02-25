@@ -300,10 +300,22 @@ export default async function AdminOrderDetailPage({ params }: Params) {
               <dt className="text-xs uppercase tracking-wide text-foreground/60">Service Code</dt>
               <dd>{maybeValue(order.shipping.service_code)}</dd>
             </div>
-            <div className="md:col-span-2">
-              <dt className="text-xs uppercase tracking-wide text-foreground/60">Terminal / Pickup Point</dt>
-              <dd>{maybeValue(order.shipping.terminal_id)}</dd>
-            </div>
+            {order.shipping.terminal_id && (
+              <div className="md:col-span-2">
+                <dt className="text-xs uppercase tracking-wide text-foreground/60">Terminal / Pickup Point</dt>
+                <dd className="space-y-0.5">
+                  {order.shipping.terminal_name ? (
+                    <>
+                      <p className="font-medium">{order.shipping.terminal_name}</p>
+                      {order.shipping.terminal_address && <p className="text-foreground/70">{order.shipping.terminal_address}</p>}
+                      <p className="font-mono text-xs text-foreground/50">ID: {order.shipping.terminal_id}</p>
+                    </>
+                  ) : (
+                    <p className="font-mono text-xs">{order.shipping.terminal_id}</p>
+                  )}
+                </dd>
+              </div>
+            )}
             <div className="md:col-span-2">
               <dt className="text-xs uppercase tracking-wide text-foreground/60">Ship To</dt>
               <dd className="space-y-0.5">

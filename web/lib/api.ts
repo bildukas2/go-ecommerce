@@ -1685,6 +1685,8 @@ export type AdminOrderShipping = {
   provider_key: string;
   service_code: string;
   terminal_id: string;
+  terminal_name: string;
+  terminal_address: string;
   price_cents: number;
   full_name: string;
   phone: string;
@@ -2742,6 +2744,14 @@ export async function removeAdminProductImage(productID: string, imageID: string
     { method: "DELETE", ...(await adminMutationHeaders()), cache: "no-store" },
   );
   if (!res.ok) throw new Error(`Remove image failed: ${res.status}`);
+}
+
+export async function setDefaultAdminProductImage(productID: string, imageID: string): Promise<void> {
+  const res = await fetch(
+    new URL(apiJoin(`admin/catalog/products/${encodeURIComponent(productID)}/images/${encodeURIComponent(imageID)}/default`)).toString(),
+    { method: "PATCH", ...(await adminMutationHeaders()), cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Set default image failed: ${res.status}`);
 }
 
 export async function createAdminProductVariant(productID: string, input: AdminCreateVariantInput): Promise<ProductVariant> {

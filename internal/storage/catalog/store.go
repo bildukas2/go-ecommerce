@@ -466,6 +466,29 @@ func (s *Store) AddProductImage(ctx context.Context, productID, url, alt string)
 	return im, err
 }
 
+func (s *Store) SetDefaultProductImage(ctx context.Context, imageID, productID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err = tx.ExecContext(ctx, `UPDATE images SET is_default = false WHERE product_id = $1`, productID); err != nil {
+		return err
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE images SET is_default = true WHERE id = $1 AND product_id = $2`, imageID, productID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("image not found")
+	}
+	return tx.Commit()
+}
+
 func (s *Store) RemoveProductImage(ctx context.Context, imageID, productID string) error {
 	result, err := s.db.ExecContext(ctx,
 		`DELETE FROM images WHERE id = $1 AND product_id = $2`,

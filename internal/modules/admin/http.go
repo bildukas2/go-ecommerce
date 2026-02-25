@@ -18,17 +18,24 @@ import (
 
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
+	platformshipping "goecommerce/internal/platform/shipping"
 	storcat "goecommerce/internal/storage/catalog"
 	storcustomers "goecommerce/internal/storage/customers"
 	stormedia "goecommerce/internal/storage/media"
 	stororders "goecommerce/internal/storage/orders"
+	storshipping "goecommerce/internal/storage/shipping"
 )
+
+type terminalStore interface {
+	GetCachedTerminals(ctx context.Context, providerKey, country string) ([]byte, time.Time, error)
+}
 
 type module struct {
 	orders              ordersStore
 	customers           customersStore
 	catalog             catalogStore
 	media               mediaStore
+	terminals           terminalStore
 	validateImportHost  func(context.Context, string) error
 	downloadImportImage func(context.Context, string) ([]byte, string, error)
 	uploadsDir          string
@@ -67,6 +74,14 @@ func NewModule(deps app.Deps) app.Module {
 			slog.Error("module init: failed to create store", "module", "admin", "store", "media", "error", err)
 		}
 	}
+	var tst terminalStore
+	if deps.DB != nil {
+		if s, err := storshipping.NewStore(context.Background(), deps.DB); err == nil {
+			tst = s
+		} else {
+			slog.Error("module init: failed to create store", "module", "admin", "store", "shipping", "error", err)
+		}
+	}
 	uploadsDir := strings.TrimSpace(os.Getenv("UPLOADS_DIR"))
 	if uploadsDir == "" {
 		uploadsDir = "./tmp/uploads"
@@ -77,6 +92,7 @@ func NewModule(deps app.Deps) app.Module {
 		customers:  cust,
 		catalog:    cst,
 		media:      mst,
+		terminals:  tst,
 		uploadsDir: uploadsDir,
 	}
 }
@@ -268,6 +284,37 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt:         it.UpdatedAt,
 		})
 	}
+	var terminalName, terminalAddress string
+	if o.ShippingTerminalID != "" && o.ShippingProviderKey != "" && m.terminals != nil {
+		country := o.ShippingCountry
+		if country == "" {
+			country = "EE"
+		}
+		if cached, _, err := m.terminals.GetCachedTerminals(r.Context(), o.ShippingProviderKey, country); err == nil && len(cached) > 0 {
+			var terminals []platformshipping.Terminal
+			if err := json.Unmarshal(cached, &terminals); err == nil {
+				for _, t := range terminals {
+					if t.ID == o.ShippingTerminalID {
+						terminalName = t.Name
+						parts := []string{}
+						if t.Address != "" {
+							parts = append(parts, t.Address)
+						}
+						if t.City != "" {
+							parts = append(parts, t.City)
+						}
+						if t.Postcode != "" {
+							parts = append(parts, t.Postcode)
+						}
+						if len(parts) > 0 {
+							terminalAddress = strings.Join(parts, ", ")
+						}
+						break
+					}
+				}
+			}
+		}
+	}
 	resp := adminOrderDetailResponse{
 		Order: adminOrderCoreResponse{
 			ID:            o.ID,
@@ -289,12 +336,14 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 			LastName:  o.CustomerLastName,
 		},
 		Shipping: adminOrderShippingResponse{
-			MethodID:    o.ShippingMethodID,
-			MethodTitle: o.ShippingMethodTitle,
-			ProviderKey: o.ShippingProviderKey,
-			ServiceCode: o.ShippingServiceCode,
-			TerminalID:  o.ShippingTerminalID,
-			PriceCents:  o.ShippingPriceCents,
+			MethodID:        o.ShippingMethodID,
+			MethodTitle:     o.ShippingMethodTitle,
+			ProviderKey:     o.ShippingProviderKey,
+			ServiceCode:     o.ShippingServiceCode,
+			TerminalID:      o.ShippingTerminalID,
+			TerminalName:    terminalName,
+			TerminalAddress: terminalAddress,
+			PriceCents:      o.ShippingPriceCents,
 			FullName:    o.ShippingFullName,
 			Phone:       o.ShippingPhone,
 			Address1:    o.ShippingAddress1,
@@ -361,12 +410,14 @@ type adminOrderCustomerResponse struct {
 }
 
 type adminOrderShippingResponse struct {
-	MethodID    string `json:"method_id"`
-	MethodTitle string `json:"method_title"`
-	ProviderKey string `json:"provider_key"`
-	ServiceCode string `json:"service_code"`
-	TerminalID  string `json:"terminal_id"`
-	PriceCents  int    `json:"price_cents"`
+	MethodID        string `json:"method_id"`
+	MethodTitle     string `json:"method_title"`
+	ProviderKey     string `json:"provider_key"`
+	ServiceCode     string `json:"service_code"`
+	TerminalID      string `json:"terminal_id"`
+	TerminalName    string `json:"terminal_name"`
+	TerminalAddress string `json:"terminal_address"`
+	PriceCents      int    `json:"price_cents"`
 	FullName    string `json:"full_name"`
 	Phone       string `json:"phone"`
 	Address1    string `json:"address1"`
@@ -505,6 +556,7 @@ type catalogStore interface {
 	DetachProductCustomOption(ctx context.Context, productID, optionID string) error
 	AddProductImage(ctx context.Context, productID, url, alt string) (storcat.Image, error)
 	RemoveProductImage(ctx context.Context, imageID, productID string) error
+	SetDefaultProductImage(ctx context.Context, imageID, productID string) error
 }
 
 type mediaStore interface {
@@ -817,6 +869,29 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 			return
 		}
 		http.NotFound(w, r)
+		return
+	}
+
+	// Handle 4-part paths: /admin/catalog/products/{id}/images/{imageID}/default
+	if len(parts) == 4 && parts[1] == "images" && parts[3] == "default" {
+		imageID := strings.TrimSpace(parts[2])
+		if imageID == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodPatch {
+			platformhttp.Error(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if err := m.catalog.SetDefaultProductImage(r.Context(), imageID, id); err != nil {
+			if err.Error() == "image not found" {
+				platformhttp.Error(w, http.StatusNotFound, "image not found")
+			} else {
+				platformhttp.Error(w, http.StatusInternalServerError, "set default image error")
+			}
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"id": imageID})
 		return
 	}
 
