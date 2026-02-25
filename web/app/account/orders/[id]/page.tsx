@@ -255,6 +255,11 @@ function OrderDetailContent({ order }: { order: AccountOrderDetail }) {
               </div>
               <h2 className="text-lg font-bold text-blue-900 dark:text-blue-200">How to Pay</h2>
             </div>
+            {payment.description && (
+              <p className="mb-4 text-sm font-medium text-blue-900 dark:text-blue-200">
+                {payment.description}
+              </p>
+            )}
             {payment.instructions ? (
               <p className="mb-6 text-sm leading-relaxed text-blue-800 dark:text-blue-300">
                 {payment.instructions}

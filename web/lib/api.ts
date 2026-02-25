@@ -1227,6 +1227,7 @@ export type AccountOrderPayment = {
   method: string;
   provider: string;
   title: string;
+  description: string;
   instructions: string;
   bank_config: AccountOrderBankConfig | null;
 };
@@ -1390,6 +1391,7 @@ function normalizeAccountOrderDetail(raw: unknown): AccountOrderDetail {
       method: asString(paymentRaw.method),
       provider: asString(paymentRaw.provider),
       title: asString(paymentRaw.title),
+      description: asString(paymentRaw.description),
       instructions: asString(paymentRaw.instructions),
       bank_config: bankRaw
         ? {

@@ -249,6 +249,7 @@ func TestHandleOrderDetailBankTransferKey(t *testing.T) {
 	payStore := &fakePaymentStore{
 		method: &storpayments.PaymentMethod{
 			Title:        "Bank Transfer Title",
+			Description:  "Description info",
 			Instructions: "How to pay info",
 			ConfigJSON:   []byte(`{"account_name": "Test Account"}`),
 		},
@@ -281,6 +282,10 @@ func TestHandleOrderDetailBankTransferKey(t *testing.T) {
 	
 	if resp.Payment.Instructions != "How to pay info" {
 		t.Errorf("expected instructions 'How to pay info', got '%s'", resp.Payment.Instructions)
+	}
+	
+	if resp.Payment.Description != "Description info" {
+		t.Errorf("expected description 'Description info', got '%s'", resp.Payment.Description)
 	}
 	
 	if resp.Payment.BankConfig == nil || resp.Payment.BankConfig.AccountName != "Test Account" {

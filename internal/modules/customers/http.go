@@ -394,6 +394,7 @@ type accountOrderPaymentResponse struct {
 	Method       string                          `json:"method"`
 	Provider     string                          `json:"provider"`
 	Title        string                          `json:"title"`
+	Description  string                          `json:"description"`
 	Instructions string                          `json:"instructions"`
 	BankConfig   *accountOrderBankConfigResponse `json:"bank_config"`
 }
@@ -518,6 +519,7 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 	if o.PaymentMethod == "bank_transfer" && m.payments != nil {
 		if pm, err := m.payments.GetMethodByKey(r.Context(), "bank-transfer"); err == nil && pm != nil {
 			paymentResp.Title = pm.Title
+			paymentResp.Description = pm.Description
 			paymentResp.Instructions = pm.Instructions
 			var cfg storpayments.BankTransferConfig
 			if len(pm.ConfigJSON) > 0 {
