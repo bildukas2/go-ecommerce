@@ -38,7 +38,8 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
           </div>
         ) : (
           response.items.map((order) => (
-            <article key={order.id} className="rounded-2xl border border-surface-border bg-surface p-5">
+            <Link key={order.id} href={`/account/orders/${order.id}`} className="block">
+            <article className="rounded-2xl border border-surface-border bg-surface p-5 hover:ring-1 hover:ring-border transition">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-neutral-500">{order.number}</p>
@@ -60,6 +61,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
                 ))}
               </ul>
             </article>
+            </Link>
           ))
         )}
       </div>
