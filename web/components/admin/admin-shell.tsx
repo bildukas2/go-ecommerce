@@ -31,7 +31,7 @@ const catalogItems: NavItem[] = [
 
 const cmsItems: NavItem[] = [
   { href: "/admin/cms/pages", label: "Pages", icon: <FileText size={16} /> },
-  { href: "/admin/cms/navigation", label: "Navigation", icon: <Compass size={16} /> },
+  { href: "/admin/cms/navigation/menus", label: "Navigation", icon: <Compass size={16} /> },
 ];
 
 const customerItems: NavItem[] = [

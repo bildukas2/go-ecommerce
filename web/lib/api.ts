@@ -176,15 +176,37 @@ export type AdminPage = {
 
 export type AdminNavigationItem = {
   id: string;
+  menu_id: string;
   label: string;
-  type: "page" | "url";
+  type: "page" | "url" | "category";
   page_id?: string | null;
+  category_id?: string | null;
   url?: string | null;
   open_in_new_tab: boolean;
   sort_order: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type AdminNavigationMenu = {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminNavigationLocation = {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  menu_id?: string | null;
+  menu_code?: string | null;
+  menu_name?: string | null;
+  assignment_updated_at?: string | null;
 };
 
 export type AdminPageListResponse = {
@@ -461,21 +483,59 @@ function normalizeAdminPage(raw: unknown): AdminPage | null {
 function normalizeAdminNavigationItem(raw: unknown): AdminNavigationItem | null {
   const obj = asRecord(raw);
   const id = asString(obj.id);
+  const menuID = asString(obj.menu_id);
   if (!id) return null;
 
   const type = asString(obj.type).toLowerCase();
+  const normalizedType = (type === "url" || type === "category" ? type : "page") as AdminNavigationItem["type"];
 
   return {
     id,
+    menu_id: menuID,
     label: asString(obj.label),
-    type: (type === "url" ? "url" : "page") as AdminNavigationItem["type"],
+    type: normalizedType,
     page_id: asNullableString(obj.page_id),
+    category_id: asNullableString(obj.category_id),
     url: asNullableString(obj.url),
     open_in_new_tab: asBoolean(obj.open_in_new_tab),
     sort_order: asNumber(obj.sort_order),
     is_active: asBoolean(obj.is_active),
     created_at: asString(obj.created_at),
     updated_at: asString(obj.updated_at),
+  };
+}
+
+function normalizeAdminNavigationMenu(raw: unknown): AdminNavigationMenu | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const code = asString(obj.code);
+  const name = asString(obj.name);
+  if (!id || !code || !name) return null;
+  return {
+    id,
+    code,
+    name,
+    description: asNullableString(obj.description),
+    created_at: asString(obj.created_at),
+    updated_at: asString(obj.updated_at),
+  };
+}
+
+function normalizeAdminNavigationLocation(raw: unknown): AdminNavigationLocation | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const code = asString(obj.code);
+  const name = asString(obj.name);
+  if (!id || !code || !name) return null;
+  return {
+    id,
+    code,
+    name,
+    description: asNullableString(obj.description),
+    menu_id: asNullableString(obj.menu_id),
+    menu_code: asNullableString(obj.menu_code),
+    menu_name: asNullableString(obj.menu_name),
+    assignment_updated_at: asNullableString(obj.assignment_updated_at),
   };
 }
 
@@ -671,7 +731,7 @@ export async function checkAdminPageSlug(slug: string, excludeId?: string): Prom
   return await res.json();
 }
 
-// Navigation
+// Navigation (legacy list endpoint kept for compatibility)
 export async function getAdminNavigation(): Promise<{ items: AdminNavigationItem[] }> {
   const url = apiJoin("admin/navigation");
   const res = await fetch(url, {
@@ -680,14 +740,100 @@ export async function getAdminNavigation(): Promise<{ items: AdminNavigationItem
   });
   if (!res.ok) throw new Error(`Failed to fetch admin navigation: ${res.status}`);
   const payload = await res.json();
-  const itemsRaw = Array.isArray(payload) ? payload : (asRecord(payload).items as unknown[] || []);
+  const itemsRaw = Array.isArray(payload) ? payload : ((asRecord(payload).items as unknown[]) || []);
   return {
     items: itemsRaw.map(normalizeAdminNavigationItem).filter((item): item is AdminNavigationItem => item !== null),
   };
 }
 
-export async function createAdminNavigationItem(data: Partial<AdminNavigationItem>): Promise<AdminNavigationItem> {
-  const url = apiJoin("admin/navigation");
+// Navigation menus
+export async function getAdminNavigationMenus(): Promise<{ menus: AdminNavigationMenu[] }> {
+  const url = apiJoin("admin/navigation/menus");
+  const res = await fetch(url, {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch admin navigation menus: ${res.status}`);
+  const payload = await res.json();
+  const menusRaw = Array.isArray(payload) ? payload : ((asRecord(payload).menus as unknown[]) || []);
+  return {
+    menus: menusRaw.map(normalizeAdminNavigationMenu).filter((menu): menu is AdminNavigationMenu => menu !== null),
+  };
+}
+
+export async function createAdminNavigationMenu(data: {
+  code: string;
+  name: string;
+  description?: string | null;
+}): Promise<AdminNavigationMenu> {
+  const url = apiJoin("admin/navigation/menus");
+  const res = await fetch(url, {
+    method: "POST",
+    ...(await adminMutationHeaders()),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to create navigation menu"));
+  const payload = await res.json();
+  const menu = normalizeAdminNavigationMenu(payload);
+  if (!menu) throw new Error("Invalid navigation menu data");
+  return menu;
+}
+
+export async function updateAdminNavigationMenu(
+  id: string,
+  data: { code: string; name: string; description?: string | null },
+): Promise<AdminNavigationMenu> {
+  const url = apiJoin(`admin/navigation/menus/${encodeURIComponent(id)}`);
+  const res = await fetch(url, {
+    method: "PUT",
+    ...(await adminMutationHeaders()),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to update navigation menu"));
+  const payload = await res.json();
+  const menu = normalizeAdminNavigationMenu(payload);
+  if (!menu) throw new Error("Invalid navigation menu data");
+  return menu;
+}
+
+export async function deleteAdminNavigationMenu(id: string): Promise<void> {
+  const url = apiJoin(`admin/navigation/menus/${encodeURIComponent(id)}`);
+  const res = await fetch(url, {
+    method: "DELETE",
+    ...(await adminMutationHeaders()),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to delete navigation menu"));
+}
+
+// Navigation menu items
+export async function getAdminNavigationMenuItems(menuID: string): Promise<{ items: AdminNavigationItem[] }> {
+  const url = apiJoin(`admin/navigation/menus/${encodeURIComponent(menuID)}/items`);
+  const res = await fetch(url, {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch admin navigation items: ${res.status}`);
+  const payload = await res.json();
+  const itemsRaw = Array.isArray(payload) ? payload : ((asRecord(payload).items as unknown[]) || []);
+  return {
+    items: itemsRaw.map(normalizeAdminNavigationItem).filter((item): item is AdminNavigationItem => item !== null),
+  };
+}
+
+export async function createAdminNavigationMenuItem(
+  menuID: string,
+  data: {
+    label: string;
+    type: AdminNavigationItem["type"];
+    page_id?: string | null;
+    category_id?: string | null;
+    url?: string | null;
+    open_in_new_tab: boolean;
+    sort_order: number;
+    is_active: boolean;
+  },
+): Promise<AdminNavigationItem> {
+  const url = apiJoin(`admin/navigation/menus/${encodeURIComponent(menuID)}/items`);
   const res = await fetch(url, {
     method: "POST",
     ...(await adminMutationHeaders()),
@@ -700,12 +846,39 @@ export async function createAdminNavigationItem(data: Partial<AdminNavigationIte
   return item;
 }
 
-export async function updateAdminNavigationItem(id: string, data: Partial<AdminNavigationItem>): Promise<AdminNavigationItem> {
-  const url = apiJoin(`admin/navigation/${encodeURIComponent(id)}`);
+export async function updateAdminNavigationItem(
+  id: string,
+  data: {
+    menu_id?: string | null;
+    label: string;
+    type: AdminNavigationItem["type"];
+    page_id?: string | null;
+    category_id?: string | null;
+    url?: string | null;
+    open_in_new_tab: boolean;
+    sort_order: number;
+    is_active: boolean;
+  },
+): Promise<AdminNavigationItem> {
+  const body: Record<string, unknown> = {
+    label: data.label,
+    type: data.type,
+    page_id: data.page_id ?? null,
+    category_id: data.category_id ?? null,
+    url: data.url ?? null,
+    open_in_new_tab: data.open_in_new_tab,
+    sort_order: data.sort_order,
+    is_active: data.is_active,
+  };
+  if (data.menu_id && data.menu_id.trim().length > 0) {
+    body.menu_id = data.menu_id;
+  }
+
+  const url = apiJoin(`admin/navigation/items/${encodeURIComponent(id)}`);
   const res = await fetch(url, {
     method: "PUT",
     ...(await adminMutationHeaders()),
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to update navigation item"));
   const payload = await res.json();
@@ -715,7 +888,7 @@ export async function updateAdminNavigationItem(id: string, data: Partial<AdminN
 }
 
 export async function deleteAdminNavigationItem(id: string): Promise<void> {
-  const url = apiJoin(`admin/navigation/${encodeURIComponent(id)}`);
+  const url = apiJoin(`admin/navigation/items/${encodeURIComponent(id)}`);
   const res = await fetch(url, {
     method: "DELETE",
     ...(await adminMutationHeaders()),
@@ -723,14 +896,41 @@ export async function deleteAdminNavigationItem(id: string): Promise<void> {
   if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to delete navigation item"));
 }
 
-export async function reorderAdminNavigation(items: { id: string; sort_order: number }[]): Promise<void> {
-  const url = apiJoin("admin/navigation/reorder");
+export async function reorderAdminNavigationMenuItems(menuID: string, itemIDs: string[]): Promise<void> {
+  const url = apiJoin(`admin/navigation/menus/${encodeURIComponent(menuID)}/reorder`);
   const res = await fetch(url, {
     method: "PUT",
     ...(await adminMutationHeaders()),
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ item_ids: itemIDs }),
   });
-  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to reorder navigation"));
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to reorder navigation items"));
+}
+
+// Navigation locations
+export async function getAdminNavigationLocations(): Promise<{ locations: AdminNavigationLocation[] }> {
+  const url = apiJoin("admin/navigation/locations");
+  const res = await fetch(url, {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch admin navigation locations: ${res.status}`);
+  const payload = await res.json();
+  const locationsRaw = Array.isArray(payload) ? payload : ((asRecord(payload).locations as unknown[]) || []);
+  return {
+    locations: locationsRaw
+      .map(normalizeAdminNavigationLocation)
+      .filter((location): location is AdminNavigationLocation => location !== null),
+  };
+}
+
+export async function assignAdminNavigationLocation(code: string, menuID: string | null): Promise<void> {
+  const url = apiJoin(`admin/navigation/locations/${encodeURIComponent(code)}`);
+  const res = await fetch(url, {
+    method: "PUT",
+    ...(await adminMutationHeaders()),
+    body: JSON.stringify({ menu_id: menuID }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to assign navigation location"));
 }
 
 export type CartItem = {
