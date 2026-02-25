@@ -31,25 +31,28 @@ export default async function RootLayout({
   let isAuthenticated = false;
   let footerShopItems: StorefrontNavigationItem[] = [];
   let footerInfoItems: StorefrontNavigationItem[] = [];
+  let mobileItems: StorefrontNavigationItem[] = [];
   try {
     const cookieHeader = (await cookies()).toString();
     await getCurrentAccount({ cookieHeader });
     isAuthenticated = true;
   } catch {}
   try {
-    const [footerShop, footerInfo] = await Promise.all([
+    const [footerShop, footerInfo, mobile] = await Promise.all([
       getStorefrontNavigationLocation("footer_shop"),
       getStorefrontNavigationLocation("footer_info"),
+      getStorefrontNavigationLocation("mobile"),
     ]);
     footerShopItems = footerShop?.menu?.items ?? [];
     footerInfoItems = footerInfo?.menu?.items ?? [];
+    mobileItems = mobile?.menu?.items ?? [];
   } catch {}
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <Providers>
-          <StorefrontHeader isAuthenticated={isAuthenticated} />
+          <StorefrontHeader isAuthenticated={isAuthenticated} mobileItems={mobileItems} />
           <div className="flex-grow">
             {children}
           </div>
