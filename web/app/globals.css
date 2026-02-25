@@ -6,6 +6,7 @@
 @source "../app/**/*.{js,ts,jsx,tsx}";
 
 :root {
+  scroll-behavior: smooth;
   --background: #f7f7f9;
   --foreground: #11181c;
   --surface: rgba(255, 255, 255, 0.9);
