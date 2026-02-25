@@ -816,22 +816,36 @@ func (s *Store) ListNavigationLocations(ctx context.Context) ([]NavigationLocati
 }
 
 func (s *Store) AssignNavigationLocation(ctx context.Context, locationCode, menuID string) error {
+	locationCode = strings.TrimSpace(locationCode)
+	if locationCode == "" {
+		return ErrNotFound
+	}
+
+	var locationExists bool
+	if err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM navigation_locations WHERE code = $1)", locationCode).Scan(&locationExists); err != nil {
+		return err
+	}
+	if !locationExists {
+		return ErrNotFound
+	}
+
 	if strings.TrimSpace(menuID) == "" {
 		res, err := s.stmtDeleteNavLocationAssignment.ExecContext(ctx, locationCode)
 		if err != nil {
 			return err
 		}
-		if rows, err := res.RowsAffected(); err == nil && rows == 0 {
-			var exists bool
-			if err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM navigation_locations WHERE code = $1)", locationCode).Scan(&exists); err != nil {
-				return err
-			}
-			if !exists {
-				return ErrNotFound
-			}
-		}
+		_, _ = res.RowsAffected()
 		return nil
 	}
+
+	var menuExists bool
+	if err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM navigation_menus WHERE id = $1)", menuID).Scan(&menuExists); err != nil {
+		return err
+	}
+	if !menuExists {
+		return ErrNotFound
+	}
+
 	if _, err := s.stmtUpsertNavLocationAssignment.ExecContext(ctx, locationCode, menuID); err != nil {
 		return err
 	}
@@ -848,6 +862,30 @@ func (s *Store) IsCategoryUsedInNavigation(ctx context.Context, categoryID strin
 	var exists bool
 	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM navigation_items WHERE category_id = $1)", categoryID).Scan(&exists)
 	return exists, err
+}
+
+func (s *Store) GetPublishedPageSlugByID(ctx context.Context, id string) (string, error) {
+	var slug string
+	err := s.db.QueryRowContext(ctx, "SELECT slug FROM pages WHERE id = $1 AND status = $2", id, PageStatusPublished).Scan(&slug)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return slug, nil
+}
+
+func (s *Store) GetCategorySlugByID(ctx context.Context, id string) (string, error) {
+	var slug string
+	err := s.db.QueryRowContext(ctx, "SELECT slug FROM categories WHERE id = $1", id).Scan(&slug)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return slug, nil
 }
 
 func (s *Store) resolveLegacyDefaultMenuID(ctx context.Context) (string, error) {

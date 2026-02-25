@@ -47,12 +47,28 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	// Public API
 	mux.HandleFunc("GET /pages/{slug}", m.handleGetPageBySlug)
 
+	mux.HandleFunc("GET /admin/navigation/menus", m.handleAdminNavigationMenus)
+	mux.HandleFunc("POST /admin/navigation/menus", m.handleAdminNavigationMenus)
+	mux.HandleFunc("PUT /admin/navigation/menus/{id}", m.handleAdminNavigationMenuDetail)
+	mux.HandleFunc("DELETE /admin/navigation/menus/{id}", m.handleAdminNavigationMenuDetail)
+	mux.HandleFunc("GET /admin/navigation/menus/{id}/items", m.handleAdminNavigationMenuItems)
+	mux.HandleFunc("POST /admin/navigation/menus/{id}/items", m.handleAdminNavigationMenuItems)
+	mux.HandleFunc("PUT /admin/navigation/menus/{id}/reorder", m.handleAdminNavigationMenuReorder)
+	mux.HandleFunc("PUT /admin/navigation/items/{id}", m.handleAdminNavigationItemDetail)
+	mux.HandleFunc("DELETE /admin/navigation/items/{id}", m.handleAdminNavigationItemDetail)
+	mux.HandleFunc("GET /admin/navigation/locations", m.handleAdminNavigationLocations)
+	mux.HandleFunc("PUT /admin/navigation/locations/{code}", m.handleAdminNavigationLocationDetail)
+
+	// Legacy endpoint kept until admin UI migration completes.
 	mux.HandleFunc("GET /admin/navigation", m.handleAdminNavigation)
 	mux.HandleFunc("POST /admin/navigation", m.handleAdminNavigation)
 	mux.HandleFunc("GET /admin/navigation/{id}", m.handleAdminNavigationDetail)
 	mux.HandleFunc("PUT /admin/navigation/{id}", m.handleAdminNavigationDetail)
 	mux.HandleFunc("DELETE /admin/navigation/{id}", m.handleAdminNavigationDetail)
 	mux.HandleFunc("PUT /admin/navigation/reorder", m.handleAdminNavigationReorder)
+
+	mux.HandleFunc("GET /navigation/locations", m.handleNavigationLocations)
+	mux.HandleFunc("GET /navigation/location/{code}", m.handleNavigationLocationByCode)
 }
 
 var (

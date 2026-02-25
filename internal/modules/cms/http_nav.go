@@ -72,15 +72,17 @@ func (m *module) handleAdminCreateNavigation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := validateNavigationRequest(req.Label, req.Type, req.PageID, req.URL); err != nil {
+	if err := validateNavigationRequest(req.Label, req.Type, req.PageID, req.CategoryID, req.URL); err != nil {
 		platformhttp.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	item, err := m.store.CreateNavigationItem(r.Context(), storcms.NavigationItem{
+		MenuID:       "",
 		Label:        req.Label,
 		Type:         req.Type,
 		PageID:       req.PageID,
+		CategoryID:   req.CategoryID,
 		URL:          req.URL,
 		OpenInNewTab: req.OpenInNewTab,
 		SortOrder:    req.SortOrder,
@@ -115,16 +117,18 @@ func (m *module) handleAdminUpdateNavigation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := validateNavigationRequest(req.Label, req.Type, req.PageID, req.URL); err != nil {
+	if err := validateNavigationRequest(req.Label, req.Type, req.PageID, req.CategoryID, req.URL); err != nil {
 		platformhttp.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	item, err := m.store.UpdateNavigationItem(r.Context(), storcms.NavigationItem{
 		ID:           id,
+		MenuID:       "",
 		Label:        req.Label,
 		Type:         req.Type,
 		PageID:       req.PageID,
+		CategoryID:   req.CategoryID,
 		URL:          req.URL,
 		OpenInNewTab: req.OpenInNewTab,
 		SortOrder:    req.SortOrder,
@@ -169,10 +173,10 @@ func (m *module) handleAdminNavigationReorder(w http.ResponseWriter, r *http.Req
 	}
 
 	var updates []storcms.NavOrderUpdate
-	for _, item := range req.Items {
+	for idx, itemID := range req.ItemIDs {
 		updates = append(updates, storcms.NavOrderUpdate{
-			ID:        item.ID,
-			SortOrder: item.SortOrder,
+			ID:        itemID,
+			SortOrder: idx,
 		})
 	}
 
@@ -184,20 +188,24 @@ func (m *module) handleAdminNavigationReorder(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func validateNavigationRequest(label, navType string, pageID, url *string) error {
+func validateNavigationRequest(label, navType string, pageID, categoryID, url *string) error {
 	if strings.TrimSpace(label) == "" {
 		return errors.New("label is required")
 	}
 
-	if navType != storcms.NavItemTypePage && navType != storcms.NavItemTypeURL {
+	if navType != storcms.NavItemTypePage && navType != storcms.NavItemTypeURL && navType != storcms.NavItemTypeCategory {
 		return errors.New("invalid navigation type")
 	}
 
-	if navType == storcms.NavItemTypePage && (pageID == nil || *pageID == "") {
+	if navType == storcms.NavItemTypePage && (pageID == nil || strings.TrimSpace(*pageID) == "") {
 		return errors.New("page_id is required for type page")
 	}
 
-	if navType == storcms.NavItemTypeURL && (url == nil || *url == "") {
+	if navType == storcms.NavItemTypeCategory && (categoryID == nil || strings.TrimSpace(*categoryID) == "") {
+		return errors.New("category_id is required for type category")
+	}
+
+	if navType == storcms.NavItemTypeURL && (url == nil || strings.TrimSpace(*url) == "") {
 		return errors.New("url is required for type url")
 	}
 
@@ -207,9 +215,11 @@ func validateNavigationRequest(label, navType string, pageID, url *string) error
 func toNavigationItemResponse(n storcms.NavigationItem) NavigationItemResponse {
 	return NavigationItemResponse{
 		ID:           n.ID,
+		MenuID:       n.MenuID,
 		Label:        n.Label,
 		Type:         n.Type,
 		PageID:       n.PageID,
+		CategoryID:   n.CategoryID,
 		URL:          n.URL,
 		OpenInNewTab: n.OpenInNewTab,
 		SortOrder:    n.SortOrder,

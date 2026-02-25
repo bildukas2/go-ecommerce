@@ -85,29 +85,75 @@ func TestValidatePageRequest(t *testing.T) {
 
 func TestValidateNavigationRequest(t *testing.T) {
 	pageID := "page-1"
+	categoryID := "cat-1"
 	url := "https://example.com"
-	
+
 	tests := []struct {
 		name    string
 		label   string
 		navType string
 		pageID  *string
+		catID   *string
 		url     *string
 		wantErr bool
 	}{
 		{name: "valid page", label: "Home", navType: "page", pageID: &pageID, wantErr: false},
 		{name: "valid url", label: "External", navType: "url", url: &url, wantErr: false},
+		{name: "valid category", label: "Category", navType: "category", catID: &categoryID, wantErr: false},
 		{name: "missing label", label: "", navType: "page", pageID: &pageID, wantErr: true},
 		{name: "invalid type", label: "Home", navType: "invalid", pageID: &pageID, wantErr: true},
 		{name: "missing page id", label: "Home", navType: "page", pageID: nil, wantErr: true},
 		{name: "missing url", label: "External", navType: "url", url: nil, wantErr: true},
+		{name: "missing category id", label: "Category", navType: "category", catID: nil, wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateNavigationRequest(tt.label, tt.navType, tt.pageID, tt.url)
+			err := validateNavigationRequest(tt.label, tt.navType, tt.pageID, tt.catID, tt.url)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateNavigationRequest() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateNavigationMenuRequest(t *testing.T) {
+	tests := []struct {
+		name    string
+		code    string
+		menu    string
+		wantErr bool
+	}{
+		{name: "valid", code: "header_primary", menu: "Header", wantErr: false},
+		{name: "missing code", code: "", menu: "Header", wantErr: true},
+		{name: "missing name", code: "header_primary", menu: "", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateNavigationMenuRequest(tt.code, tt.menu)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateNavigationMenuRequest() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestResolvePageHref(t *testing.T) {
+	tests := []struct {
+		name string
+		slug string
+		want string
+	}{
+		{name: "trim slash", slug: "/about", want: "/page/about"},
+		{name: "without slash", slug: "contact", want: "/page/contact"},
+		{name: "empty", slug: "", want: "/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolvePageHref(tt.slug); got != tt.want {
+				t.Fatalf("resolvePageHref() = %q, want %q", got, tt.want)
 			}
 		})
 	}
