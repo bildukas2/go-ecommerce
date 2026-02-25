@@ -118,6 +118,43 @@ type AdminCustomer struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
+
+type CustomerOrderItem struct {
+	ID             string
+	ProductTitle   string
+	VariantSKU     string
+	Quantity       int
+	UnitPriceCents int
+	Currency       string
+	CustomOptions  json.RawMessage
+}
+
+type CustomerOrderDetail struct {
+	ID                  string
+	Number              string
+	Status              string
+	Currency            string
+	SubtotalCents       int
+	ShippingCents       int
+	TaxCents            int
+	TotalCents          int
+	CreatedAt           time.Time
+	ShippingMethodTitle string
+	ShippingTerminalID  string
+	ShippingProviderKey string
+	ShippingFullName    string
+	ShippingPhone       string
+	ShippingAddress1    string
+	ShippingAddress2    string
+	ShippingCity        string
+	ShippingState       string
+	ShippingPostcode    string
+	ShippingCountry     string
+	PaymentMethod       string
+	PaymentProvider     string
+	Items               []CustomerOrderItem
+}
+
 type AdminCustomersListParams struct {
 	Page      int
 	Limit     int
@@ -516,6 +553,97 @@ func (s *Store) listOrderItemsForHistory(ctx context.Context, orderID string) ([
 	for rows.Next() {
 		var item OrderHistoryItem
 		if err := rows.Scan(&item.ProductID, &item.Slug, &item.Title, &item.Quantity, &item.UnitPriceCents, &item.Currency); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+
+func (s *Store) GetOrderByCustomer(ctx context.Context, orderID, customerID string) (CustomerOrderDetail, error) {
+	var o CustomerOrderDetail
+	err := s.db.QueryRowContext(ctx, `
+		SELECT
+			o.id,
+			o.number,
+			o.status,
+			o.currency,
+			o.subtotal_cents,
+			o.shipping_cents,
+			o.tax_cents,
+			o.total_cents,
+			o.created_at,
+			COALESCE(sm.title, ''),
+			COALESCE(o.shipping_terminal_id, ''),
+			COALESCE(sm.provider_key, ''),
+			COALESCE(o.shipping_full_name, ''),
+			COALESCE(o.shipping_phone, ''),
+			COALESCE(o.shipping_address1, ''),
+			COALESCE(o.shipping_address2, ''),
+			COALESCE(o.shipping_city, ''),
+			COALESCE(o.shipping_state, ''),
+			COALESCE(o.shipping_postcode, ''),
+			COALESCE(o.shipping_country, ''),
+			COALESCE(o.payment_method, ''),
+			COALESCE(o.payment_provider, '')
+		FROM orders o
+		LEFT JOIN shipping_methods sm ON sm.id = o.shipping_method_id
+		WHERE o.id = $1 AND o.customer_id = $2
+	`, orderID, customerID).Scan(
+		&o.ID, &o.Number, &o.Status, &o.Currency,
+		&o.SubtotalCents, &o.ShippingCents, &o.TaxCents, &o.TotalCents,
+		&o.CreatedAt,
+		&o.ShippingMethodTitle, &o.ShippingTerminalID, &o.ShippingProviderKey,
+		&o.ShippingFullName, &o.ShippingPhone,
+		&o.ShippingAddress1, &o.ShippingAddress2, &o.ShippingCity,
+		&o.ShippingState, &o.ShippingPostcode, &o.ShippingCountry,
+		&o.PaymentMethod, &o.PaymentProvider,
+	)
+	if err != nil {
+		return CustomerOrderDetail{}, err
+	}
+
+	items, err := s.listCustomerOrderItems(ctx, orderID)
+	if err != nil {
+		return CustomerOrderDetail{}, err
+	}
+	o.Items = items
+	return o, nil
+}
+
+func (s *Store) listCustomerOrderItems(ctx context.Context, orderID string) ([]CustomerOrderItem, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			oi.id,
+			p.title,
+			pv.sku,
+			oi.quantity,
+			oi.unit_price_cents,
+			oi.currency,
+			COALESCE(oi.custom_options_json, 'null')
+		FROM order_items oi
+		JOIN product_variants pv ON pv.id = oi.product_variant_id
+		JOIN products p ON p.id = pv.product_id
+		WHERE oi.order_id = $1
+		ORDER BY oi.created_at ASC, oi.id ASC
+	`, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]CustomerOrderItem, 0, 8)
+	for rows.Next() {
+		var item CustomerOrderItem
+		if err := rows.Scan(
+			&item.ID, &item.ProductTitle, &item.VariantSKU,
+			&item.Quantity, &item.UnitPriceCents, &item.Currency,
+			&item.CustomOptions,
+		); err != nil {
 			return nil, err
 		}
 		out = append(out, item)
