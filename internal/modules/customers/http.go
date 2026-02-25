@@ -12,10 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"database/sql"
+
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
+	platformshipping "goecommerce/internal/platform/shipping"
 	storcart "goecommerce/internal/storage/cart"
 	storcustomers "goecommerce/internal/storage/customers"
+	storpayments "goecommerce/internal/storage/payments"
+	storshipping "goecommerce/internal/storage/shipping"
 )
 
 const (
@@ -35,11 +40,22 @@ type customerStore interface {
 	ListFavorites(ctx context.Context, customerID string, page, limit int) (storcustomers.FavoritesPage, error)
 	ListOrdersByCustomer(ctx context.Context, customerID string, page, limit int) (storcustomers.OrdersPage, error)
 	UpdatePasswordAndRevokeSessions(ctx context.Context, customerID, passwordHash string) error
+	GetOrderByCustomer(ctx context.Context, orderID, customerID string) (storcustomers.CustomerOrderDetail, error)
+}
+
+type paymentMethodStore interface {
+	GetMethodByKey(ctx context.Context, key string) (*storpayments.PaymentMethod, error)
+}
+
+type terminalStore interface {
+	GetCachedTerminals(ctx context.Context, providerKey, country string) ([]byte, time.Time, error)
 }
 
 type module struct {
 	store      customerStore
 	cartStore  customerCartStore
+	payments   paymentMethodStore
+	terminals  terminalStore
 	sessionTTL time.Duration
 	now        func() time.Time
 }
@@ -47,6 +63,8 @@ type module struct {
 func NewModule(deps app.Deps) app.Module {
 	var store customerStore
 	var cartStore customerCartStore
+	var payments paymentMethodStore
+	var terminals terminalStore
 	if deps.DB != nil {
 		if st, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
 			store = st
@@ -58,8 +76,14 @@ func NewModule(deps app.Deps) app.Module {
 		} else {
 			slog.Error("module init: failed to create store", "module", "customers", "store", "cart", "error", err)
 		}
+		payments = storpayments.New(deps.DB)
+		if st, err := storshipping.NewStore(context.Background(), deps.DB); err == nil {
+			terminals = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "customers", "store", "shipping", "error", err)
+		}
 	}
-	return &module{store: store, cartStore: cartStore, sessionTTL: defaultSessionTTL, now: time.Now}
+	return &module{store: store, cartStore: cartStore, payments: payments, terminals: terminals, sessionTTL: defaultSessionTTL, now: time.Now}
 }
 
 func (m *module) Name() string { return "customers" }
@@ -87,6 +111,7 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/account/favorites", m.handleFavorites)
 	mux.HandleFunc("/account/favorites/", m.handleFavorites)
 	mux.HandleFunc("/account/orders", m.handleOrders)
+	mux.HandleFunc("/account/orders/", m.handleOrderDetail)
 	mux.HandleFunc("/account/change-password", m.handleChangePassword)
 	mux.HandleFunc("/support/blocked-report", m.handleBlockedReport)
 }
@@ -344,6 +369,198 @@ func (m *module) handleOrders(w http.ResponseWriter, r *http.Request) {
 		"limit": orders.Limit,
 	}
 	_ = platformhttp.JSON(w, http.StatusOK, out)
+}
+
+type accountOrderItemResponse struct {
+	ID             string          `json:"id"`
+	ProductTitle   string          `json:"product_title"`
+	VariantSKU     string          `json:"variant_sku"`
+	Quantity       int             `json:"quantity"`
+	UnitPriceCents int             `json:"unit_price_cents"`
+	Currency       string          `json:"currency"`
+	CustomOptions  json.RawMessage `json:"custom_options"`
+}
+
+type accountOrderBankConfigResponse struct {
+	AccountName   string `json:"account_name"`
+	AccountNumber string `json:"account_number"`
+	BankName      string `json:"bank_name"`
+	IBAN          string `json:"iban"`
+	BICSwift      string `json:"bic_swift"`
+	SortCode      string `json:"sort_code"`
+}
+
+type accountOrderPaymentResponse struct {
+	Method       string                          `json:"method"`
+	Provider     string                          `json:"provider"`
+	Title        string                          `json:"title"`
+	Instructions string                          `json:"instructions"`
+	BankConfig   *accountOrderBankConfigResponse `json:"bank_config"`
+}
+
+type accountOrderShippingResponse struct {
+	MethodTitle     string `json:"method_title"`
+	FullName        string `json:"full_name"`
+	Phone           string `json:"phone"`
+	Address1        string `json:"address1"`
+	Address2        string `json:"address2"`
+	City            string `json:"city"`
+	State           string `json:"state"`
+	Postcode        string `json:"postcode"`
+	Country         string `json:"country"`
+	TerminalName    string `json:"terminal_name"`
+	TerminalAddress string `json:"terminal_address"`
+}
+
+type accountOrderDetailResponse struct {
+	ID            string                       `json:"id"`
+	Number        string                       `json:"number"`
+	Status        string                       `json:"status"`
+	Currency      string                       `json:"currency"`
+	SubtotalCents int                          `json:"subtotal_cents"`
+	ShippingCents int                          `json:"shipping_cents"`
+	TaxCents      int                          `json:"tax_cents"`
+	TotalCents    int                          `json:"total_cents"`
+	CreatedAt     time.Time                    `json:"created_at"`
+	Items         []accountOrderItemResponse   `json:"items"`
+	Shipping      accountOrderShippingResponse `json:"shipping"`
+	Payment       accountOrderPaymentResponse  `json:"payment"`
+}
+
+func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	customer, _, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
+	if err != nil {
+		if errors.Is(err, ErrUnauthenticated) {
+			platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
+		return
+	}
+
+	orderID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/account/orders/"))
+	if orderID == "" || strings.Contains(orderID, "/") {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid order id")
+		return
+	}
+
+	o, err := m.store.GetOrderByCustomer(r.Context(), orderID, customer.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			platformhttp.Error(w, http.StatusNotFound, "not found")
+			return
+		}
+		platformhttp.Error(w, http.StatusInternalServerError, "order error")
+		return
+	}
+
+	items := make([]accountOrderItemResponse, 0, len(o.Items))
+	for _, it := range o.Items {
+		customOpts := it.CustomOptions
+		if customOpts == nil {
+			customOpts = json.RawMessage("[]")
+		}
+		items = append(items, accountOrderItemResponse{
+			ID:             it.ID,
+			ProductTitle:   it.ProductTitle,
+			VariantSKU:     it.VariantSKU,
+			Quantity:       it.Quantity,
+			UnitPriceCents: it.UnitPriceCents,
+			Currency:       it.Currency,
+			CustomOptions:  customOpts,
+		})
+	}
+
+	var terminalName, terminalAddress string
+	if o.ShippingTerminalID != "" && o.ShippingProviderKey != "" && m.terminals != nil {
+		country := o.ShippingCountry
+		if country == "" {
+			country = "EE"
+		}
+		if cached, _, err := m.terminals.GetCachedTerminals(r.Context(), o.ShippingProviderKey, country); err == nil && len(cached) > 0 {
+			var terminals []platformshipping.Terminal
+			if err := json.Unmarshal(cached, &terminals); err == nil {
+				for _, t := range terminals {
+					if t.ID == o.ShippingTerminalID {
+						terminalName = t.Name
+						parts := []string{}
+						if t.Address != "" {
+							parts = append(parts, t.Address)
+						}
+						if t.City != "" {
+							parts = append(parts, t.City)
+						}
+						if t.Postcode != "" {
+							parts = append(parts, t.Postcode)
+						}
+						if len(parts) > 0 {
+							terminalAddress = strings.Join(parts, ", ")
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	paymentResp := accountOrderPaymentResponse{
+		Method:   o.PaymentMethod,
+		Provider: o.PaymentProvider,
+	}
+	if o.PaymentMethod == "bank_transfer" && m.payments != nil {
+		if pm, err := m.payments.GetMethodByKey(r.Context(), "bank_transfer"); err == nil && pm != nil {
+			paymentResp.Title = pm.Title
+			paymentResp.Instructions = pm.Instructions
+			var cfg storpayments.BankTransferConfig
+			if len(pm.ConfigJSON) > 0 {
+				_ = json.Unmarshal(pm.ConfigJSON, &cfg)
+			}
+			paymentResp.BankConfig = &accountOrderBankConfigResponse{
+				AccountName:   cfg.AccountName,
+				AccountNumber: cfg.AccountNumber,
+				BankName:      cfg.BankName,
+				IBAN:          cfg.IBAN,
+				BICSwift:      cfg.BICSwift,
+				SortCode:      cfg.SortCode,
+			}
+		}
+	}
+
+	resp := accountOrderDetailResponse{
+		ID:            o.ID,
+		Number:        o.Number,
+		Status:        o.Status,
+		Currency:      o.Currency,
+		SubtotalCents: o.SubtotalCents,
+		ShippingCents: o.ShippingCents,
+		TaxCents:      o.TaxCents,
+		TotalCents:    o.TotalCents,
+		CreatedAt:     o.CreatedAt,
+		Items:         items,
+		Shipping: accountOrderShippingResponse{
+			MethodTitle:     o.ShippingMethodTitle,
+			FullName:        o.ShippingFullName,
+			Phone:           o.ShippingPhone,
+			Address1:        o.ShippingAddress1,
+			Address2:        o.ShippingAddress2,
+			City:            o.ShippingCity,
+			State:           o.ShippingState,
+			Postcode:        o.ShippingPostcode,
+			Country:         o.ShippingCountry,
+			TerminalName:    terminalName,
+			TerminalAddress: terminalAddress,
+		},
+		Payment: paymentResp,
+	}
+	_ = platformhttp.JSON(w, http.StatusOK, resp)
 }
 
 func (m *module) handleChangePassword(w http.ResponseWriter, r *http.Request) {
