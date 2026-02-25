@@ -1204,6 +1204,62 @@ export type AccountOrdersResponse = {
   limit: number;
 };
 
+export type AccountOrderDetailItem = {
+  id: string;
+  product_title: string;
+  variant_sku: string;
+  quantity: number;
+  unit_price_cents: number;
+  currency: string;
+  custom_options: unknown[];
+};
+
+export type AccountOrderBankConfig = {
+  account_name: string;
+  account_number: string;
+  bank_name: string;
+  iban: string;
+  bic_swift: string;
+  sort_code: string;
+};
+
+export type AccountOrderPayment = {
+  method: string;
+  provider: string;
+  title: string;
+  instructions: string;
+  bank_config: AccountOrderBankConfig | null;
+};
+
+export type AccountOrderShipping = {
+  method_title: string;
+  full_name: string;
+  phone: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  terminal_name: string;
+  terminal_address: string;
+};
+
+export type AccountOrderDetail = {
+  id: string;
+  number: string;
+  status: string;
+  currency: string;
+  subtotal_cents: number;
+  shipping_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  created_at: string;
+  items: AccountOrderDetailItem[];
+  shipping: AccountOrderShipping;
+  payment: AccountOrderPayment;
+};
+
 type AccountRequestOptions = {
   cookieHeader?: string;
 };
@@ -1281,6 +1337,71 @@ function normalizeAccountOrder(raw: unknown): AccountOrder | null {
     currency: asString(obj.currency ?? obj.Currency),
     created_at: asString(obj.created_at ?? obj.CreatedAt),
     items: itemsRaw.map(normalizeAccountOrderItem).filter((item): item is AccountOrderItem => item !== null),
+  };
+}
+
+function normalizeAccountOrderDetailItem(raw: unknown): AccountOrderDetailItem | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id ?? obj.ID);
+  if (!id) return null;
+  const maybeOpts = obj.custom_options ?? obj.CustomOptions;
+  return {
+    id,
+    product_title: asString(obj.product_title ?? obj.ProductTitle),
+    variant_sku: asString(obj.variant_sku ?? obj.VariantSKU),
+    quantity: asNumber(obj.quantity ?? obj.Quantity),
+    unit_price_cents: asNumber(obj.unit_price_cents ?? obj.UnitPriceCents),
+    currency: asString(obj.currency ?? obj.Currency),
+    custom_options: Array.isArray(maybeOpts) ? maybeOpts : [],
+  };
+}
+
+function normalizeAccountOrderDetail(raw: unknown): AccountOrderDetail {
+  const obj = asRecord(raw);
+  const itemsRaw = Array.isArray(obj.items) ? obj.items : [];
+  const shippingRaw = asRecord(obj.shipping);
+  const paymentRaw = asRecord(obj.payment);
+  const bankRaw = paymentRaw.bank_config != null ? asRecord(paymentRaw.bank_config) : null;
+  return {
+    id: asString(obj.id),
+    number: asString(obj.number),
+    status: asString(obj.status),
+    currency: asString(obj.currency),
+    subtotal_cents: asNumber(obj.subtotal_cents),
+    shipping_cents: asNumber(obj.shipping_cents),
+    tax_cents: asNumber(obj.tax_cents),
+    total_cents: asNumber(obj.total_cents),
+    created_at: asString(obj.created_at),
+    items: itemsRaw.map(normalizeAccountOrderDetailItem).filter((item): item is AccountOrderDetailItem => item !== null),
+    shipping: {
+      method_title: asString(shippingRaw.method_title),
+      full_name: asString(shippingRaw.full_name),
+      phone: asString(shippingRaw.phone),
+      address1: asString(shippingRaw.address1),
+      address2: asString(shippingRaw.address2),
+      city: asString(shippingRaw.city),
+      state: asString(shippingRaw.state),
+      postcode: asString(shippingRaw.postcode),
+      country: asString(shippingRaw.country),
+      terminal_name: asString(shippingRaw.terminal_name),
+      terminal_address: asString(shippingRaw.terminal_address),
+    },
+    payment: {
+      method: asString(paymentRaw.method),
+      provider: asString(paymentRaw.provider),
+      title: asString(paymentRaw.title),
+      instructions: asString(paymentRaw.instructions),
+      bank_config: bankRaw
+        ? {
+            account_name: asString(bankRaw.account_name),
+            account_number: asString(bankRaw.account_number),
+            bank_name: asString(bankRaw.bank_name),
+            iban: asString(bankRaw.iban),
+            bic_swift: asString(bankRaw.bic_swift),
+            sort_code: asString(bankRaw.sort_code),
+          }
+        : null,
+    },
   };
 }
 
@@ -1450,6 +1571,17 @@ export async function getAccountOrders(
     page: asNumber(payload.page) || 1,
     limit: asNumber(payload.limit) || 20,
   };
+}
+
+export async function getAccountOrder(id: string, options?: AccountRequestOptions): Promise<AccountOrderDetail> {
+  const res = await fetch(
+    apiJoin(`account/orders/${encodeURIComponent(id)}`),
+    accountFetchInit({ method: "GET" }, options),
+  );
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (res.status === 404) throw new Error("NOT_FOUND");
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to load order: ${res.status}`));
+  return normalizeAccountOrderDetail(await res.json());
 }
 
 export async function changeAccountPassword(currentPassword: string, newPassword: string, options?: AccountRequestOptions): Promise<void> {
