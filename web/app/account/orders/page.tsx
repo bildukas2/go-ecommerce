@@ -49,8 +49,8 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
                 <p className="text-lg font-semibold">{formatMoney(order.total_cents, order.currency)}</p>
               </div>
               <ul className="mt-4 space-y-2 border-t border-surface-border pt-3 text-sm">
-                {order.items.map((item) => (
-                  <li key={`${order.id}-${item.product_id}`} className="flex items-center justify-between gap-3">
+                {order.items.map((item, idx) => (
+                  <li key={`${order.id}-${item.product_id}-${idx}`} className="flex items-center justify-between gap-3">
                     <span className="truncate">
                       {item.title} <span className="text-neutral-500">x{item.quantity}</span>
                     </span>
