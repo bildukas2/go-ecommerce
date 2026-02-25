@@ -516,7 +516,7 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 		Provider: o.PaymentProvider,
 	}
 	if o.PaymentMethod == "bank_transfer" && m.payments != nil {
-		if pm, err := m.payments.GetMethodByKey(r.Context(), "bank_transfer"); err == nil && pm != nil {
+		if pm, err := m.payments.GetMethodByKey(r.Context(), "bank-transfer"); err == nil && pm != nil {
 			paymentResp.Title = pm.Title
 			paymentResp.Instructions = pm.Instructions
 			var cfg storpayments.BankTransferConfig

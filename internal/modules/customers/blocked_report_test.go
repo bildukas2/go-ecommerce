@@ -52,6 +52,10 @@ func (f *blockedReportTestStore) UpdatePasswordAndRevokeSessions(context.Context
 	return errors.New("not implemented")
 }
 
+func (f *blockedReportTestStore) GetOrderByCustomer(context.Context, string, string) (storcustomers.CustomerOrderDetail, error) {
+	return storcustomers.CustomerOrderDetail{}, errors.New("not implemented")
+}
+
 func (f *blockedReportTestStore) CreateBlockedReport(
 	ctx context.Context,
 	in storcustomers.CreateBlockedReportInput,

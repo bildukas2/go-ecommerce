@@ -59,6 +59,10 @@ func (f *fakeCustomerStore) UpdatePasswordAndRevokeSessions(context.Context, str
 	return errors.New("not implemented")
 }
 
+func (f *fakeCustomerStore) GetOrderByCustomer(context.Context, string, string) (storcustomers.CustomerOrderDetail, error) {
+	return storcustomers.CustomerOrderDetail{}, errors.New("not implemented")
+}
+
 func (f *fakeCustomerStore) GetCustomerBySessionTokenHash(_ context.Context, tokenHash string) (storcustomers.Customer, error) {
 	if c, ok := f.customerByToken[tokenHash]; ok {
 		return c, nil
@@ -204,6 +208,10 @@ func (f *fakeLoginStore) ListOrdersByCustomer(context.Context, string, int, int)
 
 func (f *fakeLoginStore) UpdatePasswordAndRevokeSessions(context.Context, string, string) error {
 	return errors.New("not implemented")
+}
+
+func (f *fakeLoginStore) GetOrderByCustomer(context.Context, string, string) (storcustomers.CustomerOrderDetail, error) {
+	return storcustomers.CustomerOrderDetail{}, errors.New("not implemented")
 }
 
 func (f *fakeLoginStore) GetCustomerBySessionTokenHash(context.Context, string) (storcustomers.Customer, error) {

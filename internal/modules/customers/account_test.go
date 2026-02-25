@@ -11,6 +11,7 @@ import (
 	"time"
 
 	storcustomers "goecommerce/internal/storage/customers"
+	storpayments "goecommerce/internal/storage/payments"
 )
 
 type fakeAccountStore struct {
@@ -63,6 +64,10 @@ func (f *fakeAccountStore) ListOrdersByCustomer(_ context.Context, customerID st
 func (f *fakeAccountStore) UpdatePasswordAndRevokeSessions(context.Context, string, string) error {
 	f.updateCalled = true
 	return nil
+}
+
+func (f *fakeAccountStore) GetOrderByCustomer(ctx context.Context, orderID, customerID string) (storcustomers.CustomerOrderDetail, error) {
+	return storcustomers.CustomerOrderDetail{}, errors.New("not implemented")
 }
 
 func (f *fakeAccountStore) GetCustomerBySessionTokenHash(_ context.Context, tokenHash string) (storcustomers.Customer, error) {
@@ -205,5 +210,80 @@ func TestHandleChangePasswordValidationAndSuccess(t *testing.T) {
 	}
 	if !store.updateCalled {
 		t.Fatalf("expected password update call on success")
+	}
+}
+type fakeOrderDetailStore struct {
+	fakeAccountStore
+	order storcustomers.CustomerOrderDetail
+}
+
+func (f *fakeOrderDetailStore) GetOrderByCustomer(ctx context.Context, orderID, customerID string) (storcustomers.CustomerOrderDetail, error) {
+	return f.order, nil
+}
+
+type fakePaymentStore struct {
+	lastKey string
+	method  *storpayments.PaymentMethod
+}
+
+func (f *fakePaymentStore) GetMethodByKey(ctx context.Context, key string) (*storpayments.PaymentMethod, error) {
+	f.lastKey = key
+	return f.method, nil
+}
+
+func TestHandleOrderDetailBankTransferKey(t *testing.T) {
+	order := storcustomers.CustomerOrderDetail{
+		ID:            "ord-1",
+		PaymentMethod: "bank_transfer",
+	}
+	
+	custStore := &fakeOrderDetailStore{
+		fakeAccountStore: fakeAccountStore{
+			customerByToken: map[string]storcustomers.Customer{
+				hashSessionToken("token-1"): {ID: "cust-1"},
+			},
+		},
+		order: order,
+	}
+	
+	payStore := &fakePaymentStore{
+		method: &storpayments.PaymentMethod{
+			Title:        "Bank Transfer Title",
+			Instructions: "How to pay info",
+			ConfigJSON:   []byte(`{"account_name": "Test Account"}`),
+		},
+	}
+	
+	m := &module{
+		store:    custStore,
+		payments: payStore,
+		now:      time.Now,
+	}
+	
+	req := httptest.NewRequest(http.MethodGet, "/account/orders/ord-1", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "token-1"})
+	rr := httptest.NewRecorder()
+	
+	m.handleOrderDetail(rr, req)
+	
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	
+	if payStore.lastKey != "bank-transfer" {
+		t.Errorf("expected GetMethodByKey to be called with 'bank-transfer', got '%s'", payStore.lastKey)
+	}
+	
+	var resp accountOrderDetailResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	
+	if resp.Payment.Instructions != "How to pay info" {
+		t.Errorf("expected instructions 'How to pay info', got '%s'", resp.Payment.Instructions)
+	}
+	
+	if resp.Payment.BankConfig == nil || resp.Payment.BankConfig.AccountName != "Test Account" {
+		t.Errorf("expected BankConfig.AccountName 'Test Account', got %+v", resp.Payment.BankConfig)
 	}
 }
