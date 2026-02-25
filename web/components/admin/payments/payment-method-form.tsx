@@ -94,6 +94,7 @@ export function PaymentMethodForm({ method, currentMethods, onClose, onSuccess }
     try {
       const payload = {
         key: key.trim(),
+        method_name: method?.method_name || "bank_transfer",
         title: title.trim(),
         description: description.trim(),
         instructions: instructions.trim(),
