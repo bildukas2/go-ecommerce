@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getAdminMe } from "@/lib/admin-auth";
 
 export function AdminButton() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -10,11 +11,8 @@ export function AdminButton() {
   useEffect(() => {
     const checkAdmin = async () => {
       try {
-        const res = await fetch("/admin/dashboard", {
-          method: "GET",
-          credentials: "include",
-        });
-        setIsAdmin(res.ok);
+        await getAdminMe();
+        setIsAdmin(true);
       } catch {
         setIsAdmin(false);
       } finally {

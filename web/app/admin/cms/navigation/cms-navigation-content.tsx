@@ -12,7 +12,8 @@ import {
   deleteAdminNavigationItem,
   reorderAdminNavigation
 } from "@/lib/api";
-import { useDisclosure, Alert } from "@heroui/react";
+import { useDisclosure } from "@heroui/react";
+import { AlertCircle } from "lucide-react";
 
 type Props = {
   initialItems: AdminNavigationItem[];
@@ -77,7 +78,7 @@ export function CMSNavigationContent({ initialItems, pages }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Navigation</h1>
@@ -93,21 +94,21 @@ export function CMSNavigationContent({ initialItems, pages }: Props) {
       </div>
 
       {error && (
-        <Alert color="danger" title="Error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
+        <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
+          <AlertCircle size={18} />
+          <div className="flex-1">{error}</div>
+          <button onClick={() => setError(null)} className="text-lg">&times;</button>
+        </div>
       )}
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-surface-border bg-content1 p-4 shadow-sm">
-        <div className="overflow-hidden rounded-xl border border-surface-border">
-          <NavigationTable 
-            items={[...items].sort((a, b) => a.sort_order - b.sort_order)} 
-            pages={pages}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onReorder={handleReorder}
-          />
-        </div>
+      <div className="glass rounded-2xl p-4 shadow-[0_14px_30px_rgba(2,6,23,0.08)]">
+        <NavigationTable 
+          items={[...items].sort((a, b) => a.sort_order - b.sort_order)} 
+          pages={pages}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onReorder={handleReorder}
+        />
       </div>
 
       <NavigationItemModal 
@@ -120,3 +121,4 @@ export function CMSNavigationContent({ initialItems, pages }: Props) {
     </div>
   );
 }
+

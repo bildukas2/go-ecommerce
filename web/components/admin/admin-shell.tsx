@@ -579,6 +579,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 inputWrapper: "bg-transparent border-surface-border",
               }}
             />
+            <Button
+              as={Link}
+              href="/"
+              isIconOnly
+              variant="light"
+              aria-label="View Storefront"
+              title="View Storefront"
+            >
+              <Store size={18} />
+            </Button>
             <ThemeToggle />
             <Button variant="flat" size="sm" onPress={onLogout} isLoading={loggingOut}>
               Logout

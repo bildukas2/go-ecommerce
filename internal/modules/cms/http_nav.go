@@ -32,7 +32,7 @@ func (m *module) handleAdminNavigationDetail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	id := strings.TrimPrefix(r.URL.Path, "/admin/navigation/")
+	id := r.PathValue("id")
 	if id == "" {
 		http.NotFound(w, r)
 		return

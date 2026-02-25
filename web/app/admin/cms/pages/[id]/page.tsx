@@ -20,9 +20,12 @@ export default async function EditAdminPage({ params }: Props) {
   async function updatePageAction(formData: FormData) {
     "use server";
     
+    let slug = formData.get("slug") as string;
+    if (slug && !slug.startsWith("/")) slug = "/" + slug;
+    
     const payload = {
       title: formData.get("title") as string,
-      slug: formData.get("slug") as string,
+      slug,
       status: formData.get("status") as "draft" | "published",
       content_html: formData.get("content_html") as string,
       editor_mode: formData.get("editor_mode") as "html" | "visual",
@@ -34,18 +37,18 @@ export default async function EditAdminPage({ params }: Props) {
       await updateAdminPage(id, payload);
       revalidatePath("/admin/cms/pages");
       revalidatePath(`/admin/cms/pages/${id}`);
-      redirect(`/admin/cms/pages`);
     } catch (error) {
       console.error("Failed to update page:", error);
+      return;
     }
+
+    redirect(`/admin/cms/pages`);
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <PageForm 
-        initialData={page} 
-        onSubmit={updatePageAction} 
-      />
-    </div>
+    <PageForm 
+      initialData={page} 
+      onSubmit={updatePageAction} 
+    />
   );
 }

@@ -66,7 +66,7 @@ export function PagesTable({ pages, deleteAction }: Props) {
             </TableCell>
             <TableCell>
               <Link 
-                href={page.slug} 
+                href={`/page${page.slug.startsWith('/') ? '' : '/'}${page.slug}`} 
                 target="_blank"
                 className="flex items-center gap-1 text-sm text-blue-500 hover:underline"
               >

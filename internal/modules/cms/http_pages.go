@@ -41,7 +41,7 @@ func (m *module) handleAdminPageDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := strings.TrimPrefix(r.URL.Path, "/admin/pages/")
+	id := r.PathValue("id")
 	if id == "" {
 		http.NotFound(w, r)
 		return
@@ -255,6 +255,36 @@ func (m *module) handleAdminCheckSlug(w http.ResponseWriter, r *http.Request) {
 
 	available := excludeID != "" && page.ID == excludeID
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"available": available})
+}
+
+func (m *module) handleGetPageBySlug(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	if slug == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Ensure slug starts with /
+	if !strings.HasPrefix(slug, "/") {
+		slug = "/" + slug
+	}
+
+	page, err := m.store.GetPageBySlug(r.Context(), slug)
+	if err != nil {
+		if errors.Is(err, storcms.ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		platformhttp.Error(w, http.StatusInternalServerError, "failed to get page")
+		return
+	}
+
+	if page.Status != storcms.PageStatusPublished {
+		http.NotFound(w, r)
+		return
+	}
+
+	_ = platformhttp.JSON(w, http.StatusOK, toPageResponse(page))
 }
 
 func validatePageRequest(title, slug, status string) error {

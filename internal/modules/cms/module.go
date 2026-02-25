@@ -37,13 +37,22 @@ func (m *module) Name() string { return "cms" }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	// Admin API
-	mux.HandleFunc("/admin/pages", m.handleAdminPages)
-	mux.HandleFunc("/admin/pages/", m.handleAdminPageDetail)
-	mux.HandleFunc("/admin/pages/check-slug", m.handleAdminCheckSlug)
+	mux.HandleFunc("GET /admin/pages", m.handleAdminPages)
+	mux.HandleFunc("POST /admin/pages", m.handleAdminPages)
+	mux.HandleFunc("GET /admin/pages/{id}", m.handleAdminPageDetail)
+	mux.HandleFunc("PUT /admin/pages/{id}", m.handleAdminPageDetail)
+	mux.HandleFunc("DELETE /admin/pages/{id}", m.handleAdminPageDetail)
+	mux.HandleFunc("GET /admin/pages/check-slug", m.handleAdminCheckSlug)
 
-	mux.HandleFunc("/admin/navigation", m.handleAdminNavigation)
-	mux.HandleFunc("/admin/navigation/", m.handleAdminNavigationDetail)
-	mux.HandleFunc("/admin/navigation/reorder", m.handleAdminNavigationReorder)
+	// Public API
+	mux.HandleFunc("GET /pages/{slug}", m.handleGetPageBySlug)
+
+	mux.HandleFunc("GET /admin/navigation", m.handleAdminNavigation)
+	mux.HandleFunc("POST /admin/navigation", m.handleAdminNavigation)
+	mux.HandleFunc("GET /admin/navigation/{id}", m.handleAdminNavigationDetail)
+	mux.HandleFunc("PUT /admin/navigation/{id}", m.handleAdminNavigationDetail)
+	mux.HandleFunc("DELETE /admin/navigation/{id}", m.handleAdminNavigationDetail)
+	mux.HandleFunc("PUT /admin/navigation/reorder", m.handleAdminNavigationReorder)
 }
 
 var (

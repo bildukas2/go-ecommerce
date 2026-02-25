@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@plugin "../hero.ts";
+@source "../node_modules/@heroui/**/*.{js,mjs,ts,jsx,tsx}";
+@source "../components/**/*.{js,ts,jsx,tsx}";
+@source "../app/**/*.{js,ts,jsx,tsx}";
 
 :root {
   --background: #f7f7f9;
@@ -20,10 +24,10 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-border: var(--surface-border);
+  --glow-primary: var(--glow-primary);
+  --glow-secondary: var(--glow-secondary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

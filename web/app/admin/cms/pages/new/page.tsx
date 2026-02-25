@@ -7,9 +7,12 @@ export default function NewAdminPage() {
   async function createPageAction(formData: FormData) {
     "use server";
     
+    let slug = formData.get("slug") as string;
+    if (slug && !slug.startsWith("/")) slug = "/" + slug;
+    
     const payload = {
       title: formData.get("title") as string,
-      slug: formData.get("slug") as string,
+      slug,
       status: formData.get("status") as "draft" | "published",
       content_html: formData.get("content_html") as string,
       editor_mode: formData.get("editor_mode") as "html" | "visual",
@@ -18,18 +21,15 @@ export default function NewAdminPage() {
     };
 
     try {
-      const page = await createAdminPage(payload);
+      await createAdminPage(payload);
       revalidatePath("/admin/cms/pages");
-      redirect(`/admin/cms/pages`);
     } catch (error) {
       console.error("Failed to create page:", error);
-      // Handle error state if needed
+      return;
     }
+
+    redirect(`/admin/cms/pages`);
   }
 
-  return (
-    <div className="flex flex-col gap-6 p-6">
-      <PageForm onSubmit={createPageAction} />
-    </div>
-  );
+  return <PageForm onSubmit={createPageAction} />;
 }
