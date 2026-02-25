@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { StorefrontFooter } from "@/components/storefront-footer";
 import { getCurrentAccount } from "@/lib/api";
 
 const geistSans = Geist({
@@ -35,10 +36,13 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <Providers>
           <StorefrontHeader isAuthenticated={isAuthenticated} />
-          {children}
+          <div className="flex-grow">
+            {children}
+          </div>
+          <StorefrontFooter />
         </Providers>
       </body>
     </html>
