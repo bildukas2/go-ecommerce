@@ -144,7 +144,6 @@ export function PageForm({ initialData, onSubmit, isSubmitting }: Props) {
                   defaultValue={initialData?.title}
                   onChange={handleTitleChange}
                   required
-                  labelPlacement="outside"
                 />
                 <Input
                   name="slug"
@@ -153,7 +152,6 @@ export function PageForm({ initialData, onSubmit, isSubmitting }: Props) {
                   value={slug}
                   onValueChange={setSlug}
                   required
-                  labelPlacement="outside"
                   isInvalid={isInvalid}
                   errorMessage={slugError}
                   description={
@@ -245,7 +243,6 @@ export function PageForm({ initialData, onSubmit, isSubmitting }: Props) {
                 name="status"
                 label="Status"
                 defaultSelectedKeys={[initialData?.status || "draft"]}
-                labelPlacement="outside"
               >
                 <SelectItem key="draft" value="draft">Draft</SelectItem>
                 <SelectItem key="published" value="published">Published</SelectItem>
@@ -269,14 +266,12 @@ export function PageForm({ initialData, onSubmit, isSubmitting }: Props) {
                 label="Meta Title"
                 placeholder="SEO Title"
                 defaultValue={initialData?.meta_title || ""}
-                labelPlacement="outside"
               />
               <Textarea
                 name="meta_description"
                 label="Meta Description"
                 placeholder="Search engine description..."
                 defaultValue={initialData?.meta_description || ""}
-                labelPlacement="outside"
                 minRows={3}
               />
             </CardBody>

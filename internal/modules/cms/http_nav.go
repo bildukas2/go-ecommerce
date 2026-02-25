@@ -32,7 +32,7 @@ func (m *module) handleAdminNavigationDetail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	id := strings.TrimPrefix(r.URL.Path, "/api/admin/navigation/")
+	id := strings.TrimPrefix(r.URL.Path, "/admin/navigation/")
 	if id == "" {
 		http.NotFound(w, r)
 		return
@@ -78,13 +78,13 @@ func (m *module) handleAdminCreateNavigation(w http.ResponseWriter, r *http.Requ
 	}
 
 	item, err := m.store.CreateNavigationItem(r.Context(), storcms.NavigationItem{
-		Label:         req.Label,
-		Type:          req.Type,
-		PageID:        req.PageID,
-		URL:           req.URL,
+		Label:        req.Label,
+		Type:         req.Type,
+		PageID:       req.PageID,
+		URL:          req.URL,
 		OpenInNewTab: req.OpenInNewTab,
-		SortOrder:     req.SortOrder,
-		IsActive:      req.IsActive,
+		SortOrder:    req.SortOrder,
+		IsActive:     req.IsActive,
 	})
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "failed to create navigation item")
@@ -121,14 +121,14 @@ func (m *module) handleAdminUpdateNavigation(w http.ResponseWriter, r *http.Requ
 	}
 
 	item, err := m.store.UpdateNavigationItem(r.Context(), storcms.NavigationItem{
-		ID:            id,
-		Label:         req.Label,
-		Type:          req.Type,
-		PageID:        req.PageID,
-		URL:           req.URL,
+		ID:           id,
+		Label:        req.Label,
+		Type:         req.Type,
+		PageID:       req.PageID,
+		URL:          req.URL,
 		OpenInNewTab: req.OpenInNewTab,
-		SortOrder:     req.SortOrder,
-		IsActive:      req.IsActive,
+		SortOrder:    req.SortOrder,
+		IsActive:     req.IsActive,
 	})
 	if err != nil {
 		if errors.Is(err, storcms.ErrNotFound) {
@@ -206,15 +206,15 @@ func validateNavigationRequest(label, navType string, pageID, url *string) error
 
 func toNavigationItemResponse(n storcms.NavigationItem) NavigationItemResponse {
 	return NavigationItemResponse{
-		ID:            n.ID,
-		Label:         n.Label,
-		Type:          n.Type,
-		PageID:        n.PageID,
-		URL:           n.URL,
+		ID:           n.ID,
+		Label:        n.Label,
+		Type:         n.Type,
+		PageID:       n.PageID,
+		URL:          n.URL,
 		OpenInNewTab: n.OpenInNewTab,
-		SortOrder:     n.SortOrder,
-		IsActive:      n.IsActive,
-		CreatedAt:     n.CreatedAt,
-		UpdatedAt:     n.UpdatedAt,
+		SortOrder:    n.SortOrder,
+		IsActive:     n.IsActive,
+		CreatedAt:    n.CreatedAt,
+		UpdatedAt:    n.UpdatedAt,
 	}
 }

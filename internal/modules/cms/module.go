@@ -37,13 +37,13 @@ func (m *module) Name() string { return "cms" }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	// Admin API
-	mux.HandleFunc("/api/admin/pages", m.handleAdminPages)
-	mux.HandleFunc("/api/admin/pages/", m.handleAdminPageDetail)
-	mux.HandleFunc("/api/admin/pages/check-slug", m.handleAdminCheckSlug)
-	
-	mux.HandleFunc("/api/admin/navigation", m.handleAdminNavigation)
-	mux.HandleFunc("/api/admin/navigation/", m.handleAdminNavigationDetail)
-	mux.HandleFunc("/api/admin/navigation/reorder", m.handleAdminNavigationReorder)
+	mux.HandleFunc("/admin/pages", m.handleAdminPages)
+	mux.HandleFunc("/admin/pages/", m.handleAdminPageDetail)
+	mux.HandleFunc("/admin/pages/check-slug", m.handleAdminCheckSlug)
+
+	mux.HandleFunc("/admin/navigation", m.handleAdminNavigation)
+	mux.HandleFunc("/admin/navigation/", m.handleAdminNavigationDetail)
+	mux.HandleFunc("/admin/navigation/reorder", m.handleAdminNavigationReorder)
 }
 
 var (

@@ -16,7 +16,7 @@ import (
 
 var (
 	reservedSlugs = []string{"/", "/admin", "/api", "/checkout", "/cart", "/account", "/auth", "/shipping", "/orders"}
-	slugRegex      = regexp.MustCompile(`^/[a-z0-9]+(?:-[a-z0-9]+)*$`)
+	slugRegex     = regexp.MustCompile(`^/[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
 
 func (m *module) handleAdminPages(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func (m *module) handleAdminPageDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := strings.TrimPrefix(r.URL.Path, "/api/admin/pages/")
+	id := strings.TrimPrefix(r.URL.Path, "/admin/pages/")
 	if id == "" {
 		http.NotFound(w, r)
 		return
@@ -102,7 +102,7 @@ func (m *module) handleAdminCreatePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contentHTML := sanitizeHTML(req.ContentHTML)
-	
+
 	var publishedAt sql.NullTime
 	if req.Status == storcms.PageStatusPublished {
 		publishedAt = sql.NullTime{Time: time.Now(), Valid: true}
@@ -169,7 +169,7 @@ func (m *module) handleAdminUpdatePage(w http.ResponseWriter, r *http.Request, i
 	}
 
 	contentHTML := sanitizeHTML(req.ContentHTML)
-	
+
 	publishedAt := oldPage.PublishedAt
 	if req.Status == storcms.PageStatusPublished && !publishedAt.Valid {
 		publishedAt = sql.NullTime{Time: time.Now(), Valid: true}
@@ -207,7 +207,7 @@ func (m *module) handleAdminUpdatePage(w http.ResponseWriter, r *http.Request, i
 
 func (m *module) handleAdminDeletePage(w http.ResponseWriter, r *http.Request, id string) {
 	ctx := r.Context()
-	
+
 	// Check if page is used in navigation
 	used, err := m.store.IsPageUsedInNavigation(ctx, id)
 	if err == nil && used {
