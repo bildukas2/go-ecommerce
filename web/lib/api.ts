@@ -2968,6 +2968,166 @@ export async function bulkApplyAdminProductDiscount(input: {
   });
 }
 
+export type EmailSettings = {
+  id: number;
+  driver: "mailpit" | "smtp";
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: string;
+  from_name: string;
+  from_email: string;
+  updated_at: string;
+};
+
+export type UpdateEmailSettingsInput = {
+  driver: "mailpit" | "smtp";
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: string;
+  from_name: string;
+  from_email: string;
+};
+
+export type EmailTemplate = {
+  id: string;
+  code: string;
+  name: string;
+  subject_i18n: Record<string, string>;
+  body_html_i18n: Record<string, string>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UpdateEmailTemplateInput = {
+  subject_i18n: Record<string, string>;
+  body_html_i18n: Record<string, string>;
+};
+
+function normalizeEmailSettings(raw: unknown): EmailSettings | null {
+  const obj = asRecord(raw);
+  const driverRaw = asString(obj.driver).toLowerCase();
+  if (driverRaw !== "mailpit" && driverRaw !== "smtp") return null;
+
+  return {
+    id: asNumber(obj.id),
+    driver: driverRaw as EmailSettings["driver"],
+    smtp_host: asString(obj.smtp_host),
+    smtp_port: asNumber(obj.smtp_port),
+    smtp_username: asString(obj.smtp_username),
+    smtp_password: asString(obj.smtp_password),
+    from_name: asString(obj.from_name),
+    from_email: asString(obj.from_email),
+    updated_at: asString(obj.updated_at),
+  };
+}
+
+function normalizeEmailTemplate(raw: unknown): EmailTemplate | null {
+  const obj = asRecord(raw);
+  const id = asString(obj.id);
+  const code = asString(obj.code);
+  if (!id || !code) return null;
+
+  return {
+    id,
+    code,
+    name: asString(obj.name),
+    subject_i18n: asStringRecord(obj.subject_i18n),
+    body_html_i18n: asStringRecord(obj.body_html_i18n),
+    created_at: asString(obj.created_at),
+    updated_at: asString(obj.updated_at),
+  };
+}
+
+export async function getAdminEmailSettings(): Promise<EmailSettings> {
+  const url = new URL(apiJoin("admin/email/settings"));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch email settings: ${res.status}`));
+  const normalized = normalizeEmailSettings(await res.json());
+  if (!normalized) throw new Error("Failed to fetch email settings: invalid response");
+  return normalized;
+}
+
+export async function updateAdminEmailSettings(input: UpdateEmailSettingsInput): Promise<EmailSettings> {
+  const url = new URL(apiJoin("admin/email/settings"));
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    ...(await adminMutationHeaders()),
+    cache: "no-store",
+    body: JSON.stringify({
+      driver: input.driver,
+      smtp_host: input.smtp_host,
+      smtp_port: input.smtp_port,
+      smtp_username: input.smtp_username,
+      smtp_password: input.smtp_password,
+      from_name: input.from_name,
+      from_email: input.from_email,
+    }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to update email settings: ${res.status}`));
+  const normalized = normalizeEmailSettings(await res.json());
+  if (!normalized) throw new Error("Failed to update email settings: invalid response");
+  return normalized;
+}
+
+export async function sendAdminEmailTest(to: string, lang: string): Promise<{ ok: boolean }> {
+  const url = new URL(apiJoin("admin/email/settings/test"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    ...(await adminMutationHeaders()),
+    cache: "no-store",
+    body: JSON.stringify({ to, lang }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to send test email: ${res.status}`));
+  const payload = asRecord(await res.json());
+  return { ok: asBoolean(payload.ok) };
+}
+
+export async function listAdminEmailTemplates(): Promise<EmailTemplate[]> {
+  const url = new URL(apiJoin("admin/email/templates"));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch email templates: ${res.status}`));
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return itemsRaw.map(normalizeEmailTemplate).filter((item): item is EmailTemplate => item !== null);
+}
+
+export async function getAdminEmailTemplate(code: string): Promise<EmailTemplate> {
+  const url = new URL(apiJoin(`admin/email/templates/${encodeURIComponent(code)}`));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch email template: ${res.status}`));
+  const normalized = normalizeEmailTemplate(await res.json());
+  if (!normalized) throw new Error("Failed to fetch email template: invalid response");
+  return normalized;
+}
+
+export async function updateAdminEmailTemplate(code: string, input: UpdateEmailTemplateInput): Promise<EmailTemplate> {
+  const url = new URL(apiJoin(`admin/email/templates/${encodeURIComponent(code)}`));
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    ...(await adminMutationHeaders()),
+    cache: "no-store",
+    body: JSON.stringify({
+      subject_i18n: input.subject_i18n,
+      body_html_i18n: input.body_html_i18n,
+    }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to update email template: ${res.status}`));
+  const normalized = normalizeEmailTemplate(await res.json());
+  if (!normalized) throw new Error("Failed to update email template: invalid response");
+  return normalized;
+}
+
 export type ShippingProvider = {
   id: string;
   key: string;

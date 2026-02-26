@@ -106,6 +106,9 @@
       "images": "Images",
       "video": "Video",
       "shopping": "Shopping",
+      "email": "Email",
+      "email_settings": "Settings",
+      "email_templates": "Templates",
       "shipping": "Shipping",
       "payments": "Payments",
       "logout": "Logout",
@@ -115,6 +118,64 @@
       "collapse_sidebar": "Collapse sidebar",
       "close_menu": "Close admin menu",
       "open_menu": "Open admin menu"
+    },
+    "email": {
+      "settings_page": {
+        "title": "Email Settings",
+        "description": "Configure sender identity and transport driver for transactional emails."
+      },
+      "settings": {
+        "title": "Transport Settings",
+        "description": "Use Mailpit for local development or SMTP for production mail delivery.",
+        "driver": "Driver",
+        "driver_mailpit": "Mailpit (local)",
+        "driver_smtp": "SMTP",
+        "from_name": "From name",
+        "from_email": "From email",
+        "smtp_host": "SMTP host",
+        "smtp_port": "SMTP port",
+        "smtp_username": "SMTP username",
+        "smtp_password": "SMTP password",
+        "saving": "Saving...",
+        "manage_templates": "Manage templates"
+      },
+      "test": {
+        "title": "Send Test Email",
+        "description": "Send a test message to confirm your email settings.",
+        "to": "Recipient",
+        "lang": "Language",
+        "send": "Send test email",
+        "sending": "Sending..."
+      },
+      "templates_page": {
+        "title": "Email Templates",
+        "description": "Review and edit transactional templates used by the storefront."
+      },
+      "templates": {
+        "empty": "No templates found.",
+        "name": "Name",
+        "code": "Code",
+        "updated_at": "Updated",
+        "actions": "Actions",
+        "edit": "Edit"
+      },
+      "template_page": {
+        "back": "Back to templates"
+      },
+      "template_editor": {
+        "title": "Template Content",
+        "english": "English (EN)",
+        "lithuanian": "Lithuanian (LT)",
+        "subject": "Subject",
+        "body_html": "HTML body",
+        "saving": "Saving..."
+      },
+      "messages": {
+        "saved": "Saved successfully.",
+        "save_error": "Failed to save changes.",
+        "test_sent": "Test email sent.",
+        "test_error": "Failed to send test email."
+      }
     }
   }
 }

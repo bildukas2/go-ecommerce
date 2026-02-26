@@ -114,7 +114,68 @@
       "expand_sidebar": "Išskleisti šoninę juostą",
       "collapse_sidebar": "Suskleisti šoninę juostą",
       "close_menu": "Uždaryti meniu",
-      "open_menu": "Atidaryti meniu"
+      "open_menu": "Atidaryti meniu",
+      "email": "El. pastas",
+      "email_settings": "Nustatymai",
+      "email_templates": "Sablonai"
+    },
+    "email": {
+      "settings_page": {
+        "title": "El. pasto nustatymai",
+        "description": "Konfiguruokite siuntejo duomenis ir el. pasto siuntimo tvarkykle."
+      },
+      "settings": {
+        "title": "Siuntimo nustatymai",
+        "description": "Naudokite Mailpit lokaliai arba SMTP produkciniam siuntimui.",
+        "driver": "Tvarkykle",
+        "driver_mailpit": "Mailpit (lokaliai)",
+        "driver_smtp": "SMTP",
+        "from_name": "Siuntejo vardas",
+        "from_email": "Siuntejo el. pastas",
+        "smtp_host": "SMTP hostas",
+        "smtp_port": "SMTP prievadas",
+        "smtp_username": "SMTP naudotojas",
+        "smtp_password": "SMTP slaptazodis",
+        "saving": "Saugoma...",
+        "manage_templates": "Valdyti sablonus"
+      },
+      "test": {
+        "title": "Siusti testini laiska",
+        "description": "Issiuskite testini laiska nustatymu patikrinimui.",
+        "to": "Gavejas",
+        "lang": "Kalba",
+        "send": "Siusti testa",
+        "sending": "Siunciama..."
+      },
+      "templates_page": {
+        "title": "El. pasto sablonai",
+        "description": "Perziurekite ir redaguokite transakcinius laisku sablonus."
+      },
+      "templates": {
+        "empty": "Sablonu nerasta.",
+        "name": "Pavadinimas",
+        "code": "Kodas",
+        "updated_at": "Atnaujinta",
+        "actions": "Veiksmai",
+        "edit": "Redaguoti"
+      },
+      "template_page": {
+        "back": "Atgal i sablonus"
+      },
+      "template_editor": {
+        "title": "Sablono turinys",
+        "english": "Anglu (EN)",
+        "lithuanian": "Lietuviu (LT)",
+        "subject": "Tema",
+        "body_html": "HTML turinys",
+        "saving": "Saugoma..."
+      },
+      "messages": {
+        "saved": "Issaugota sekmingai.",
+        "save_error": "Nepavyko issaugoti pakeitimu.",
+        "test_sent": "Testinis laiskas issiustas.",
+        "test_error": "Nepavyko issiusti testinio laisko."
+      }
     }
   }
 }
