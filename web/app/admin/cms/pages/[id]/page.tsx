@@ -25,9 +25,11 @@ export default async function EditAdminPage({ params }: Props) {
     
     const payload = {
       title: formData.get("title") as string,
+      title_i18n: JSON.parse(formData.get("title_i18n") as string),
       slug,
       status: formData.get("status") as "draft" | "published",
       content_html: formData.get("content_html") as string,
+      content_html_i18n: JSON.parse(formData.get("content_html_i18n") as string),
       editor_mode: formData.get("editor_mode") as "html" | "visual",
       meta_title: (formData.get("meta_title") as string) || undefined,
       meta_description: (formData.get("meta_description") as string) || undefined,

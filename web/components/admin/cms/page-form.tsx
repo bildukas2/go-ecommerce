@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, ArrowLeft, Globe, FileText, Code, CheckCircle2 } from "lucide-react";
+import { Save, ArrowLeft, Globe, FileText, Code, CheckCircle2, Languages, Copy } from "lucide-react";
 import Link from "next/link";
 import { AdminPage, checkAdminPageSlug } from "@/lib/api";
 import dynamic from "next/dynamic";
@@ -17,6 +17,11 @@ type Props = {
   isSubmitting?: boolean;
 };
 
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "lt", label: "Lithuanian" },
+];
+
 const RESERVED_SLUGS = [
   "/",
   "/admin",
@@ -31,15 +36,27 @@ const RESERVED_SLUGS = [
 ];
 
 export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitting }: Props) {
+  const [currentLang, setCurrentLang] = useState("en");
+  const [titleI18n, setTitleI18n] = useState<Record<string, string>>(initialData?.title_i18n || { en: initialData?.title || "", lt: "" });
+  const [contentHtmlI18n, setContentHtmlI18n] = useState<Record<string, string>>(initialData?.content_html_i18n || { en: initialData?.content_html || "", lt: "" });
+
   const [slug, setSlug] = useState(initialData?.slug || "/");
   const [slugError, setSlugError] = useState<string | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [editorMode, setEditorMode] = useState<"html" | "visual">(initialData?.editor_mode || "html");
-  const [contentHtml, setContentHtml] = useState(initialData?.content_html || "");
   const [internalSubmitting, setInternalSubmitting] = useState(false);
 
   const isSubmitting = externalSubmitting || internalSubmitting;
+
+  const currentContentHtml = contentHtmlI18n[currentLang] || "";
+
+  useEffect(() => {
+    if (initialData) {
+      setTitleI18n(initialData.title_i18n || { en: initialData.title || "", lt: "" });
+      setContentHtmlI18n(initialData.content_html_i18n || { en: initialData.content_html || "", lt: "" });
+    }
+  }, [initialData]);
 
   useEffect(() => {
     if (!slug) {
@@ -95,9 +112,11 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
 
   // Auto-generate slug from title if it's a new page
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!initialData) {
-      const title = e.target.value;
-      const generatedSlug = "/" + title
+    const value = e.target.value;
+    setTitleI18n(prev => ({ ...prev, [currentLang]: value }));
+
+    if (!initialData && currentLang === "en") {
+      const generatedSlug = "/" + value
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
@@ -105,10 +124,24 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
     }
   };
 
+  const copyEnToLt = () => {
+    setTitleI18n(prev => ({ ...prev, lt: prev.en }));
+    setContentHtmlI18n(prev => ({ ...prev, lt: prev.en }));
+  };
+
   const isInvalid = !!slugError;
 
   const handleSubmit = async (formData: FormData) => {
     if (isInvalid || isSubmitting) return;
+    
+    // Ensure the main fields are set to EN values for backend compatibility if needed
+    formData.set("title", titleI18n.en || "");
+    formData.set("content_html", contentHtmlI18n.en || "");
+    
+    // Add i18n fields
+    formData.set("title_i18n", JSON.stringify(titleI18n));
+    formData.set("content_html_i18n", JSON.stringify(contentHtmlI18n));
+
     setInternalSubmitting(true);
     try {
       await onSubmit(formData);
@@ -134,23 +167,51 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
             {initialData ? "Edit Page" : "Create Page"}
           </h1>
         </div>
-        <button
-          type="submit"
-          disabled={isInvalid || isCheckingSlug || isSubmitting}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Saving...
-            </span>
-          ) : (
-            <>
-              <Save size={18} />
-              {initialData ? "Save Changes" : "Create Page"}
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-xl border border-surface-border bg-background/50 p-1">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => setCurrentLang(lang.code)}
+                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  currentLang === lang.code
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-foreground/60 hover:text-foreground"
+                }`}
+              >
+                <Languages size={14} />
+                {lang.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={copyEnToLt}
+            className="flex items-center gap-2 rounded-xl border border-surface-border bg-background/50 px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-background hover:text-foreground"
+            title="Copy English content to Lithuanian"
+          >
+            <Copy size={16} />
+            Copy EN → LT
+          </button>
+          <button
+            type="submit"
+            disabled={isInvalid || isCheckingSlug || isSubmitting}
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Saving...
+              </span>
+            ) : (
+              <>
+                <Save size={18} />
+                {initialData ? "Save Changes" : "Create Page"}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -158,12 +219,14 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
           <div className="glass rounded-2xl p-6">
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-foreground/70">Title</label>
+                <label className="text-sm font-medium text-foreground/70">
+                  Title ({currentLang.toUpperCase()})
+                </label>
                 <input
-                  name="title"
+                  name="title_input"
                   type="text"
-                  placeholder="e.g. About Us"
-                  defaultValue={initialData?.title}
+                  placeholder={`e.g. About Us (${currentLang})`}
+                  value={titleI18n[currentLang] || ""}
                   onChange={handleTitleChange}
                   required
                   className="w-full rounded-xl border border-surface-border bg-background/50 px-3 py-2 outline-none focus:border-blue-500/50"
@@ -228,16 +291,19 @@ export function PageForm({ initialData, onSubmit, isSubmitting: externalSubmitti
             <div className="flex-1 p-4">
               {editorMode === "html" ? (
                 <textarea
-                  name="content_html"
-                  placeholder="Write your HTML content here..."
-                  value={contentHtml}
-                  onChange={(e) => setContentHtml(e.target.value)}
+                  name="content_html_input"
+                  placeholder={`Write your ${currentLang.toUpperCase()} HTML content here...`}
+                  value={currentContentHtml}
+                  onChange={(e) => setContentHtmlI18n(prev => ({ ...prev, [currentLang]: e.target.value }))}
                   className="min-h-[400px] w-full resize-none rounded-xl border border-surface-border bg-background/50 p-4 font-mono text-sm outline-none focus:border-blue-500/50"
                 />
               ) : (
                 <>
-                  <RichTextEditor value={contentHtml} onChange={setContentHtml} />
-                  <input type="hidden" name="content_html" value={contentHtml} />
+                  <RichTextEditor 
+                    key={`${currentLang}-${editorMode}`}
+                    value={currentContentHtml} 
+                    onChange={(val) => setContentHtmlI18n(prev => ({ ...prev, [currentLang]: val }))} 
+                  />
                 </>
               )}
             </div>

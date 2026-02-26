@@ -909,6 +909,7 @@ export async function createAdminNavigationMenuItem(
   menuID: string,
   data: {
     label: string;
+    label_i18n?: Record<string, string>;
     type: AdminNavigationItem["type"];
     page_id?: string | null;
     category_id?: string | null;
@@ -936,6 +937,7 @@ export async function updateAdminNavigationItem(
   data: {
     menu_id?: string | null;
     label: string;
+    label_i18n?: Record<string, string>;
     type: AdminNavigationItem["type"];
     page_id?: string | null;
     category_id?: string | null;
@@ -947,6 +949,7 @@ export async function updateAdminNavigationItem(
 ): Promise<AdminNavigationItem> {
   const body: Record<string, unknown> = {
     label: data.label,
+    label_i18n: data.label_i18n,
     type: data.type,
     page_id: data.page_id ?? null,
     category_id: data.category_id ?? null,

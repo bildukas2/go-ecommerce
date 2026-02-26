@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowDown, ArrowUp, Edit, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Edit, ExternalLink, Plus, Trash2, Languages, Copy } from "lucide-react";
 import {
   AdminCategory,
   AdminNavigationItem,
@@ -14,6 +14,11 @@ import {
   updateAdminNavigationItem,
 } from "@/lib/api";
 
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "lt", label: "Lithuanian" },
+];
+
 type Props = {
   menu: AdminNavigationMenu;
   initialItems: AdminNavigationItem[];
@@ -24,6 +29,7 @@ type Props = {
 type ItemFormState = {
   id?: string;
   label: string;
+  label_i18n: Record<string, string>;
   type: AdminNavigationItem["type"];
   page_id: string;
   category_id: string;
@@ -45,6 +51,7 @@ function orderedItems(items: AdminNavigationItem[]): AdminNavigationItem[] {
 export function NavigationMenuDetailContent({ menu, initialItems, pages, categories }: Props) {
   const [items, setItems] = useState<AdminNavigationItem[]>(orderedItems(initialItems));
   const [editing, setEditing] = useState<ItemFormState | null>(null);
+  const [currentLang, setCurrentLang] = useState("en");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingID, setDeletingID] = useState<string | null>(null);
@@ -55,6 +62,7 @@ export function NavigationMenuDetailContent({ menu, initialItems, pages, categor
   function openCreateModal() {
     setEditing({
       label: "",
+      label_i18n: { en: "", lt: "" },
       type: "page",
       page_id: pages[0]?.id ?? "",
       category_id: categories[0]?.id ?? "",
@@ -63,6 +71,7 @@ export function NavigationMenuDetailContent({ menu, initialItems, pages, categor
       sort_order: items.length,
       is_active: true,
     });
+    setCurrentLang("en");
     setError(null);
   }
 
@@ -70,6 +79,7 @@ export function NavigationMenuDetailContent({ menu, initialItems, pages, categor
     setEditing({
       id: item.id,
       label: item.label,
+      label_i18n: item.label_i18n || { en: item.label, lt: "" },
       type: item.type,
       page_id: item.page_id ?? "",
       category_id: item.category_id ?? "",
@@ -78,6 +88,7 @@ export function NavigationMenuDetailContent({ menu, initialItems, pages, categor
       sort_order: item.sort_order,
       is_active: item.is_active,
     });
+    setCurrentLang("en");
     setError(null);
   }
 
@@ -94,7 +105,8 @@ export function NavigationMenuDetailContent({ menu, initialItems, pages, categor
 
     try {
       const payload = {
-        label: editing.label.trim(),
+        label: (editing.label_i18n.en || editing.label || "").trim(),
+        label_i18n: editing.label_i18n,
         type: editing.type,
         page_id: editing.type === "page" ? editing.page_id || null : null,
         category_id: editing.type === "category" ? editing.category_id || null : null,
@@ -312,14 +324,45 @@ export function NavigationMenuDetailContent({ menu, initialItems, pages, categor
             aria-label="Close modal"
           />
           <div className="glass relative w-full max-w-xl rounded-2xl border border-surface-border p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold">{editing.id ? "Edit Navigation Item" : "Add Navigation Item"}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{editing.id ? "Edit Navigation Item" : "Add Navigation Item"}</h3>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-surface-border bg-background/50 p-0.5">
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => setCurrentLang(lang.code)}
+                      className={`px-2 py-1 text-xs font-medium transition-colors rounded-md ${
+                        currentLang === lang.code
+                          ? "bg-blue-600 text-white"
+                          : "text-foreground/60 hover:text-foreground"
+                      }`}
+                    >
+                      {lang.code.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditing(prev => prev ? { ...prev, label_i18n: { ...prev.label_i18n, lt: prev.label_i18n.en } } : null)}
+                  className="flex h-7 items-center gap-1 rounded-lg border border-surface-border bg-background/50 px-2 text-[10px] font-medium text-foreground/70 transition-colors hover:bg-background hover:text-foreground"
+                  title="Copy English label to Lithuanian"
+                >
+                  <Copy size={10} />
+                  EN→LT
+                </button>
+              </div>
+            </div>
             <form onSubmit={onSaveItem} className="mt-5 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/70">Label</label>
+                <label className="text-sm font-medium text-foreground/70">
+                  Label ({currentLang.toUpperCase()})
+                </label>
                 <input
                   type="text"
-                  value={editing.label}
-                  onChange={(event) => setEditing((prev) => (prev ? { ...prev, label: event.target.value } : prev))}
+                  value={editing.label_i18n[currentLang] || ""}
+                  onChange={(event) => setEditing((prev) => (prev ? { ...prev, label_i18n: { ...prev.label_i18n, [currentLang]: event.target.value } } : prev))}
                   required
                   className="w-full rounded-xl border border-surface-border bg-background/50 px-3 py-2 outline-none focus:border-blue-500/50"
                 />
