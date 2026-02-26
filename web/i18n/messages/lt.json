@@ -84,7 +84,20 @@
     "title": "Atsiskaitymas",
     "shipping": "Pristatymas",
     "payment": "Mokėjimas",
-    "place_order": "Pateikti užsakymą"
+    "place_order": "Pateikti užsakymą",
+    "bank_transfer": {
+      "title": "Bankinio pavedimo instrukcijos",
+      "subtitle": "Prašome atlikti mokėjimą naudojantis žemiau esančia informacija:",
+      "account_holder": "Gavėjas",
+      "account_number": "Sąskaitos numeris / IBAN",
+      "bank_name": "Bankas",
+      "purpose": "Mokėjimo paskirtis",
+      "bic_swift": "BIC / SWIFT",
+      "sort_code": "Banko kodas",
+      "instructions_label": "Instrukcijos",
+      "footer_note": "Kai atliksite bankinį pavedimą, mes patikrinsime mokėjimą ir pradėsime vykdyti jūsų užsakymą.",
+      "continue_shopping": "Tęsti apsipirkimą"
+    }
   },
   "admin": {
     "menu": {

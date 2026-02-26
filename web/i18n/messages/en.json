@@ -84,7 +84,20 @@
     "title": "Checkout",
     "shipping": "Shipping",
     "payment": "Payment",
-    "place_order": "Place Order"
+    "place_order": "Place Order",
+    "bank_transfer": {
+      "title": "Bank Transfer Instructions",
+      "subtitle": "Please complete your payment using the information below:",
+      "account_holder": "Account Holder Name",
+      "account_number": "Account Number / IBAN",
+      "bank_name": "Bank Name",
+      "purpose": "Transfer Purpose / Reference",
+      "bic_swift": "BIC / SWIFT",
+      "sort_code": "Sort Code",
+      "instructions_label": "Instructions",
+      "footer_note": "Once you have completed the bank transfer, we will verify the payment and process your order.",
+      "continue_shopping": "Continue Shopping"
+    }
   },
   "admin": {
     "menu": {

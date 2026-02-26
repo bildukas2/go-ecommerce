@@ -16,6 +16,7 @@ import { OrderSummary } from "@/components/checkout/order-summary";
 import { UpsellSection } from "@/components/checkout/upsell-section";
 import { Check, MapPin, Truck, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 function StepIndicator({
   steps,
@@ -86,6 +87,7 @@ const CHECKOUT_STEPS = [
 ];
 
 export default function CheckoutPage() {
+  const t = useTranslations("checkout");
   const {
     state,
     setCart,
@@ -249,9 +251,9 @@ export default function CheckoutPage() {
         {isBankTransfer ? (
           <div className="rounded-[28px] border border-surface-border bg-surface/80 p-8 shadow-[0_30px_60px_rgba(2,6,23,0.35)] backdrop-blur-xl">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2">Bank Transfer Instructions</h2>
+              <h2 className="text-xl font-semibold mb-2">{t("bank_transfer.title")}</h2>
               <p className="text-muted-foreground text-sm">
-                Please complete your payment using the information below:
+                {t("bank_transfer.subtitle")}
               </p>
             </div>
 
@@ -265,32 +267,32 @@ export default function CheckoutPage() {
               {selectedPaymentMethod?.config_json && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Account Holder Name</span>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">{t("bank_transfer.account_holder")}</span>
                     <span className="font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).account_name}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Account Number / IBAN</span>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">{t("bank_transfer.account_number")}</span>
                     <span className="font-mono font-medium">
                       {(selectedPaymentMethod.config_json as any as BankTransferConfig).iban || (selectedPaymentMethod.config_json as any as BankTransferConfig).account_number}
                     </span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Bank Name</span>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">{t("bank_transfer.bank_name")}</span>
                     <span className="font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).bank_name}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Transfer Purpose / Reference</span>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">{t("bank_transfer.purpose")}</span>
                     <span className="font-mono font-bold text-blue-600 dark:text-blue-400">#{state.orderNumber}</span>
                   </div>
                   {(selectedPaymentMethod.config_json as any as BankTransferConfig).bic_swift && (
                     <div>
-                      <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">BIC / SWIFT</span>
+                      <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">{t("bank_transfer.bic_swift")}</span>
                       <span className="font-mono font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).bic_swift}</span>
                     </div>
                   )}
                   {(selectedPaymentMethod.config_json as any as BankTransferConfig).sort_code && (
                     <div>
-                      <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Sort Code</span>
+                      <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">{t("bank_transfer.sort_code")}</span>
                       <span className="font-mono font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).sort_code}</span>
                     </div>
                   )}
@@ -299,7 +301,7 @@ export default function CheckoutPage() {
 
               {selectedPaymentMethod?.instructions && (
                 <div className="pt-4 border-t border-surface-border mt-4 text-sm text-foreground/80 whitespace-pre-wrap">
-                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-2">Instructions</span>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-2">{t("bank_transfer.instructions_label")}</span>
                   {selectedPaymentMethod.instructions}
                 </div>
               )}
@@ -307,13 +309,13 @@ export default function CheckoutPage() {
 
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Once you have completed the bank transfer, we will verify the payment and process your order.
+                {t("bank_transfer.footer_note")}
               </p>
               <Button
                 onClick={() => window.location.href = "/"}
                 className="w-full"
               >
-                Continue Shopping
+                {t("bank_transfer.continue_shopping")}
               </Button>
             </div>
           </div>
