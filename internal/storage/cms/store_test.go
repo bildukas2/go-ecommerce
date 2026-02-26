@@ -36,11 +36,13 @@ func TestPageCRUD(t *testing.T) {
 	// 1. Create
 	slug := fmt.Sprintf("/test-%d", time.Now().UnixNano())
 	p := Page{
-		Title:       "Test Page",
-		Slug:        slug,
-		Status:      PageStatusDraft,
-		ContentHTML: "<p>Hello World</p>",
-		EditorMode:  EditorModeHTML,
+		Title:           "Test Page",
+		TitleI18n:       []byte(`{"en": "Test Page"}`),
+		Slug:            slug,
+		Status:          PageStatusDraft,
+		ContentHTML:     "<p>Hello World</p>",
+		ContentHTMLI18n: []byte(`{"en": "<p>Hello World</p>"}`),
+		EditorMode:      EditorModeHTML,
 	}
 
 	created, err := store.CreatePage(ctx, p)
@@ -168,6 +170,7 @@ func TestNavigationCRUD(t *testing.T) {
 	urlItem, err := store.CreateNavigationItem(ctx, NavigationItem{
 		MenuID:    createdMenu.ID,
 		Label:     "Home",
+		LabelI18n: []byte(`{"en": "Home"}`),
 		Type:      NavItemTypeURL,
 		URL:       stringPtr("/"),
 		SortOrder: 20,
@@ -181,6 +184,7 @@ func TestNavigationCRUD(t *testing.T) {
 	pageItem, err := store.CreateNavigationItem(ctx, NavigationItem{
 		MenuID:    createdMenu.ID,
 		Label:     "About",
+		LabelI18n: []byte(`{"en": "About"}`),
 		Type:      NavItemTypePage,
 		PageID:    &page.ID,
 		SortOrder: 30,
@@ -194,6 +198,7 @@ func TestNavigationCRUD(t *testing.T) {
 	categoryItem, err := store.CreateNavigationItem(ctx, NavigationItem{
 		MenuID:     createdMenu.ID,
 		Label:      "Category",
+		LabelI18n:  []byte(`{"en": "Category"}`),
 		Type:       NavItemTypeCategory,
 		CategoryID: &categoryID,
 		SortOrder:  40,
@@ -206,6 +211,7 @@ func TestNavigationCRUD(t *testing.T) {
 	// Legacy fallback path: menu omitted should resolve to default legacy menu.
 	legacyItem, err := store.CreateNavigationItem(ctx, NavigationItem{
 		Label:     "Legacy",
+		LabelI18n: []byte(`{"en": "Legacy"}`),
 		Type:      NavItemTypeURL,
 		URL:       stringPtr("/legacy"),
 		SortOrder: 10,
@@ -338,11 +344,13 @@ func createTestPage(t *testing.T, ctx context.Context, store *Store) Page {
 	t.Helper()
 	slug := fmt.Sprintf("/page-%d", time.Now().UnixNano())
 	page, err := store.CreatePage(ctx, Page{
-		Title:       "Nav Target Page",
-		Slug:        slug,
-		Status:      PageStatusPublished,
-		ContentHTML: "<p>Nav target</p>",
-		EditorMode:  EditorModeHTML,
+		Title:           "Nav Target Page",
+		TitleI18n:       []byte(`{"en": "Nav Target Page"}`),
+		Slug:            slug,
+		Status:          PageStatusPublished,
+		ContentHTML:     "<p>Nav target</p>",
+		ContentHTMLI18n: []byte(`{"en": "<p>Nav target</p>"}`),
+		EditorMode:      EditorModeHTML,
 	})
 	if err != nil {
 		t.Fatalf("create page target: %v", err)

@@ -21,6 +21,7 @@ func (m *module) handleNavigationLocations(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	lang := r.URL.Query().Get("lang")
 	locations, err := m.store.ListNavigationLocations(r.Context())
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "failed to list navigation locations")
@@ -29,7 +30,7 @@ func (m *module) handleNavigationLocations(w http.ResponseWriter, r *http.Reques
 
 	resp := make([]NavigationResolvedLocationResponse, 0, len(locations))
 	for _, loc := range locations {
-		resolved, err := m.resolveNavigationLocation(r.Context(), loc)
+		resolved, err := m.resolveNavigationLocation(r.Context(), loc, lang)
 		if err != nil {
 			platformhttp.Error(w, http.StatusInternalServerError, "failed to resolve navigation locations")
 			return
@@ -56,6 +57,7 @@ func (m *module) handleNavigationLocationByCode(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	lang := r.URL.Query().Get("lang")
 	locations, err := m.store.ListNavigationLocations(r.Context())
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "failed to list navigation locations")
@@ -66,7 +68,7 @@ func (m *module) handleNavigationLocationByCode(w http.ResponseWriter, r *http.R
 		if loc.Code != code {
 			continue
 		}
-		resolved, err := m.resolveNavigationLocation(r.Context(), loc)
+		resolved, err := m.resolveNavigationLocation(r.Context(), loc, lang)
 		if err != nil {
 			platformhttp.Error(w, http.StatusInternalServerError, "failed to resolve navigation location")
 			return
@@ -78,7 +80,7 @@ func (m *module) handleNavigationLocationByCode(w http.ResponseWriter, r *http.R
 	http.NotFound(w, r)
 }
 
-func (m *module) resolveNavigationLocation(ctx context.Context, loc storcms.NavigationLocation) (NavigationResolvedLocationResponse, error) {
+func (m *module) resolveNavigationLocation(ctx context.Context, loc storcms.NavigationLocation, lang string) (NavigationResolvedLocationResponse, error) {
 	resp := NavigationResolvedLocationResponse{
 		Code: loc.Code,
 		Name: loc.Name,
@@ -105,7 +107,7 @@ func (m *module) resolveNavigationLocation(ctx context.Context, loc storcms.Navi
 			continue
 		}
 		resolvedItems = append(resolvedItems, NavigationResolvedItemResponse{
-			Label:        item.Label,
+			Label:        ResolveI18n(item.LabelI18n, lang, item.Label),
 			Href:         href,
 			Type:         item.Type,
 			OpenInNewTab: item.OpenInNewTab,

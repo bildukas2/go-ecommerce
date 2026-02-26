@@ -20,9 +20,11 @@ const (
 type Page struct {
 	ID              string       `json:"id"`
 	Title           string       `json:"title"`
+	TitleI18n       []byte       `json:"title_i18n"`
 	Slug            string       `json:"slug"`
 	Status          string       `json:"status"`
 	ContentHTML     string       `json:"content_html"`
+	ContentHTMLI18n []byte       `json:"content_html_i18n"`
 	ContentJSON     []byte       `json:"content_json"`
 	EditorMode      string       `json:"editor_mode"`
 	MetaTitle       *string      `json:"meta_title"`
@@ -36,6 +38,7 @@ type NavigationItem struct {
 	ID           string    `json:"id"`
 	MenuID       string    `json:"menu_id"`
 	Label        string    `json:"label"`
+	LabelI18n    []byte    `json:"label_i18n"`
 	Type         string    `json:"type"`
 	PageID       *string   `json:"page_id"`
 	CategoryID   *string   `json:"category_id"`

@@ -110,9 +110,11 @@ func (m *module) handleAdminCreatePage(w http.ResponseWriter, r *http.Request) {
 
 	page, err := m.store.CreatePage(r.Context(), storcms.Page{
 		Title:           req.Title,
+		TitleI18n:       req.TitleI18n,
 		Slug:            req.Slug,
 		Status:          req.Status,
 		ContentHTML:     contentHTML,
+		ContentHTMLI18n: req.ContentHTMLI18n,
 		ContentJSON:     req.ContentJSON,
 		EditorMode:      req.EditorMode,
 		MetaTitle:       req.MetaTitle,
@@ -180,9 +182,11 @@ func (m *module) handleAdminUpdatePage(w http.ResponseWriter, r *http.Request, i
 	page, err := m.store.UpdatePage(ctx, storcms.Page{
 		ID:              id,
 		Title:           req.Title,
+		TitleI18n:       req.TitleI18n,
 		Slug:            req.Slug,
 		Status:          req.Status,
 		ContentHTML:     contentHTML,
+		ContentHTMLI18n: req.ContentHTMLI18n,
 		ContentJSON:     req.ContentJSON,
 		EditorMode:      req.EditorMode,
 		MetaTitle:       req.MetaTitle,
@@ -284,6 +288,10 @@ func (m *module) handleGetPageBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lang := r.URL.Query().Get("lang")
+	page.Title = ResolveI18n(page.TitleI18n, lang, page.Title)
+	page.ContentHTML = ResolveI18n(page.ContentHTMLI18n, lang, page.ContentHTML)
+
 	_ = platformhttp.JSON(w, http.StatusOK, toPageResponse(page))
 }
 
@@ -318,9 +326,11 @@ func toPageResponse(p storcms.Page) PageResponse {
 	return PageResponse{
 		ID:              p.ID,
 		Title:           p.Title,
+		TitleI18n:       p.TitleI18n,
 		Slug:            p.Slug,
 		Status:          p.Status,
 		ContentHTML:     p.ContentHTML,
+		ContentHTMLI18n: p.ContentHTMLI18n,
 		ContentJSON:     p.ContentJSON,
 		EditorMode:      p.EditorMode,
 		MetaTitle:       p.MetaTitle,

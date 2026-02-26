@@ -7,9 +7,11 @@ import (
 
 type CreatePageRequest struct {
 	Title           string          `json:"title"`
+	TitleI18n       json.RawMessage `json:"title_i18n,omitempty"`
 	Slug            string          `json:"slug"`
 	Status          string          `json:"status"`
 	ContentHTML     string          `json:"content_html"`
+	ContentHTMLI18n json.RawMessage `json:"content_html_i18n,omitempty"`
 	ContentJSON     json.RawMessage `json:"content_json,omitempty"`
 	EditorMode      string          `json:"editor_mode"`
 	MetaTitle       *string         `json:"meta_title,omitempty"`
@@ -18,9 +20,11 @@ type CreatePageRequest struct {
 
 type UpdatePageRequest struct {
 	Title           string          `json:"title"`
+	TitleI18n       json.RawMessage `json:"title_i18n,omitempty"`
 	Slug            string          `json:"slug"`
 	Status          string          `json:"status"`
 	ContentHTML     string          `json:"content_html"`
+	ContentHTMLI18n json.RawMessage `json:"content_html_i18n,omitempty"`
 	ContentJSON     json.RawMessage `json:"content_json,omitempty"`
 	EditorMode      string          `json:"editor_mode"`
 	MetaTitle       *string         `json:"meta_title,omitempty"`
@@ -30,9 +34,11 @@ type UpdatePageRequest struct {
 type PageResponse struct {
 	ID              string          `json:"id"`
 	Title           string          `json:"title"`
+	TitleI18n       json.RawMessage `json:"title_i18n,omitempty"`
 	Slug            string          `json:"slug"`
 	Status          string          `json:"status"`
 	ContentHTML     string          `json:"content_html"`
+	ContentHTMLI18n json.RawMessage `json:"content_html_i18n,omitempty"`
 	ContentJSON     json.RawMessage `json:"content_json,omitempty"`
 	EditorMode      string          `json:"editor_mode"`
 	MetaTitle       *string         `json:"meta_title,omitempty"`
@@ -48,41 +54,44 @@ type ListPagesResponse struct {
 }
 
 type CreateNavigationItemRequest struct {
-	Label        string  `json:"label"`
-	Type         string  `json:"type"`
-	PageID       *string `json:"page_id,omitempty"`
-	CategoryID   *string `json:"category_id,omitempty"`
-	URL          *string `json:"url,omitempty"`
-	OpenInNewTab bool    `json:"open_in_new_tab"`
-	SortOrder    int     `json:"sort_order"`
-	IsActive     bool    `json:"is_active"`
+	Label        string          `json:"label"`
+	LabelI18n    json.RawMessage `json:"label_i18n,omitempty"`
+	Type         string          `json:"type"`
+	PageID       *string         `json:"page_id,omitempty"`
+	CategoryID   *string         `json:"category_id,omitempty"`
+	URL          *string         `json:"url,omitempty"`
+	OpenInNewTab bool            `json:"open_in_new_tab"`
+	SortOrder    int             `json:"sort_order"`
+	IsActive     bool            `json:"is_active"`
 }
 
 type UpdateNavigationItemRequest struct {
-	MenuID       *string `json:"menu_id,omitempty"`
-	Label        string  `json:"label"`
-	Type         string  `json:"type"`
-	PageID       *string `json:"page_id,omitempty"`
-	CategoryID   *string `json:"category_id,omitempty"`
-	URL          *string `json:"url,omitempty"`
-	OpenInNewTab bool    `json:"open_in_new_tab"`
-	SortOrder    int     `json:"sort_order"`
-	IsActive     bool    `json:"is_active"`
+	MenuID       *string         `json:"menu_id,omitempty"`
+	Label        string          `json:"label"`
+	LabelI18n    json.RawMessage `json:"label_i18n,omitempty"`
+	Type         string          `json:"type"`
+	PageID       *string         `json:"page_id,omitempty"`
+	CategoryID   *string         `json:"category_id,omitempty"`
+	URL          *string         `json:"url,omitempty"`
+	OpenInNewTab bool            `json:"open_in_new_tab"`
+	SortOrder    int             `json:"sort_order"`
+	IsActive     bool            `json:"is_active"`
 }
 
 type NavigationItemResponse struct {
-	ID           string    `json:"id"`
-	MenuID       string    `json:"menu_id"`
-	Label        string    `json:"label"`
-	Type         string    `json:"type"`
-	PageID       *string   `json:"page_id,omitempty"`
-	CategoryID   *string   `json:"category_id,omitempty"`
-	URL          *string   `json:"url,omitempty"`
-	OpenInNewTab bool      `json:"open_in_new_tab"`
-	SortOrder    int       `json:"sort_order"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           string          `json:"id"`
+	MenuID       string          `json:"menu_id"`
+	Label        string          `json:"label"`
+	LabelI18n    json.RawMessage `json:"label_i18n,omitempty"`
+	Type         string          `json:"type"`
+	PageID       *string         `json:"page_id,omitempty"`
+	CategoryID   *string         `json:"category_id,omitempty"`
+	URL          *string         `json:"url,omitempty"`
+	OpenInNewTab bool            `json:"open_in_new_tab"`
+	SortOrder    int             `json:"sort_order"`
+	IsActive     bool            `json:"is_active"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
 type ReorderNavigationRequest struct {

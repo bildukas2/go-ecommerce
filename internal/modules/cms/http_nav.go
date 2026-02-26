@@ -80,6 +80,7 @@ func (m *module) handleAdminCreateNavigation(w http.ResponseWriter, r *http.Requ
 	item, err := m.store.CreateNavigationItem(r.Context(), storcms.NavigationItem{
 		MenuID:       "",
 		Label:        req.Label,
+		LabelI18n:    req.LabelI18n,
 		Type:         req.Type,
 		PageID:       req.PageID,
 		CategoryID:   req.CategoryID,
@@ -126,6 +127,7 @@ func (m *module) handleAdminUpdateNavigation(w http.ResponseWriter, r *http.Requ
 		ID:           id,
 		MenuID:       "",
 		Label:        req.Label,
+		LabelI18n:    req.LabelI18n,
 		Type:         req.Type,
 		PageID:       req.PageID,
 		CategoryID:   req.CategoryID,
@@ -217,6 +219,7 @@ func toNavigationItemResponse(n storcms.NavigationItem) NavigationItemResponse {
 		ID:           n.ID,
 		MenuID:       n.MenuID,
 		Label:        n.Label,
+		LabelI18n:    n.LabelI18n,
 		Type:         n.Type,
 		PageID:       n.PageID,
 		CategoryID:   n.CategoryID,

@@ -62,10 +62,10 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	// Pages
 	s.stmtCreatePage, err = db.PrepareContext(ctx, `
 		INSERT INTO pages (
-			title, slug, status, content_html, content_json, editor_mode,
+			title, title_i18n, slug, status, content_html, content_html_i18n, content_json, editor_mode,
 			meta_title, meta_description, published_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, title, slug, status, content_html, content_json, editor_mode,
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		RETURNING id, title, title_i18n, slug, status, content_html, content_html_i18n, content_json, editor_mode,
 		          meta_title, meta_description, created_at, updated_at, published_at
 	`)
 	if err != nil {
@@ -73,7 +73,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	s.stmtGetPageByID, err = db.PrepareContext(ctx, `
-		SELECT id, title, slug, status, content_html, content_json, editor_mode,
+		SELECT id, title, title_i18n, slug, status, content_html, content_html_i18n, content_json, editor_mode,
 		       meta_title, meta_description, created_at, updated_at, published_at
 		FROM pages WHERE id = $1
 	`)
@@ -82,7 +82,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	s.stmtGetPageBySlug, err = db.PrepareContext(ctx, `
-		SELECT id, title, slug, status, content_html, content_json, editor_mode,
+		SELECT id, title, title_i18n, slug, status, content_html, content_html_i18n, content_json, editor_mode,
 		       meta_title, meta_description, created_at, updated_at, published_at
 		FROM pages WHERE slug = $1
 	`)
@@ -92,11 +92,11 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 
 	s.stmtUpdatePage, err = db.PrepareContext(ctx, `
 		UPDATE pages SET
-			title = $2, slug = $3, status = $4, content_html = $5, content_json = $6,
-			editor_mode = $7, meta_title = $8, meta_description = $9,
-			published_at = $10, updated_at = NOW()
+			title = $2, title_i18n = $3, slug = $4, status = $5, content_html = $6, content_html_i18n = $7,
+			content_json = $8, editor_mode = $9, meta_title = $10, meta_description = $11,
+			published_at = $12, updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, title, slug, status, content_html, content_json, editor_mode,
+		RETURNING id, title, title_i18n, slug, status, content_html, content_html_i18n, content_json, editor_mode,
 		          meta_title, meta_description, created_at, updated_at, published_at
 	`)
 	if err != nil {
@@ -175,16 +175,16 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	// Navigation items
 	s.stmtCreateNavItem, err = db.PrepareContext(ctx, `
 		INSERT INTO navigation_items (
-			menu_id, label, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, menu_id, label, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
+			menu_id, label, label_i18n, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id, menu_id, label, label_i18n, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("prepare create nav item: %w", err)
 	}
 
 	s.stmtGetNavItem, err = db.PrepareContext(ctx, `
-		SELECT id, menu_id, label, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
+		SELECT id, menu_id, label, label_i18n, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
 		FROM navigation_items WHERE id = $1
 	`)
 	if err != nil {
@@ -195,16 +195,17 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		UPDATE navigation_items SET
 			menu_id = $2,
 			label = $3,
-			type = $4,
-			page_id = $5,
-			category_id = $6,
-			url = $7,
-			open_in_new_tab = $8,
-			sort_order = $9,
-			is_active = $10,
+			label_i18n = $4,
+			type = $5,
+			page_id = $6,
+			category_id = $7,
+			url = $8,
+			open_in_new_tab = $9,
+			sort_order = $10,
+			is_active = $11,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, menu_id, label, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
+		RETURNING id, menu_id, label, label_i18n, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("prepare update nav item: %w", err)
@@ -218,7 +219,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	s.stmtListNavItems, err = db.PrepareContext(ctx, `
-		SELECT id, menu_id, label, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
+		SELECT id, menu_id, label, label_i18n, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
 		FROM navigation_items
 		ORDER BY sort_order ASC, created_at ASC
 	`)
@@ -227,7 +228,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	}
 
 	s.stmtListNavItemsByMenu, err = db.PrepareContext(ctx, `
-		SELECT id, menu_id, label, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
+		SELECT id, menu_id, label, label_i18n, type, page_id, category_id, url, open_in_new_tab, sort_order, is_active, created_at, updated_at
 		FROM navigation_items
 		WHERE menu_id = $1
 		ORDER BY sort_order ASC, created_at ASC
@@ -334,10 +335,10 @@ func (s *Store) Close() error {
 func (s *Store) CreatePage(ctx context.Context, p Page) (Page, error) {
 	var out Page
 	err := s.stmtCreatePage.QueryRowContext(ctx,
-		p.Title, p.Slug, p.Status, p.ContentHTML, p.ContentJSON, p.EditorMode,
+		p.Title, p.TitleI18n, p.Slug, p.Status, p.ContentHTML, p.ContentHTMLI18n, p.ContentJSON, p.EditorMode,
 		p.MetaTitle, p.MetaDescription, p.PublishedAt,
 	).Scan(
-		&out.ID, &out.Title, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentJSON, &out.EditorMode,
+		&out.ID, &out.Title, &out.TitleI18n, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentHTMLI18n, &out.ContentJSON, &out.EditorMode,
 		&out.MetaTitle, &out.MetaDescription, &out.CreatedAt, &out.UpdatedAt, &out.PublishedAt,
 	)
 	if err != nil {
@@ -352,7 +353,7 @@ func (s *Store) CreatePage(ctx context.Context, p Page) (Page, error) {
 func (s *Store) GetPageByID(ctx context.Context, id string) (Page, error) {
 	var out Page
 	err := s.stmtGetPageByID.QueryRowContext(ctx, id).Scan(
-		&out.ID, &out.Title, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentJSON, &out.EditorMode,
+		&out.ID, &out.Title, &out.TitleI18n, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentHTMLI18n, &out.ContentJSON, &out.EditorMode,
 		&out.MetaTitle, &out.MetaDescription, &out.CreatedAt, &out.UpdatedAt, &out.PublishedAt,
 	)
 	if err != nil {
@@ -367,7 +368,7 @@ func (s *Store) GetPageByID(ctx context.Context, id string) (Page, error) {
 func (s *Store) GetPageBySlug(ctx context.Context, slug string) (Page, error) {
 	var out Page
 	err := s.stmtGetPageBySlug.QueryRowContext(ctx, slug).Scan(
-		&out.ID, &out.Title, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentJSON, &out.EditorMode,
+		&out.ID, &out.Title, &out.TitleI18n, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentHTMLI18n, &out.ContentJSON, &out.EditorMode,
 		&out.MetaTitle, &out.MetaDescription, &out.CreatedAt, &out.UpdatedAt, &out.PublishedAt,
 	)
 	if err != nil {
@@ -382,10 +383,10 @@ func (s *Store) GetPageBySlug(ctx context.Context, slug string) (Page, error) {
 func (s *Store) UpdatePage(ctx context.Context, p Page) (Page, error) {
 	var out Page
 	err := s.stmtUpdatePage.QueryRowContext(ctx,
-		p.ID, p.Title, p.Slug, p.Status, p.ContentHTML, p.ContentJSON, p.EditorMode,
+		p.ID, p.Title, p.TitleI18n, p.Slug, p.Status, p.ContentHTML, p.ContentHTMLI18n, p.ContentJSON, p.EditorMode,
 		p.MetaTitle, p.MetaDescription, p.PublishedAt,
 	).Scan(
-		&out.ID, &out.Title, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentJSON, &out.EditorMode,
+		&out.ID, &out.Title, &out.TitleI18n, &out.Slug, &out.Status, &out.ContentHTML, &out.ContentHTMLI18n, &out.ContentJSON, &out.EditorMode,
 		&out.MetaTitle, &out.MetaDescription, &out.CreatedAt, &out.UpdatedAt, &out.PublishedAt,
 	)
 	if err != nil {
@@ -461,7 +462,7 @@ func (s *Store) ListPages(ctx context.Context, params ListPagesParams) ([]Page, 
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, title, slug, status, content_html, content_json, editor_mode,
+		SELECT id, title, title_i18n, slug, status, content_html, content_html_i18n, content_json, editor_mode,
 		       meta_title, meta_description, created_at, updated_at, published_at
 		FROM pages
 		%s
@@ -480,7 +481,7 @@ func (s *Store) ListPages(ctx context.Context, params ListPagesParams) ([]Page, 
 	for rows.Next() {
 		var p Page
 		err := rows.Scan(
-			&p.ID, &p.Title, &p.Slug, &p.Status, &p.ContentHTML, &p.ContentJSON, &p.EditorMode,
+			&p.ID, &p.Title, &p.TitleI18n, &p.Slug, &p.Status, &p.ContentHTML, &p.ContentHTMLI18n, &p.ContentJSON, &p.EditorMode,
 			&p.MetaTitle, &p.MetaDescription, &p.CreatedAt, &p.UpdatedAt, &p.PublishedAt,
 		)
 		if err != nil {
@@ -598,6 +599,7 @@ func (s *Store) CreateNavigationItem(ctx context.Context, n NavigationItem) (Nav
 	err := s.stmtCreateNavItem.QueryRowContext(ctx,
 		n.MenuID,
 		n.Label,
+		n.LabelI18n,
 		n.Type,
 		n.PageID,
 		n.CategoryID,
@@ -609,6 +611,7 @@ func (s *Store) CreateNavigationItem(ctx context.Context, n NavigationItem) (Nav
 		&out.ID,
 		&out.MenuID,
 		&out.Label,
+		&out.LabelI18n,
 		&out.Type,
 		&out.PageID,
 		&out.CategoryID,
@@ -631,6 +634,7 @@ func (s *Store) GetNavigationItem(ctx context.Context, id string) (NavigationIte
 		&out.ID,
 		&out.MenuID,
 		&out.Label,
+		&out.LabelI18n,
 		&out.Type,
 		&out.PageID,
 		&out.CategoryID,
@@ -667,6 +671,7 @@ func (s *Store) UpdateNavigationItem(ctx context.Context, n NavigationItem) (Nav
 		n.ID,
 		n.MenuID,
 		n.Label,
+		n.LabelI18n,
 		n.Type,
 		n.PageID,
 		n.CategoryID,
@@ -678,6 +683,7 @@ func (s *Store) UpdateNavigationItem(ctx context.Context, n NavigationItem) (Nav
 		&out.ID,
 		&out.MenuID,
 		&out.Label,
+		&out.LabelI18n,
 		&out.Type,
 		&out.PageID,
 		&out.CategoryID,
@@ -908,6 +914,7 @@ func scanNavigationItems(rows *sql.Rows) ([]NavigationItem, error) {
 			&n.ID,
 			&n.MenuID,
 			&n.Label,
+			&n.LabelI18n,
 			&n.Type,
 			&n.PageID,
 			&n.CategoryID,
