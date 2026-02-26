@@ -26,16 +26,24 @@ async function hasAdminSession(request: NextRequest): Promise<boolean> {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // Admin routes logic
-  if (pathname.startsWith("/admin")) {
-    const authenticated = await hasAdminSession(request);
-    const loginPath = "/admin/login";
+  // Detect if it's an admin route (with or without locale prefix)
+  const isAdminPath = pathname.match(/^\/(?:en|lt)?\/?admin/);
 
-    if (pathname === loginPath) {
+  if (isAdminPath) {
+    const authenticated = await hasAdminSession(request);
+    
+    // Determine the correct login path based on current locale
+    const segments = pathname.split("/");
+    const hasLocale = routing.locales.includes(segments[1] as any);
+    const locale = hasLocale ? segments[1] : routing.defaultLocale;
+    const loginPath = hasLocale ? `/${locale}/admin/login` : "/admin/login";
+    const adminRoot = hasLocale ? `/${locale}/admin` : "/admin";
+
+    if (pathname === loginPath || pathname === "/admin/login") {
       if (authenticated) {
-        return NextResponse.redirect(new URL("/admin", request.url));
+        return NextResponse.redirect(new URL(adminRoot, request.url));
       }
-      return NextResponse.next();
+      return intlMiddleware(request);
     }
 
     if (!authenticated) {
@@ -44,11 +52,9 @@ export async function proxy(request: NextRequest) {
       loginURL.searchParams.set("next", nextPath);
       return NextResponse.redirect(loginURL);
     }
-
-    return NextResponse.next();
   }
 
-  // Internationalization middleware for other routes
+  // Internationalization middleware for all routes
   return intlMiddleware(request);
 }
 
