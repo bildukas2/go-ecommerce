@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { logoutAccount } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 type LogoutButtonProps = {
   variant?: "default" | "secondary" | "outline" | "ghost";
@@ -12,6 +13,8 @@ type LogoutButtonProps = {
 
 export function LogoutButton({ variant = "ghost", className }: LogoutButtonProps) {
   const router = useRouter();
+  const t = useTranslations("header.menu");
+  const commonT = useTranslations("common");
   const [loading, setLoading] = React.useState(false);
 
   async function onLogout() {
@@ -28,7 +31,7 @@ export function LogoutButton({ variant = "ghost", className }: LogoutButtonProps
 
   return (
     <Button type="button" variant={variant} className={className} onClick={onLogout} disabled={loading}>
-      {loading ? "Logging out..." : "Logout"}
+      {loading ? commonT("loading") : t("logout")}
     </Button>
   );
 }

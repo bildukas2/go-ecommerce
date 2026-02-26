@@ -6,6 +6,7 @@ import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { useTranslations } from "next-intl";
 
 function formatCents(cents: number, currency: string) {
   try {
@@ -18,11 +19,12 @@ function formatCents(cents: number, currency: string) {
 export function CartButton() {
   const { cart, openDrawer } = useCart();
   const count = cart?.Totals?.ItemCount || 0;
+  const t = useTranslations("header");
 
   return (
     <Button variant="outline" onClick={openDrawer} className="glass relative">
       <ShoppingBag size={16} className="mr-2" />
-      Cart
+      {t("cart")}
       {count > 0 ? <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-foreground">{count}</span> : null}
     </Button>
   );
@@ -31,6 +33,8 @@ export function CartButton() {
 export function CartDrawer() {
   const { open, closeDrawer, cart, loading, error, mutatingItemIds, update, remove } = useCart();
   const items = Array.isArray(cart?.Items) ? cart.Items : [];
+  const t = useTranslations("cart");
+  const commonT = useTranslations("common");
 
   React.useEffect(() => {
     function onEsc(e: KeyboardEvent) {
@@ -65,7 +69,7 @@ export function CartDrawer() {
             <div className="flex items-center justify-between border-b border-surface-border p-4">
               <div className="flex items-center gap-2">
                 <ShoppingBag size={18} className="text-primary" />
-                <h2 className="text-base font-semibold">Your Cart</h2>
+                <h2 className="text-base font-semibold">{t("title")}</h2>
               </div>
               <button
                 onClick={closeDrawer}
@@ -77,7 +81,7 @@ export function CartDrawer() {
             </div>
 
             <div className="flex-1 space-y-4 overflow-auto p-4">
-              {loading && <div className="text-sm text-neutral-600 dark:text-neutral-400">Loading...</div>}
+              {loading && <div className="text-sm text-neutral-600 dark:text-neutral-400">{commonT("loading")}</div>}
               {error && <div className="text-sm text-red-600">{error}</div>}
 
               {!loading && cart && items.length === 0 ? (
@@ -85,7 +89,7 @@ export function CartDrawer() {
                   <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/15">
                     <ShoppingBag size={18} className="text-primary" />
                   </div>
-                  <div className="text-sm text-neutral-600 dark:text-neutral-400">Your cart is empty.</div>
+                  <div className="text-sm text-neutral-600 dark:text-neutral-400">{t("empty")}</div>
                 </GlassCard>
               ) : null}
 
@@ -189,7 +193,7 @@ export function CartDrawer() {
                   window.location.href = "/checkout";
                 }}
               >
-                Checkout
+                {t("checkout")}
               </Button>
             </div>
           </motion.div>

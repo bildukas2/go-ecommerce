@@ -22,8 +22,10 @@
       "contact": "Kontaktai",
       "account": "Paskyra",
       "login": "Prisijungti",
+      "logout": "Atsijungti",
       "register": "Registruotis"
-    }
+    },
+    "cart": "Krepšelis"
   },
   "footer": {
     "about_text": "Sukurta greičiui ir šiuolaikinei prekybai. Patirkite internetinio apsipirkimo ateitį.",

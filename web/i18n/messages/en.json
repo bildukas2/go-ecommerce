@@ -22,8 +22,10 @@
       "contact": "Contact",
       "account": "Account",
       "login": "Login",
+      "logout": "Logout",
       "register": "Register"
-    }
+    },
+    "cart": "Cart"
   },
   "footer": {
     "about_text": "Built for speed and modern commerce. Experience the future of online shopping.",
