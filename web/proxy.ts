@@ -53,6 +53,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Match both internationalized pathnames and admin routes
-  matcher: ['/', '/(en|lt)/:path*', '/admin/:path*']
+  // Match both internationalized pathnames, admin routes, and other app routes
+  matcher: ['/', '/(en|lt)/:path*', '/((?!api|_next|_vercel|.*\\..*).*)']
 };

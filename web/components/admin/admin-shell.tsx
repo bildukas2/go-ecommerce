@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdminCSRFToken, logoutAdmin } from "@/lib/admin-auth";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/routing";
 
 type NavItem = {
   href: string;
@@ -571,11 +572,13 @@ function SidebarContent({
 
 function AdminLocaleToggle() {
   const locale = useLocale();
+  const router = useRouter();
 
   const toggleLocale = () => {
     const nextLocale = locale === "en" ? "lt" : "en";
-    document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000`;
-    window.location.reload();
+    // We use router.replace to handle the URL prefix correctly
+    // next-intl middleware will take care of the rest
+    router.replace(window.location.pathname as any, { locale: nextLocale });
   };
 
   return (
@@ -599,9 +602,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (pathname === "/admin/login") {
     return <div className="min-h-screen bg-background text-foreground">{children}</div>;
+  }
+
+  // Prevent hydration issues by only rendering the shell after mount
+  if (!mounted) {
+    return null;
   }
 
   async function onLogout() {
