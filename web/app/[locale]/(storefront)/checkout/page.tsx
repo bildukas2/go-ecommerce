@@ -4,6 +4,7 @@ import * as React from "react";
 import type { Terminal } from "@/hooks/use-terminals";
 import { useCheckoutState, type CheckoutStep } from "@/hooks/use-checkout-state";
 import type { CheckoutShippingMethod, CheckoutPaymentMethod } from "@/lib/checkout-api";
+import type { BankTransferConfig } from "@/lib/api";
 import { getPaymentMethods } from "@/lib/checkout-api";
 import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
@@ -254,11 +255,55 @@ export default function CheckoutPage() {
               </p>
             </div>
 
-            {selectedPaymentMethod?.instructions && (
-              <div className="bg-surface/60 rounded-xl p-6 border border-surface-border mb-6 whitespace-pre-wrap text-sm text-foreground/80 font-mono">
-                {selectedPaymentMethod.instructions}
-              </div>
+            {selectedPaymentMethod?.description && (
+              <p className="text-sm text-foreground/80 mb-4 italic">
+                {selectedPaymentMethod.description}
+              </p>
             )}
+
+            <div className="bg-surface/60 rounded-xl p-6 border border-surface-border mb-6 space-y-4">
+              {selectedPaymentMethod?.config_json && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Account Holder Name</span>
+                    <span className="font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).account_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Account Number / IBAN</span>
+                    <span className="font-mono font-medium">
+                      {(selectedPaymentMethod.config_json as any as BankTransferConfig).iban || (selectedPaymentMethod.config_json as any as BankTransferConfig).account_number}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Bank Name</span>
+                    <span className="font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).bank_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Transfer Purpose / Reference</span>
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">#{state.orderNumber}</span>
+                  </div>
+                  {(selectedPaymentMethod.config_json as any as BankTransferConfig).bic_swift && (
+                    <div>
+                      <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">BIC / SWIFT</span>
+                      <span className="font-mono font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).bic_swift}</span>
+                    </div>
+                  )}
+                  {(selectedPaymentMethod.config_json as any as BankTransferConfig).sort_code && (
+                    <div>
+                      <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Sort Code</span>
+                      <span className="font-mono font-medium">{(selectedPaymentMethod.config_json as any as BankTransferConfig).sort_code}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedPaymentMethod?.instructions && (
+                <div className="pt-4 border-t border-surface-border mt-4 text-sm text-foreground/80 whitespace-pre-wrap">
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-2">Instructions</span>
+                  {selectedPaymentMethod.instructions}
+                </div>
+              )}
+            </div>
 
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
