@@ -259,6 +259,18 @@ function asRecord(value: unknown): UnknownRecord {
   return value as UnknownRecord;
 }
 
+function asStringRecord(value: unknown): Record<string, string> {
+  if (typeof value !== "object" || value === null) return {};
+  const rec = value as Record<string, unknown>;
+  const result: Record<string, string> = {};
+  for (const key in rec) {
+    if (Object.prototype.hasOwnProperty.call(rec, key)) {
+      result[key] = String(rec[key]);
+    }
+  }
+  return result;
+}
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -490,9 +502,11 @@ function normalizeAdminPage(raw: unknown): AdminPage | null {
   return {
     id,
     title: asString(obj.title),
+    title_i18n: asStringRecord(obj.title_i18n),
     slug: asString(obj.slug),
     status: (status === "published" ? "published" : "draft") as AdminPage["status"],
     content_html: asString(obj.content_html),
+    content_html_i18n: asStringRecord(obj.content_html_i18n),
     content_json: obj.content_json || null,
     editor_mode: (editorMode === "visual" ? "visual" : "html") as AdminPage["editor_mode"],
     meta_title: asNullableString(obj.meta_title),
@@ -516,6 +530,7 @@ function normalizeAdminNavigationItem(raw: unknown): AdminNavigationItem | null 
     id,
     menu_id: menuID,
     label: asString(obj.label),
+    label_i18n: asStringRecord(obj.label_i18n),
     type: normalizedType,
     page_id: asNullableString(obj.page_id),
     category_id: asNullableString(obj.category_id),

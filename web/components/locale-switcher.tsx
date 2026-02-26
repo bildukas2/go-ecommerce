@@ -1,25 +1,19 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { routing, usePathname, useRouter } from "@/i18n/routing";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Languages } from "lucide-react";
+import { Button } from "@heroui/react";
 import { useParams } from "next/navigation";
 
 export function LocaleSwitcher() {
-  const t = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
 
   function onSelectChange(nextLocale: string) {
+    if (nextLocale === locale) return;
+    
     router.replace(
       // @ts-expect-error -- pathname is correct
       { pathname, params },
@@ -28,24 +22,20 @@ export function LocaleSwitcher() {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Languages className="h-4 w-4" />
-          <span className="sr-only">Switch language</span>
+    <div className="flex items-center gap-1 border border-neutral-200 dark:border-neutral-800 rounded-md p-0.5">
+      {routing.locales.map((cur) => (
+        <Button
+          key={cur}
+          size="sm"
+          variant={locale === cur ? "flat" : "light"}
+          className={`h-7 min-w-8 px-1 text-[10px] font-bold ${
+            locale === cur ? "bg-neutral-100 dark:bg-neutral-800" : ""
+          }`}
+          onClick={() => onSelectChange(cur)}
+        >
+          {cur.toUpperCase()}
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {routing.locales.map((cur) => (
-          <DropdownMenuItem
-            key={cur}
-            onClick={() => onSelectChange(cur)}
-            className={locale === cur ? "bg-neutral-100 dark:bg-neutral-800" : ""}
-          >
-            {cur.toUpperCase()}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      ))}
+    </div>
   );
 }
