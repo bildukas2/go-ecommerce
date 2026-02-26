@@ -680,6 +680,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Menu size={18} />
             </Button>
             <Input
+              id="admin-search-input"
               aria-label="Search"
               placeholder={t("search_placeholder")}
               startContent={<Search size={16} className="opacity-70" aria-hidden />}
