@@ -1,0 +1,60 @@
+{
+  "common": {
+    "buttons": {
+      "save": "Išsaugoti",
+      "cancel": "Atšaukti",
+      "delete": "Ištrinti",
+      "edit": "Redaguoti",
+      "add": "Pridėti",
+      "copy_en_to_lt": "Kopijuoti EN → LT"
+    },
+    "loading": "Kraunama...",
+    "errors": {
+      "generic": "Kažkas nutiko. Bandykite dar kartą vėliau."
+    }
+  },
+  "header": {
+    "menu": {
+      "home": "Pradžia",
+      "products": "Produktai",
+      "categories": "Kategorijos",
+      "about": "Apie mus",
+      "contact": "Kontaktai"
+    }
+  },
+  "footer": {
+    "columns": {
+      "shop": "Parduotuvė",
+      "company": "Įmonė",
+      "support": "Pagalba"
+    },
+    "links": {
+      "all_products": "Visi produktai",
+      "about_us": "Apie mus",
+      "privacy_policy": "Privatumo politika",
+      "terms_of_service": "Paslaugų teikimo sąlygos"
+    }
+  },
+  "cart": {
+    "title": "Jūsų krepšelis",
+    "empty": "Jūsų krepšelis tuščias",
+    "checkout": "Atsiskaitymas"
+  },
+  "checkout": {
+    "title": "Atsiskaitymas",
+    "shipping": "Pristatymas",
+    "payment": "Mokėjimas",
+    "place_order": "Pateikti užsakymą"
+  },
+  "admin": {
+    "menu": {
+      "dashboard": "Skydelis",
+      "pages": "Puslapiai",
+      "content": "Turinys",
+      "navigation": "Navigacija",
+      "products": "Produktai",
+      "orders": "Užsakymai",
+      "customers": "Klientai"
+    }
+  }
+}

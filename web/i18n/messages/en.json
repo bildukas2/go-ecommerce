@@ -1,0 +1,60 @@
+{
+  "common": {
+    "buttons": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "copy_en_to_lt": "Copy EN → LT"
+    },
+    "loading": "Loading...",
+    "errors": {
+      "generic": "Something went wrong. Please try again later."
+    }
+  },
+  "header": {
+    "menu": {
+      "home": "Home",
+      "products": "Products",
+      "categories": "Categories",
+      "about": "About",
+      "contact": "Contact"
+    }
+  },
+  "footer": {
+    "columns": {
+      "shop": "Shop",
+      "company": "Company",
+      "support": "Support"
+    },
+    "links": {
+      "all_products": "All Products",
+      "about_us": "About Us",
+      "privacy_policy": "Privacy Policy",
+      "terms_of_service": "Terms of Service"
+    }
+  },
+  "cart": {
+    "title": "Your Cart",
+    "empty": "Your cart is empty",
+    "checkout": "Checkout"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "shipping": "Shipping",
+    "payment": "Payment",
+    "place_order": "Place Order"
+  },
+  "admin": {
+    "menu": {
+      "dashboard": "Dashboard",
+      "pages": "Pages",
+      "content": "Content",
+      "navigation": "Navigation",
+      "products": "Products",
+      "orders": "Orders",
+      "customers": "Customers"
+    }
+  }
+}
