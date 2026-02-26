@@ -1,16 +1,19 @@
 package checkout
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"math"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	platformhttp "goecommerce/internal/platform/http"
 	"goecommerce/internal/platform/payments"
 	platformshipping "goecommerce/internal/platform/shipping"
+	stororders "goecommerce/internal/storage/orders"
 	storshipping "goecommerce/internal/storage/shipping"
 )
 
@@ -335,14 +338,14 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get customer ID if authenticated
-	customerID, authenticated, err := m.resolveCustomerID(r)
+	customer, authenticated, err := m.resolveCustomer(r)
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "auth error")
 		return
 	}
 
 	// Create order with shipping/payment data
-	order, err := m.createOrderWithCheckoutData(r.Context(), cart, customerID, authenticated, placeOrderInput{
+	order, err := m.createOrderWithCheckoutData(r.Context(), cart, customer.ID, authenticated, placeOrderInput{
 		ShippingAddress:    body.ShippingAddress,
 		BillingAddress:     body.BillingAddress,
 		UseSameAsBilling:   body.UseSameAsBilling,
@@ -357,6 +360,8 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
+
+	m.sendOrderConfirmationBestEffort(r.Context(), order, customer.Email, authenticated, body.Company, r.Header.Get("Accept-Language"))
 
 	// Clear cart after successful order
 	if authenticated {
@@ -382,6 +387,67 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		"checkout_url": checkoutURL,
 		"status":       order.Status,
 	})
+}
+
+func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stororders.Order, customerEmail string, authenticated bool, company *CompanyInfo, acceptLanguage string) {
+	if m.email == nil {
+		return
+	}
+
+	to, ok := resolveConfirmationRecipient(customerEmail, authenticated, company)
+	if !ok {
+		return
+	}
+
+	lang := resolveRequestLanguage(acceptLanguage)
+	err := m.email.SendOrderConfirmation(ctx, to, lang, map[string]any{
+		"OrderNumber": order.Number,
+	})
+	if err != nil {
+		slog.Warn("checkout: order confirmation email failed", "order_id", order.ID, "error", err)
+	}
+}
+
+func resolveConfirmationRecipient(customerEmail string, authenticated bool, company *CompanyInfo) (string, bool) {
+	if authenticated {
+		email := strings.ToLower(strings.TrimSpace(customerEmail))
+		if isValidEmail(email) {
+			return email, true
+		}
+	}
+	if company != nil {
+		email := strings.ToLower(strings.TrimSpace(company.InvoiceEmail))
+		if isValidEmail(email) {
+			return email, true
+		}
+	}
+
+	return "", false
+}
+
+func resolveRequestLanguage(raw string) string {
+	lang := strings.ToLower(strings.TrimSpace(raw))
+	if i := strings.Index(lang, ","); i >= 0 {
+		lang = lang[:i]
+	}
+	if i := strings.Index(lang, "-"); i >= 0 {
+		lang = lang[:i]
+	}
+	if i := strings.Index(lang, ";"); i >= 0 {
+		lang = lang[:i]
+	}
+	if len(lang) >= 2 {
+		return lang[:2]
+	}
+	return "en"
+}
+
+func isValidEmail(email string) bool {
+	if email == "" {
+		return false
+	}
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }
 
 // calculateMethodPrice calculates shipping price based on pricing mode and rules

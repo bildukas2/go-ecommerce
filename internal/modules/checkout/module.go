@@ -24,9 +24,22 @@ type module struct {
 	customers *storcustomers.Store
 	orders    *stororders.Store
 	shipping  *storshipping.Store
+	email     EmailService
 }
 
-func NewModule(deps app.Deps) app.Module {
+type EmailService interface {
+	SendOrderConfirmation(ctx context.Context, to, lang string, data map[string]any) error
+}
+
+type Option func(*module)
+
+func WithEmailService(svc EmailService) Option {
+	return func(m *module) {
+		m.email = svc
+	}
+}
+
+func NewModule(deps app.Deps, opts ...Option) app.Module {
 	var db *sql.DB
 	if deps.DB != nil {
 		db = deps.DB
@@ -60,13 +73,19 @@ func NewModule(deps app.Deps) app.Module {
 		}
 	}
 
-	return &module{
+	mod := &module{
 		db:        db,
 		cart:      cst,
 		customers: cust,
 		orders:    ost,
 		shipping:  sst,
 	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(mod)
+		}
+	}
+	return mod
 }
 
 func (m *module) Close() error {
@@ -166,30 +185,30 @@ func readCartID(r *http.Request) (string, bool) {
 	return strings.TrimSpace(c.Value), true
 }
 
-func (m *module) resolveCustomerID(r *http.Request) (string, bool, error) {
+func (m *module) resolveCustomer(r *http.Request) (storcustomers.Customer, bool, error) {
 	if m.customers == nil {
-		return "", false, nil
+		return storcustomers.Customer{}, false, nil
 	}
 	customer, _, err := modcustomers.ResolveAuthenticatedCustomer(r.Context(), r, m.customers)
 	if err != nil {
 		if errors.Is(err, modcustomers.ErrUnauthenticated) {
-			return "", false, nil
+			return storcustomers.Customer{}, false, nil
 		}
-		return "", false, err
+		return storcustomers.Customer{}, false, err
 	}
-	return customer.ID, true, nil
+	return customer, true, nil
 }
 
 func (m *module) getCart(r *http.Request) (storcart.Cart, string, error) {
 	cartID, ok := readCartID(r)
-	customerID, authenticated, err := m.resolveCustomerID(r)
+	customer, authenticated, err := m.resolveCustomer(r)
 	if err != nil {
 		return storcart.Cart{}, "", err
 	}
 
 	var c storcart.Cart
 	if authenticated {
-		c, err = m.cart.ResolveCustomerCart(r.Context(), customerID, cartID)
+		c, err = m.cart.ResolveCustomerCart(r.Context(), customer.ID, cartID)
 		if err != nil {
 			return storcart.Cart{}, "", err
 		}

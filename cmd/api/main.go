@@ -17,12 +17,13 @@ import (
 	"goecommerce/internal/modules/checkout"
 	"goecommerce/internal/modules/cms"
 	"goecommerce/internal/modules/customers"
-	"goecommerce/internal/modules/email"
+	moduleemail "goecommerce/internal/modules/email"
 	"goecommerce/internal/modules/orders"
 	"goecommerce/internal/modules/payments"
 	"goecommerce/internal/modules/shipping"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
+	storemail "goecommerce/internal/storage/email"
 
 	"github.com/joho/godotenv"
 )
@@ -60,14 +61,25 @@ func main() {
 		}
 	}
 
+	var checkoutEmailService checkout.EmailService
+	if deps.DB != nil {
+		emailStore, err := storemail.NewStore(ctx, deps.DB)
+		if err != nil {
+			log.Printf("email store init error: %v", err)
+		} else {
+			checkoutEmailService = moduleemail.NewService(emailStore)
+			defer emailStore.Close()
+		}
+	}
+
 	app.RegisterModule(catalog.NewModule(deps))
 	app.RegisterModule(cart.NewModule(deps))
 	app.RegisterModule(customers.NewModule(deps))
 	app.RegisterModule(orders.NewModule(deps))
 	app.RegisterModule(shipping.NewModule(deps))
 	app.RegisterModule(payments.NewModule(deps))
-	app.RegisterModule(email.NewModule(deps))
-	app.RegisterModule(checkout.NewModule(deps))
+	app.RegisterModule(moduleemail.NewModule(deps))
+	app.RegisterModule(checkout.NewModule(deps, checkout.WithEmailService(checkoutEmailService)))
 	app.RegisterModule(cms.NewModule(deps))
 	app.RegisterModule(adminauth.NewModule(deps))
 	app.RegisterModule(admin.NewModule(deps))
