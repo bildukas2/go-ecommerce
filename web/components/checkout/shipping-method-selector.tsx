@@ -3,6 +3,7 @@
 import { Truck, MapPin } from "lucide-react";
 import type { CheckoutShippingMethod } from "@/lib/checkout-api";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 type Props = {
   country: string;
@@ -23,11 +24,13 @@ export function ShippingMethodSelector({
   onSelect,
   className,
 }: Props) {
+  const t = useTranslations("checkout.shipping_section");
+  const commonT = useTranslations("checkout");
 
   if (!country) {
     return (
       <div className={cn("rounded-lg border border-surface-border p-4 text-center text-foreground/60", className)}>
-        Enter your shipping country to see available shipping methods
+        {t("enter_country")}
       </div>
     );
   }
@@ -39,7 +42,7 @@ export function ShippingMethodSelector({
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span className="ml-2 text-foreground/60">Loading shipping options...</span>
+        <span className="ml-2 text-foreground/60">{commonT("loading_shipping")}</span>
       </div>
     );
   }
@@ -55,7 +58,7 @@ export function ShippingMethodSelector({
   if (methods.length === 0) {
     return (
       <div className={cn("rounded-lg border border-surface-border p-4 text-center text-foreground/60", className)}>
-        No shipping methods available for your location
+        {t("no_methods")}
       </div>
     );
   }
@@ -83,7 +86,7 @@ export function ShippingMethodSelector({
                   <h4 className="font-medium truncate">{method.title}</h4>
                   {selectedMethodId === method.id && (
                     <span className="shrink-0 rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white">
-                      Selected
+                      {t("selected")}
                     </span>
                   )}
                 </div>
@@ -94,7 +97,7 @@ export function ShippingMethodSelector({
                       <span>•</span>
                       <span className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
-                        Terminal pickup
+                        {t("terminal_pickup")}
                       </span>
                     </>
                   )}
@@ -102,7 +105,7 @@ export function ShippingMethodSelector({
               </div>
               <div className="shrink-0 text-right">
                 <span className="text-lg font-semibold">
-                  {method.price === 0 ? "Free" : formatPrice(method.price, method.currency)}
+                  {method.price === 0 ? t("free") : formatPrice(method.price, method.currency)}
                 </span>
               </div>
             </div>

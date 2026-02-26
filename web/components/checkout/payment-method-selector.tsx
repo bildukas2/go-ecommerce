@@ -5,6 +5,7 @@ import type { CheckoutPaymentMethod } from "@/lib/checkout-api";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface PaymentMethodSelectorProps {
   methods: CheckoutPaymentMethod[];
@@ -25,21 +26,24 @@ export function PaymentMethodSelector({
   methodsLoading,
   error,
 }: PaymentMethodSelectorProps) {
+  const t = useTranslations("checkout.payment_section");
+  const commonT = useTranslations("checkout");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <CreditCard className="h-5 w-5 text-blue-500" />
-        <h3 className="text-lg font-semibold">Payment Method</h3>
+        <h3 className="text-lg font-semibold">{commonT("payment_method")}</h3>
       </div>
 
       {methodsLoading ? (
         <div className="flex items-center justify-center rounded-lg border border-surface-border bg-surface/70 p-8 text-foreground/60">
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
-          <span>Loading payment methods...</span>
+          <span>{t("loading")}</span>
         </div>
       ) : methods.length === 0 ? (
         <div className="text-sm text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-          No payment methods available
+          {t("no_methods")}
         </div>
       ) : (
         <div className="grid gap-3">
@@ -89,7 +93,7 @@ export function PaymentMethodSelector({
         disabled={!selectedMethod || loading || methodsLoading}
         className="w-full sm:w-auto"
       >
-        {loading ? "Processing..." : "Continue to Review"}
+        {loading ? commonT("processing") : t("continue_to_review")}
       </Button>
     </div>
   );

@@ -4,6 +4,7 @@ import { Cart, CartItem, CartItemCustomOption } from "@/lib/api";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Truck, Tag, Minus, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface OrderSummaryProps {
   cart: Cart | null;
@@ -43,6 +44,7 @@ function CartItemRow({
   const price = item.UnitPriceCents || 0;
   const image = item.ImageURL;
   const hasControls = onUpdateQuantity || onRemoveItem;
+  const t = useTranslations("checkout.summary");
 
   return (
     <div className="flex items-center gap-4 rounded-[18px] border border-surface-border bg-background/50 px-3 py-3">
@@ -91,7 +93,7 @@ function CartItemRow({
               </button>
             </div>
           ) : (
-            `Qty: ${item.Quantity}`
+            t("qty", { qty: item.Quantity })
           )}
         </div>
         {Array.isArray(item.CustomOptions) && item.CustomOptions.length > 0 ? (
@@ -114,7 +116,7 @@ function CartItemRow({
             onClick={() => onRemoveItem(item.ID)}
             disabled={isMutating || loading}
           >
-            Remove
+            {t("remove")}
           </button>
         )}
       </div>
@@ -147,6 +149,8 @@ export function OrderSummary({
   onRemoveItem,
 }: OrderSummaryProps) {
   const [mutatingItemIds, setMutatingItemIds] = React.useState<string[]>([]);
+  const t = useTranslations("checkout.summary");
+  const commonT = useTranslations("checkout");
 
   const handleUpdateQuantity = React.useCallback(
     async (itemId: string, quantity: number) => {
@@ -185,7 +189,7 @@ export function OrderSummary({
     <div className="glass rounded-[28px] border border-surface-border bg-surface/80 p-6 space-y-5 shadow-[0_30px_80px_rgba(2,6,23,0.25)]">
       <div className="flex items-center gap-2">
         <Tag className="h-5 w-5 text-blue-500" />
-        <h3 className="text-lg font-semibold">Order Summary</h3>
+        <h3 className="text-lg font-semibold">{t("title")}</h3>
       </div>
 
       <div className="space-y-3 max-h-100 overflow-y-auto pr-1">
@@ -207,7 +211,7 @@ export function OrderSummary({
         ) : (
           <div className="py-8 text-center text-muted-foreground">
             <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Your cart is empty</p>
+            <p className="text-sm">{commonT("cart_empty")}</p>
           </div>
         )}
       </div>
@@ -216,13 +220,13 @@ export function OrderSummary({
 
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Subtotal</span>
+          <span className="text-muted-foreground">{t("subtotal")}</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground flex items-center gap-1">
             <Truck className="h-4 w-4" />
-            Shipping
+            {t("shipping")}
           </span>
           <span>{shippingPrice > 0 ? formatPrice(shippingPrice) : "—"}</span>
         </div>
@@ -231,12 +235,12 @@ export function OrderSummary({
       <Separator />
 
       <div className="flex justify-between font-semibold text-lg">
-        <span>Total</span>
+        <span>{t("total")}</span>
         <span>{formatPrice(total)}</span>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Prices include VAT. Shipping calculated at checkout.
+        {t("vat_note")}
       </p>
     </div>
   );

@@ -79,15 +79,16 @@ function StepIndicator({
   );
 }
 
-const CHECKOUT_STEPS = [
-  { id: "address" as const, label: "Address", icon: <MapPin className="h-4 w-4" /> },
-  { id: "shipping" as const, label: "Shipping", icon: <Truck className="h-4 w-4" /> },
-  { id: "payment" as const, label: "Payment", icon: <CreditCard className="h-4 w-4" /> },
-  { id: "review" as const, label: "Review", icon: <CheckCircle2 className="h-4 w-4" /> },
-];
-
 export default function CheckoutPage() {
   const t = useTranslations("checkout");
+
+  const steps = React.useMemo(() => [
+    { id: "address" as const, label: t("steps.address"), icon: <MapPin className="h-4 w-4" /> },
+    { id: "shipping" as const, label: t("steps.shipping"), icon: <Truck className="h-4 w-4" /> },
+    { id: "payment" as const, label: t("steps.payment"), icon: <CreditCard className="h-4 w-4" /> },
+    { id: "review" as const, label: t("steps.review"), icon: <CheckCircle2 className="h-4 w-4" /> },
+  ], [t]);
+
   const {
     state,
     setCart,
@@ -242,9 +243,9 @@ export default function CheckoutPage() {
       <div className="mx-auto max-w-2xl px-6 py-16">
         <div className="text-center mb-8">
           <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
-          <h1 className="text-2xl font-semibold mb-2">Order Placed!</h1>
+          <h1 className="text-2xl font-semibold mb-2">{t("order_placed_title")}</h1>
           <p className="text-muted-foreground mb-4">
-            Your order #{state.orderNumber} has been placed successfully.
+            {t("order_placed_msg", { number: state.orderNumber || "" })}
           </p>
         </div>
 
@@ -324,10 +325,10 @@ export default function CheckoutPage() {
             {state.checkoutUrl && (
               <div className="text-center">
                 <p className="text-muted-foreground mb-6">
-                  Click the button below to complete your payment securely.
+                  {t("payment_note")}
                 </p>
                 <Button onClick={() => { if (state.checkoutUrl) window.location.href = state.checkoutUrl; }}>
-                  Complete Payment
+                  {t("complete_payment")}
                 </Button>
               </div>
             )}
@@ -340,12 +341,12 @@ export default function CheckoutPage() {
   if (!state.cartLoading && (!state.cart?.Items || state.cart.Items.length === 0)) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16 text-center">
-        <h1 className="text-2xl font-semibold mb-2">Your cart is empty</h1>
+        <h1 className="text-2xl font-semibold mb-2">{t("cart_empty")}</h1>
         <p className="text-muted-foreground mb-6">
-          Add some items to your cart to proceed with checkout.
+          {t("cart_empty_msg")}
         </p>
         <Button onClick={() => window.location.href = "/"}>
-          Continue Shopping
+          {t("continue_shopping")}
         </Button>
       </div>
     );
@@ -356,15 +357,15 @@ export default function CheckoutPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-[36px] border border-surface-border bg-surface/90 p-6 shadow-[0_40px_120px_rgba(2,6,23,0.45)] backdrop-blur-3xl">
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.4em] text-foreground/50">Checkout</span>
-            <h1 className="text-3xl font-semibold text-foreground">Shopping Cart</h1>
-            <p className="text-sm text-foreground/70">Complete your order in a few intentional steps.</p>
+            <span className="text-xs uppercase tracking-[0.4em] text-foreground/50">{t("title")}</span>
+            <h1 className="text-3xl font-semibold text-foreground">{t("shopping_cart")}</h1>
+            <p className="text-sm text-foreground/70">{t("complete_steps")}</p>
           </div>
 
           <div className="mt-6">
             <div className="glass rounded-2xl border border-surface-border bg-surface/70 p-4">
               <StepIndicator
-                steps={CHECKOUT_STEPS}
+                steps={steps}
                 currentStep={state.currentStep}
                 completedSteps={completedSteps}
               />
@@ -395,13 +396,13 @@ export default function CheckoutPage() {
                 <div className={`${sectionPanel} space-y-6`}>
                   <div className="flex items-center gap-2">
                     <Truck className="h-5 w-5 text-blue-500" />
-                    <h3 className="text-lg font-semibold">Shipping Method</h3>
+                    <h3 className="text-lg font-semibold">{t("shipping_method")}</h3>
                   </div>
 
                   {state.quoteLoading ? (
                     <div className="flex items-center justify-center rounded-2xl border border-surface-border bg-surface/70 p-8 text-foreground/60">
                       <Loader2 className="h-6 w-6 animate-spin text-foreground/60" />
-                      <span className="ml-2 text-foreground/60">Loading shipping options...</span>
+                      <span className="ml-2 text-foreground/60">{t("loading_shipping")}</span>
                     </div>
                   ) : (
                     <>
@@ -418,7 +419,7 @@ export default function CheckoutPage() {
                         <div className="space-y-4 pt-4 border-t border-surface-border">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-5 w-5 text-blue-500" />
-                            <h4 className="font-semibold">Select Pickup Terminal</h4>
+                            <h4 className="font-semibold">{t("select_terminal")}</h4>
                           </div>
                           <TerminalPicker
                             provider={state.selectedShippingMethod.provider_key}
@@ -430,7 +431,7 @@ export default function CheckoutPage() {
                             <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-700 dark:text-green-300">
                               <Check className="h-4 w-4" />
                               <span>
-                                Selected: <strong>{state.selectedTerminal.name}</strong> - {state.selectedTerminal.address}
+                                {t("selected_terminal", { name: state.selectedTerminal.name, address: state.selectedTerminal.address })}
                               </span>
                             </div>
                           )}
@@ -448,13 +449,13 @@ export default function CheckoutPage() {
                           variant="outline"
                           onClick={() => setCurrentStep("address")}
                         >
-                          Back
+                          {t("back")}
                         </Button>
                         <Button
                           onClick={handleShippingContinue}
                           disabled={!canProceedToPayment || state.loading}
                         >
-                          {state.loading ? "Saving..." : "Continue to Payment"}
+                          {state.loading ? t("saving") : t("continue_to_payment")}
                         </Button>
                       </div>
                     </>
@@ -478,7 +479,7 @@ export default function CheckoutPage() {
                       variant="outline"
                       onClick={() => setCurrentStep("shipping")}
                     >
-                      Back
+                      {t("back")}
                     </Button>
                   </div>
                 </div>
@@ -488,12 +489,12 @@ export default function CheckoutPage() {
                 <div className={`${sectionPanel} space-y-6`}>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-blue-500" />
-                    <h3 className="text-lg font-semibold">Review Your Order</h3>
+                    <h3 className="text-lg font-semibold">{t("review_order")}</h3>
                   </div>
 
                   {state.shippingAddress && (
                     <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
-                      <h4 className="font-medium text-sm mb-2">Shipping Address</h4>
+                      <h4 className="font-medium text-sm mb-2">{t("shipping_address")}</h4>
                       <p className="text-sm text-foreground/70">
                         {state.shippingAddress.full_name}<br />
                         {state.shippingAddress.address1}<br />
@@ -506,11 +507,11 @@ export default function CheckoutPage() {
 
                   {state.selectedShippingMethod && (
                     <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
-                      <h4 className="font-medium text-sm mb-2">Shipping Method</h4>
+                      <h4 className="font-medium text-sm mb-2">{t("shipping_method")}</h4>
                       <p className="text-sm text-foreground/70">
                         {state.selectedShippingMethod.title} - €{(state.selectedShippingMethod.price / 100).toFixed(2)}
                         {state.selectedTerminal && (
-                          <><br />Terminal: {state.selectedTerminal.name}</>
+                          <><br />{t("terminal")}: {state.selectedTerminal.name}</>
                         )}
                       </p>
                     </div>
@@ -518,7 +519,7 @@ export default function CheckoutPage() {
 
                   {state.selectedPaymentMethod && (
                     <div className="rounded-2xl border border-surface-border bg-surface/60 p-4">
-                      <h4 className="font-medium text-sm mb-2">Payment Method</h4>
+                      <h4 className="font-medium text-sm mb-2">{t("payment_method")}</h4>
                       <p className="text-sm text-foreground/70">
                         {paymentMethods.find(m => m.method_name === state.selectedPaymentMethod)?.title || state.selectedPaymentMethod}
                       </p>
@@ -536,14 +537,14 @@ export default function CheckoutPage() {
                       variant="outline"
                       onClick={() => setCurrentStep("payment")}
                     >
-                      Back
+                      {t("back")}
                     </Button>
                     <Button
                       onClick={handlePlaceOrder}
                       disabled={!canPlaceOrder || state.loading}
                       className="flex-1"
                     >
-                      {state.loading ? "Placing Order..." : "Place Order"}
+                      {state.loading ? t("placing_order") : t("place_order")}
                     </Button>
                   </div>
                 </div>

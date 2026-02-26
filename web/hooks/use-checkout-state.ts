@@ -13,6 +13,7 @@ import {
 } from "@/lib/checkout-api";
 import type { Terminal } from "@/hooks/use-terminals";
 import type { Cart, CartItem } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 // Default country
 const DEFAULT_COUNTRY = "LT";
@@ -197,6 +198,7 @@ export interface UseCheckoutStateReturn {
 }
 
 export function useCheckoutState(): UseCheckoutStateReturn {
+  const t = useTranslations("checkout.errors");
   const [state, dispatch] = React.useReducer(checkoutReducer, initialState);
 
   // Set cart
@@ -267,7 +269,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
-      const msg = e instanceof Error ? e.message : "Failed to fetch shipping options";
+      const msg = e instanceof Error ? e.message : t("quote_failed");
       dispatch({ type: "SET_ERROR", payload: msg });
     } finally {
       dispatch({ type: "SET_QUOTE_LOADING", payload: false });
@@ -277,7 +279,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
   // Submit address
   const submitAddress = React.useCallback(async (): Promise<boolean> => {
     if (!state.shippingAddress) {
-      dispatch({ type: "SET_ERROR", payload: "Shipping address is required" });
+      dispatch({ type: "SET_ERROR", payload: t("address_required") });
       return false;
     }
 
@@ -293,23 +295,23 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       dispatch({ type: "SET_ADDRESS_VALID", payload: true });
       return true;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to submit address";
+      const msg = e instanceof Error ? e.message : t("address_submit_failed");
       dispatch({ type: "SET_ERROR", payload: msg });
       return false;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
-  }, [state.shippingAddress, state.billingAddress, state.useSameAsBilling, state.company]);
+  }, [state.shippingAddress, state.billingAddress, state.useSameAsBilling, state.company, t]);
 
   // Select shipping
   const selectShipping = React.useCallback(async (): Promise<boolean> => {
     if (!state.selectedShippingMethod) {
-      dispatch({ type: "SET_ERROR", payload: "Please select a shipping method" });
+      dispatch({ type: "SET_ERROR", payload: t("shipping_required") });
       return false;
     }
 
     if (state.selectedShippingMethod.requires_terminal && !state.selectedTerminal) {
-      dispatch({ type: "SET_ERROR", payload: "Please select a pickup terminal" });
+      dispatch({ type: "SET_ERROR", payload: t("terminal_required") });
       return false;
     }
 
@@ -323,18 +325,18 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       dispatch({ type: "SET_SHIPPING_PRICE", payload: response.shipping_price });
       return true;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to select shipping";
+      const msg = e instanceof Error ? e.message : t("shipping_select_failed");
       dispatch({ type: "SET_ERROR", payload: msg });
       return false;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
-  }, [state.selectedShippingMethod, state.selectedTerminal]);
+  }, [state.selectedShippingMethod, state.selectedTerminal, t]);
 
   // Select payment
   const selectPayment = React.useCallback(async (): Promise<boolean> => {
     if (!state.selectedPaymentMethod) {
-      dispatch({ type: "SET_ERROR", payload: "Please select a payment method" });
+      dispatch({ type: "SET_ERROR", payload: t("payment_required") });
       return false;
     }
 
@@ -344,23 +346,23 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       await selectCheckoutPayment(state.selectedPaymentMethod);
       return true;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to select payment";
+      const msg = e instanceof Error ? e.message : t("payment_select_failed");
       dispatch({ type: "SET_ERROR", payload: msg });
       return false;
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
-  }, [state.selectedPaymentMethod]);
+  }, [state.selectedPaymentMethod, t]);
 
   // Place order
   const placeOrder = React.useCallback(async (): Promise<boolean> => {
     if (!state.shippingAddress || !state.selectedShippingMethod || !state.selectedPaymentMethod) {
-      dispatch({ type: "SET_ERROR", payload: "Please complete all checkout steps" });
+      dispatch({ type: "SET_ERROR", payload: t("complete_steps") });
       return false;
     }
 
     if (state.selectedShippingMethod.requires_terminal && !state.selectedTerminal) {
-      dispatch({ type: "SET_ERROR", payload: "Please select a pickup terminal" });
+      dispatch({ type: "SET_ERROR", payload: t("terminal_required") });
       return false;
     }
 
@@ -383,7 +385,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       });
       return true;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to place order";
+      const msg = e instanceof Error ? e.message : t("place_order_failed");
       dispatch({ type: "SET_ERROR", payload: msg });
       return false;
     } finally {
@@ -398,6 +400,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
     state.selectedTerminal,
     state.shippingPrice,
     state.selectedPaymentMethod,
+    t
   ]);
 
   // Computed values

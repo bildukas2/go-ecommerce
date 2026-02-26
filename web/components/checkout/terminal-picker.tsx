@@ -7,6 +7,7 @@ import { useTerminals, type Terminal } from "@/hooks/use-terminals";
 import { useCustomerLocation } from "@/hooks/use-customer-location";
 import { formatDistance, withDistance } from "@/lib/geo";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // Dynamic import to avoid SSR issues with Leaflet
 const TerminalMap = dynamic(
@@ -32,6 +33,7 @@ export function TerminalPicker({
   onSelect,
   className,
 }: Props) {
+  const t = useTranslations("checkout.terminal_section");
   const [cityFilter, setCityFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortBy, setSortBy] = useState<SortBy>("distance");
@@ -80,7 +82,7 @@ export function TerminalPicker({
   if (!provider || !country) {
     return (
       <div className={cn("rounded-lg border border-surface-border p-4 text-center text-foreground/60", className)}>
-        Select a shipping method to choose a terminal
+        {t("select_method_first")}
       </div>
     );
   }
@@ -89,7 +91,7 @@ export function TerminalPicker({
     return (
       <div className={cn("flex items-center justify-center p-8", className)}>
         <Loader2 className="h-6 w-6 animate-spin text-foreground/50" />
-        <span className="ml-2 text-foreground/60">Loading terminals...</span>
+        <span className="ml-2 text-foreground/60">{t("loading")}</span>
       </div>
     );
   }
@@ -97,7 +99,7 @@ export function TerminalPicker({
   if (error) {
     return (
       <div className={cn("rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-700 dark:text-red-300", className)}>
-        Failed to load terminals: {error}
+        {t("failed", { error })}
       </div>
     );
   }
@@ -106,12 +108,12 @@ export function TerminalPicker({
     <div className={cn("space-y-4", className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Select Pickup Terminal</h3>
+        <h3 className="text-lg font-semibold">{t("title")}</h3>
         <div className="flex items-center gap-3">
           {customerLocation && (
             <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
               <Navigation className="h-3 w-3" />
-              Location detected
+              {t("location_detected")}
             </span>
           )}
           {/* View mode toggle */}
@@ -154,7 +156,7 @@ export function TerminalPicker({
           onChange={(e) => setCityFilter(e.target.value)}
           className="rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
         >
-          <option value="">All cities</option>
+          <option value="">{t("all_cities")}</option>
           {cities.map((city) => (
             <option key={city} value={city}>
               {city}
@@ -169,7 +171,7 @@ export function TerminalPicker({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name or address..."
+            placeholder={t("search_placeholder")}
             className="w-full rounded-lg border border-surface-border bg-background py-2 pl-9 pr-3 text-sm"
           />
         </div>
@@ -188,7 +190,7 @@ export function TerminalPicker({
               !customerLocation && "opacity-50 cursor-not-allowed"
             )}
           >
-            Nearest
+            {t("nearest")}
           </button>
           <button
             type="button"
@@ -200,7 +202,7 @@ export function TerminalPicker({
                 : "bg-background hover:bg-foreground/5"
             )}
           >
-            Name
+            {t("name")}
           </button>
         </div>
 
@@ -217,14 +219,14 @@ export function TerminalPicker({
             ) : (
               <Navigation className="h-4 w-4" />
             )}
-            Use my location
+            {t("use_my_location")}
           </button>
         )}
       </div>
 
       {/* Results count */}
       <div className="text-sm text-foreground/60">
-        {filteredTerminals.length} terminals found
+        {t("terminals_found", { count: filteredTerminals.length })}
       </div>
 
       {/* Terminal list or map */}
@@ -232,7 +234,7 @@ export function TerminalPicker({
         <div className="max-h-96 space-y-2 overflow-y-auto">
           {filteredTerminals.length === 0 ? (
             <div className="rounded-lg border border-surface-border p-4 text-center text-foreground/60">
-              No terminals match your search
+              {t("no_match")}
             </div>
           ) : (
             filteredTerminals.map((terminal) => (
@@ -242,6 +244,7 @@ export function TerminalPicker({
                 isSelected={terminal.id === selectedTerminalId}
                 distance={terminal.distance}
                 onSelect={() => handleTerminalSelect(terminal)}
+                t={t}
               />
             ))
           )}
@@ -264,6 +267,7 @@ type TerminalListItemProps = {
   isSelected: boolean;
   distance?: number;
   onSelect: () => void;
+  t: any;
 };
 
 function TerminalListItem({
@@ -271,6 +275,7 @@ function TerminalListItem({
   isSelected,
   distance,
   onSelect,
+  t,
 }: TerminalListItemProps) {
   return (
     <button
@@ -289,7 +294,7 @@ function TerminalListItem({
             <h4 className="font-medium truncate">{terminal.name}</h4>
             {isSelected && (
               <span className="shrink-0 rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white">
-                Selected
+                {t("selected")}
               </span>
             )}
           </div>

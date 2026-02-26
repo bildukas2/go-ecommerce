@@ -8,6 +8,7 @@ import { MapPin, Clock } from "lucide-react";
 import { formatDistance } from "@/lib/geo";
 import type { Terminal } from "@/hooks/use-terminals";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // Fix for default marker icons in Leaflet with bundlers
 const defaultIcon = L.icon({
@@ -76,6 +77,7 @@ export function TerminalMap({
   customerLocation,
   className,
 }: Props) {
+  const t = useTranslations("checkout.terminal_section");
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -100,7 +102,7 @@ export function TerminalMap({
   if (!isMounted) {
     return (
       <div className={cn("flex items-center justify-center bg-surface-border/20 rounded-lg", className)}>
-        <span className="text-foreground/50">Loading map...</span>
+        <span className="text-foreground/50">{t("loading_map")}</span>
       </div>
     );
   }
@@ -108,7 +110,7 @@ export function TerminalMap({
   if (validTerminals.length === 0) {
     return (
       <div className={cn("flex items-center justify-center bg-surface-border/20 rounded-lg", className)}>
-        <span className="text-foreground/50">No terminals with coordinates available</span>
+        <span className="text-foreground/50">{t("no_coords")}</span>
       </div>
     );
   }
@@ -136,7 +138,7 @@ export function TerminalMap({
               iconAnchor: [8, 8],
             })}
           >
-            <Popup>Your location</Popup>
+            <Popup>{t("your_location")}</Popup>
           </Marker>
         )}
 
@@ -154,6 +156,7 @@ export function TerminalMap({
                 terminal={terminal}
                 isSelected={terminal.id === selectedTerminalId}
                 onSelect={() => onSelect(terminal)}
+                t={t}
               />
             </Popup>
           </Marker>
@@ -169,9 +172,10 @@ type TerminalPopupProps = {
   terminal: Terminal;
   isSelected: boolean;
   onSelect: () => void;
+  t: any;
 };
 
-function TerminalPopup({ terminal, isSelected, onSelect }: TerminalPopupProps) {
+function TerminalPopup({ terminal, isSelected, onSelect, t }: TerminalPopupProps) {
   return (
     <div className="min-w-[200px]">
       <h4 className="font-semibold text-sm">{terminal.name}</h4>
@@ -187,7 +191,7 @@ function TerminalPopup({ terminal, isSelected, onSelect }: TerminalPopupProps) {
       )}
       {terminal.distance !== undefined && (
         <div className="mt-1 text-xs font-medium text-blue-600">
-          {formatDistance(terminal.distance)} away
+          {t("away", { distance: formatDistance(terminal.distance) })}
         </div>
       )}
       <button
@@ -199,7 +203,7 @@ function TerminalPopup({ terminal, isSelected, onSelect }: TerminalPopupProps) {
             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
         )}
       >
-        {isSelected ? "Selected" : "Select this terminal"}
+        {isSelected ? t("selected") : t("select_this")}
       </button>
     </div>
   );

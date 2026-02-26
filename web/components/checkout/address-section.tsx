@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, Building } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AddressSectionProps {
   shippingAddress: CheckoutAddress | null;
@@ -52,6 +53,8 @@ export function AddressSection({
   loading,
   error,
 }: AddressSectionProps) {
+  const t = useTranslations("checkout.address_section");
+  const commonT = useTranslations("checkout");
   const [showCompany, setShowCompany] = React.useState(!!company?.name);
   const [localShipping, setLocalShipping] = React.useState<CheckoutAddress>(
     shippingAddress || emptyAddress
@@ -127,12 +130,12 @@ export function AddressSection({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-blue-500" />
-          <h3 className="text-lg font-semibold">Shipping Address</h3>
+          <h3 className="text-lg font-semibold">{commonT("shipping_address")}</h3>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="full_name">Full Name *</Label>
+            <Label htmlFor="full_name">{t("full_name")} *</Label>
             <Input
               id="full_name"
               value={localShipping.full_name}
@@ -141,7 +144,7 @@ export function AddressSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone *</Label>
+            <Label htmlFor="phone">{t("phone")} *</Label>
             <Input
               id="phone"
               value={localShipping.phone}
@@ -152,17 +155,17 @@ export function AddressSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="address1">Address *</Label>
+          <Label htmlFor="address1">{t("address")} *</Label>
           <Input
             id="address1"
             value={localShipping.address1}
             onChange={(e) => handleShippingChange("address1", e.target.value)}
-            placeholder="Street address"
+            placeholder={t("address_placeholder")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
+          <Label htmlFor="address2">{t("apartment")}</Label>
           <Input
             id="address2"
             value={localShipping.address2 || ""}
@@ -172,7 +175,7 @@ export function AddressSection({
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="city">City *</Label>
+            <Label htmlFor="city">{t("city")} *</Label>
             <Input
               id="city"
               value={localShipping.city}
@@ -181,7 +184,7 @@ export function AddressSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="postcode">Postcode *</Label>
+            <Label htmlFor="postcode">{t("postcode")} *</Label>
             <Input
               id="postcode"
               value={localShipping.postcode}
@@ -190,7 +193,7 @@ export function AddressSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="country">Country *</Label>
+            <Label htmlFor="country">{t("country")} *</Label>
             <select
               id="country"
               value={localShipping.country}
@@ -214,18 +217,18 @@ export function AddressSection({
           onCheckedChange={(checked) => onUseSameAsBillingChange(checked as boolean)}
         />
         <Label htmlFor="same_billing" className="cursor-pointer">
-          Use same address for billing
+          {t("same_as_billing")}
         </Label>
       </div>
 
       {/* Billing Address (if different) */}
       {!useSameAsBilling && (
         <div className="space-y-4 border-t pt-6">
-          <h3 className="text-lg font-semibold">Billing Address</h3>
+          <h3 className="text-lg font-semibold">{commonT("billing_address")}</h3>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="billing_full_name">Full Name *</Label>
+              <Label htmlFor="billing_full_name">{t("full_name")} *</Label>
               <Input
                 id="billing_full_name"
                 value={localBilling.full_name}
@@ -234,7 +237,7 @@ export function AddressSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="billing_phone">Phone *</Label>
+              <Label htmlFor="billing_phone">{t("phone")} *</Label>
               <Input
                 id="billing_phone"
                 value={localBilling.phone}
@@ -245,17 +248,17 @@ export function AddressSection({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="billing_address1">Address *</Label>
+            <Label htmlFor="billing_address1">{t("address")} *</Label>
             <Input
               id="billing_address1"
               value={localBilling.address1}
               onChange={(e) => handleBillingChange("address1", e.target.value)}
-              placeholder="Street address"
+              placeholder={t("address_placeholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="billing_address2">Apartment, suite, etc. (optional)</Label>
+            <Label htmlFor="billing_address2">{t("apartment")}</Label>
             <Input
               id="billing_address2"
               value={localBilling.address2 || ""}
@@ -265,7 +268,7 @@ export function AddressSection({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="billing_city">City *</Label>
+              <Label htmlFor="billing_city">{t("city")} *</Label>
               <Input
                 id="billing_city"
                 value={localBilling.city}
@@ -274,7 +277,7 @@ export function AddressSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="billing_postcode">Postcode *</Label>
+              <Label htmlFor="billing_postcode">{t("postcode")} *</Label>
               <Input
                 id="billing_postcode"
                 value={localBilling.postcode}
@@ -283,7 +286,7 @@ export function AddressSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="billing_country">Country *</Label>
+              <Label htmlFor="billing_country">{t("country")} *</Label>
               <select
                 id="billing_country"
                 value={localBilling.country}
@@ -310,7 +313,7 @@ export function AddressSection({
           />
           <Label htmlFor="show_company" className="cursor-pointer flex items-center gap-2">
             <Building className="h-4 w-4" />
-            I need an invoice for my company
+            {t("invoice_company")}
           </Label>
         </div>
 
@@ -318,7 +321,7 @@ export function AddressSection({
           <div className="space-y-4 pl-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="company_name">Company Name</Label>
+                <Label htmlFor="company_name">{t("company_name")}</Label>
                 <Input
                   id="company_name"
                   value={localCompany.name}
@@ -327,7 +330,7 @@ export function AddressSection({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="company_vat">VAT Number</Label>
+                <Label htmlFor="company_vat">{t("vat_number")}</Label>
                 <Input
                   id="company_vat"
                   value={localCompany.vat || ""}
@@ -337,7 +340,7 @@ export function AddressSection({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="invoice_email">Invoice Email</Label>
+              <Label htmlFor="invoice_email">{t("invoice_email")}</Label>
               <Input
                 id="invoice_email"
                 type="email"
@@ -363,7 +366,7 @@ export function AddressSection({
         disabled={!isValid || loading}
         className="w-full sm:w-auto"
       >
-        {loading ? "Saving..." : "Continue to Shipping"}
+        {loading ? commonT("saving") : commonT("continue_to_shipping")}
       </Button>
     </div>
   );
