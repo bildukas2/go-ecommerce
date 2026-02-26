@@ -162,6 +162,8 @@ func (m *module) createOrderWithCheckoutData(ctx context.Context, c storcart.Car
 	if err := tx.Commit(); err != nil {
 		return stororders.Order{}, err
 	}
+	o.PaymentMethod = input.PaymentMethod
+	o.PaymentProvider = input.PaymentProvider
 
 	return o, nil
 }

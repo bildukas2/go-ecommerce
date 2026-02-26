@@ -15,6 +15,7 @@ import (
 	storcart "goecommerce/internal/storage/cart"
 	storcustomers "goecommerce/internal/storage/customers"
 	stororders "goecommerce/internal/storage/orders"
+	storpayments "goecommerce/internal/storage/payments"
 	storshipping "goecommerce/internal/storage/shipping"
 )
 
@@ -24,7 +25,12 @@ type module struct {
 	customers *storcustomers.Store
 	orders    *stororders.Store
 	shipping  *storshipping.Store
+	payments  paymentMethodStore
 	email     EmailService
+}
+
+type paymentMethodStore interface {
+	GetMethodByKey(ctx context.Context, key string) (*storpayments.PaymentMethod, error)
 }
 
 type EmailService interface {
@@ -49,6 +55,7 @@ func NewModule(deps app.Deps, opts ...Option) app.Module {
 	var cust *storcustomers.Store
 	var ost *stororders.Store
 	var sst *storshipping.Store
+	var pst paymentMethodStore
 
 	if deps.DB != nil {
 		if s, err := storcart.NewStore(context.Background(), deps.DB); err == nil {
@@ -71,6 +78,7 @@ func NewModule(deps app.Deps, opts ...Option) app.Module {
 		} else {
 			slog.Error("module init: failed to create store", "module", "checkout", "store", "shipping", "error", err)
 		}
+		pst = storpayments.New(deps.DB)
 	}
 
 	mod := &module{
@@ -79,6 +87,7 @@ func NewModule(deps app.Deps, opts ...Option) app.Module {
 		customers: cust,
 		orders:    ost,
 		shipping:  sst,
+		payments:  pst,
 	}
 	for _, opt := range opts {
 		if opt != nil {

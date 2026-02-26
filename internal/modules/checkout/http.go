@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"goecommerce/internal/platform/payments"
 	platformshipping "goecommerce/internal/platform/shipping"
 	stororders "goecommerce/internal/storage/orders"
+	storpayments "goecommerce/internal/storage/payments"
 	storshipping "goecommerce/internal/storage/shipping"
 )
 
@@ -400,12 +402,45 @@ func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stor
 	}
 
 	lang := resolveRequestLanguage(acceptLanguage)
-	err := m.email.SendOrderConfirmation(ctx, to, lang, map[string]any{
+	payload := map[string]any{
 		"OrderNumber": order.Number,
-	})
+		"OrderID":     order.ID,
+		"Currency":    strings.ToUpper(strings.TrimSpace(order.Currency)),
+		"Total":       formatCents(order.TotalCents),
+	}
+
+	if order.PaymentMethod == "bank_transfer" && m.payments != nil {
+		payload["IsBankTransfer"] = true
+		if pm, err := m.payments.GetMethodByKey(ctx, "bank-transfer"); err == nil && pm != nil {
+			payload["PaymentTitle"] = strings.TrimSpace(pm.Title)
+			payload["PaymentInstructions"] = strings.TrimSpace(pm.Instructions)
+			var cfg storpayments.BankTransferConfig
+			if len(pm.ConfigJSON) > 0 && json.Unmarshal(pm.ConfigJSON, &cfg) == nil {
+				payload["BankAccountName"] = strings.TrimSpace(cfg.AccountName)
+				payload["BankAccountNumber"] = strings.TrimSpace(cfg.AccountNumber)
+				payload["BankName"] = strings.TrimSpace(cfg.BankName)
+				payload["BankIBAN"] = strings.TrimSpace(cfg.IBAN)
+				payload["BankBIC"] = strings.TrimSpace(cfg.BICSwift)
+				payload["BankSortCode"] = strings.TrimSpace(cfg.SortCode)
+			}
+		}
+	} else {
+		payload["IsBankTransfer"] = false
+	}
+
+	err := m.email.SendOrderConfirmation(ctx, to, lang, payload)
 	if err != nil {
 		slog.Warn("checkout: order confirmation email failed", "order_id", order.ID, "error", err)
 	}
+}
+
+func formatCents(cents int) string {
+	sign := ""
+	if cents < 0 {
+		sign = "-"
+		cents = -cents
+	}
+	return fmt.Sprintf("%s%d.%02d", sign, cents/100, cents%100)
 }
 
 func resolveConfirmationRecipient(customerEmail string, authenticated bool, company *CompanyInfo) (string, bool) {
