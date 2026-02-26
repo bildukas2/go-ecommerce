@@ -83,12 +83,13 @@ export function AddToCartButton({
   }, [activeCustomOptions]);
 
   const selectedVariant = React.useMemo(() => {
-    if (Object.keys(selectedAttributes).length === 0) return null;
     return (
       variants.find((v) => {
-        return Object.entries(selectedAttributes).every(([key, value]) => {
-          return String(v.attributes?.[key]) === value;
-        });
+        const vAttrs = v.attributes || {};
+        const vKeys = Object.keys(vAttrs);
+        const sKeys = Object.keys(selectedAttributes);
+        if (vKeys.length !== sKeys.length) return false;
+        return sKeys.every((k) => String(vAttrs[k]) === selectedAttributes[k]);
       }) ?? null
     );
   }, [variants, selectedAttributes]);
@@ -118,11 +119,18 @@ export function AddToCartButton({
   React.useEffect(() => {
     if (!selectedVariantID && variants.length > 0 && Object.keys(selectedAttributes).length === 0) {
       const firstAvailable = variants.find((variant) => variant.stock > 0) ?? variants[0];
-      const initialAttrs: Record<string, string> = {};
+      const nextAttrs: Record<string, string> = {};
       Object.entries(firstAvailable.attributes || {}).forEach(([k, v]) => {
-        initialAttrs[k] = String(v);
+        nextAttrs[k] = String(v);
       });
-      setSelectedAttributes(initialAttrs);
+
+      const currentKeys = Object.keys(selectedAttributes);
+      const nextKeys = Object.keys(nextAttrs);
+      const changed = currentKeys.length !== nextKeys.length || currentKeys.some((k) => selectedAttributes[k] !== nextAttrs[k]);
+
+      if (changed) {
+        setSelectedAttributes(nextAttrs);
+      }
     }
   }, [variants, selectedAttributes, selectedVariantID]);
 
