@@ -650,19 +650,21 @@ export async function getCategories(): Promise<{ items: Category[] }> {
   };
 }
 
-export async function getPage(slug: string): Promise<AdminPage | null> {
+export async function getPage(slug: string, lang?: string): Promise<AdminPage | null> {
   const cleanSlug = slug.startsWith("/") ? slug.slice(1) : slug;
-  const url = apiJoin(`pages/${encodeURIComponent(cleanSlug)}`);
-  const res = await fetch(url, { next: { revalidate: 60 } });
+  const url = new URL(apiJoin(`pages/${encodeURIComponent(cleanSlug)}`));
+  if (lang) url.searchParams.set("lang", lang);
+  const res = await fetch(url.toString(), { next: { revalidate: 60 } });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to fetch page: ${res.status}`);
   const payload = await res.json();
   return normalizeAdminPage(payload);
 }
 
-export async function getStorefrontNavigationLocation(code: string): Promise<StorefrontNavigationLocation | null> {
-  const url = apiJoin(`navigation/location/${encodeURIComponent(code)}`);
-  const res = await fetch(url, { next: { revalidate: 60 } });
+export async function getStorefrontNavigationLocation(code: string, lang?: string): Promise<StorefrontNavigationLocation | null> {
+  const url = new URL(apiJoin(`navigation/location/${encodeURIComponent(code)}`));
+  if (lang) url.searchParams.set("lang", lang);
+  const res = await fetch(url.toString(), { next: { revalidate: 60 } });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to fetch navigation location: ${res.status}`);
   const payload = await res.json();

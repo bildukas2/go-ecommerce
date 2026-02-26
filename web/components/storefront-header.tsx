@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/routing";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { CartButton, CartDrawer } from "@/components/cart-drawer";
 import { LogoutButton } from "@/components/account/logout-button";
 import { AdminButton } from "@/components/admin-button";
@@ -16,6 +17,7 @@ type StorefrontHeaderProps = {
 };
 
 export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: StorefrontHeaderProps) {
+  const t = useTranslations("header.menu");
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   
@@ -32,25 +34,35 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
           <Link href="/" className="text-sm font-semibold">go-ecommerce</Link>
           <nav className="hidden md:flex items-center gap-3">
-            <Link href="/products" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">Products</Link>
+            <Link href="/products" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">
+              {t("products")}
+            </Link>
             <AdminButton />
             {isAuthenticated ? (
               <>
-                <Link href="/account" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">Account</Link>
+                <Link href="/account" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">
+                  {t("account")}
+                </Link>
                 <LogoutButton className="h-8 px-2 text-sm" />
               </>
             ) : (
               <>
-                <Link href="/account/login" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">Login</Link>
-                <Link href="/account/register" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">Register</Link>
+                <Link href="/account/login" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">
+                  {t("login")}
+                </Link>
+                <Link href="/account/register" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">
+                  {t("register")}
+                </Link>
               </>
             )}
             <ThemeToggle />
+            <LocaleSwitcher />
             <CartButton />
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">
             <ThemeToggle />
+            <LocaleSwitcher />
             <CartButton />
             <button
               type="button"
@@ -71,7 +83,7 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
             {mobileItems.map((item) => (
               <Link
                 key={`${item.href}-${item.label}`}
-                href={item.href}
+                href={item.href as any}
                 target={item.open_in_new_tab ? "_blank" : undefined}
                 rel={item.open_in_new_tab ? "noopener noreferrer" : undefined}
                 className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline"
@@ -81,17 +93,25 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
               </Link>
             ))}
             <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-1" />
-            <Link href="/products" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>Products</Link>
+            <Link href="/products" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>
+              {t("products")}
+            </Link>
             <AdminButton />
             {isAuthenticated ? (
               <>
-                <Link href="/account" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>Account</Link>
+                <Link href="/account" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>
+                  {t("account")}
+                </Link>
                 <LogoutButton className="h-8 px-2 text-sm justify-start w-fit" />
               </>
             ) : (
               <>
-                <Link href="/account/login" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>Login</Link>
-                <Link href="/account/register" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>Register</Link>
+                <Link href="/account/login" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>
+                  {t("login")}
+                </Link>
+                <Link href="/account/register" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>
+                  {t("register")}
+                </Link>
               </>
             )}
           </nav>

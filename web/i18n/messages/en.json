@@ -19,20 +19,60 @@
       "products": "Products",
       "categories": "Categories",
       "about": "About",
-      "contact": "Contact"
+      "contact": "Contact",
+      "account": "Account",
+      "login": "Login",
+      "register": "Register"
     }
   },
   "footer": {
+    "about_text": "Built for speed and modern commerce. Experience the future of online shopping.",
     "columns": {
       "shop": "Shop",
       "company": "Company",
-      "support": "Support"
+      "support": "Support",
+      "info": "Info"
     },
     "links": {
       "all_products": "All Products",
       "about_us": "About Us",
       "privacy_policy": "Privacy Policy",
-      "terms_of_service": "Terms of Service"
+      "terms_of_service": "Terms of Service",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    },
+    "no_links": "No links assigned yet.",
+    "rights": "All rights reserved."
+  },
+  "home": {
+    "hero": {
+      "badge": "Built for fast, modern commerce",
+      "title": "Style your home with pieces that ship fast.",
+      "description": "Discover curated essentials, bestselling favorites, and new arrivals in one seamless storefront.",
+      "shop_featured": "Shop featured products",
+      "browse_all": "Browse all products",
+      "spotlight_label": "Today's spotlight",
+      "spotlight_title": "Weekend Living Room Refresh",
+      "spotlight_description": "Mix cozy textures with clean silhouettes for a modern, warm setup."
+    },
+    "featured_categories": {
+      "title": "Featured categories",
+      "view_all": "View all",
+      "label": "Category",
+      "explore": "Explore products"
+    },
+    "featured_products": {
+      "title": "Featured products",
+      "browse": "Browse catalog",
+      "empty": "No featured products available yet."
+    },
+    "trust_badges": {
+      "shipping_title": "Fast Shipping",
+      "shipping_desc": "Most orders leave the warehouse within 24 hours.",
+      "secure_title": "Secure Checkout",
+      "secure_desc": "Encrypted payment flow with trusted providers.",
+      "returns_title": "Easy Returns",
+      "returns_desc": "Hassle-free returns for eligible orders."
     }
   },
   "cart": {

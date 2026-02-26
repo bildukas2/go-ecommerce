@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
 type Props = {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; locale: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const page = await getPage(slug);
+  const { slug, locale } = await params;
+  const page = await getPage(slug, locale);
   
   if (!page) {
     return {
@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CMSPage({ params }: Props) {
-  const { slug } = await params;
-  const page = await getPage(slug);
+  const { slug, locale } = await params;
+  const page = await getPage(slug, locale);
 
   if (!page) {
     notFound();

@@ -19,20 +19,60 @@
       "products": "Produktai",
       "categories": "Kategorijos",
       "about": "Apie mus",
-      "contact": "Kontaktai"
+      "contact": "Kontaktai",
+      "account": "Paskyra",
+      "login": "Prisijungti",
+      "register": "Registruotis"
     }
   },
   "footer": {
+    "about_text": "Sukurta greičiui ir šiuolaikinei prekybai. Patirkite internetinio apsipirkimo ateitį.",
     "columns": {
       "shop": "Parduotuvė",
       "company": "Įmonė",
-      "support": "Pagalba"
+      "support": "Pagalba",
+      "info": "Informacija"
     },
     "links": {
       "all_products": "Visi produktai",
       "about_us": "Apie mus",
       "privacy_policy": "Privatumo politika",
-      "terms_of_service": "Paslaugų teikimo sąlygos"
+      "terms_of_service": "Paslaugų teikimo sąlygos",
+      "terms": "Sąlygos",
+      "privacy": "Privatumas"
+    },
+    "no_links": "Nuorodų dar nėra.",
+    "rights": "Visos teisės saugomos."
+  },
+  "home": {
+    "hero": {
+      "badge": "Sukurta greitai, šiuolaikinei prekybai",
+      "title": "Stilizuokite savo namus detalėmis, kurios pristatomos greitai.",
+      "description": "Atraskite atrinktus būtiniausius daiktus, geriausiai parduodamus favoritus ir naujienas vienoje sklandžioje parduotuvėje.",
+      "shop_featured": "Pirkti populiarius produktus",
+      "browse_all": "Naršyti visus produktus",
+      "spotlight_label": "Šiandienos akcentas",
+      "spotlight_title": "Savaitgalio svetainės atnaujinimas",
+      "spotlight_description": "Derinkite jaukias tekstūras su švariomis siluetomis moderniai ir šiltai aplinkai."
+    },
+    "featured_categories": {
+      "title": "Populiarios kategorijos",
+      "view_all": "Rodyti visas",
+      "label": "Kategorija",
+      "explore": "Naršyti produktus"
+    },
+    "featured_products": {
+      "title": "Populiarios prekės",
+      "browse": "Naršyti katalogą",
+      "empty": "Populiarių prekių dar nėra."
+    },
+    "trust_badges": {
+      "shipping_title": "Greitas pristatymas",
+      "shipping_desc": "Dauguma užsakymų iš sandėlio išsiunčiami per 24 valandas.",
+      "secure_title": "Saugus atsiskaitymas",
+      "secure_desc": "Šifruotas mokėjimo srautas su patikimais teikėjais.",
+      "returns_title": "Lengvas grąžinimas",
+      "returns_desc": "Paprastas grąžinimas tinkamiems užsakymams."
     }
   },
   "cart": {

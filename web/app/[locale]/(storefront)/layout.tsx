@@ -7,9 +7,12 @@ import type { StorefrontNavigationItem } from "@/lib/api";
 
 export default async function StorefrontLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }>) {
+  const { locale } = await params;
   let isAuthenticated = false;
   let footerShopItems: StorefrontNavigationItem[] = [];
   let footerInfoItems: StorefrontNavigationItem[] = [];
@@ -21,9 +24,9 @@ export default async function StorefrontLayout({
   } catch {}
   try {
     const [footerShop, footerInfo, mobile] = await Promise.all([
-      getStorefrontNavigationLocation("footer_shop"),
-      getStorefrontNavigationLocation("footer_info"),
-      getStorefrontNavigationLocation("mobile"),
+      getStorefrontNavigationLocation("footer_shop", locale),
+      getStorefrontNavigationLocation("footer_info", locale),
+      getStorefrontNavigationLocation("mobile", locale),
     ]);
     footerShopItems = footerShop?.menu?.items ?? [];
     footerInfoItems = footerInfo?.menu?.items ?? [];
