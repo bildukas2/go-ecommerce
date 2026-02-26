@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateStatus } from "@/app/admin/orders/[id]/actions";
+import { updateStatus } from "@/app/[locale]/admin/orders/[id]/actions";
 import { Check, ChevronDown } from "lucide-react";
 
 const statuses = [
