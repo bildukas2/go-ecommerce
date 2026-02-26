@@ -25,6 +25,16 @@ function buildRemotePatterns() {
       hostname: "127.0.0.1",
       port: "8080",
     },
+    {
+      protocol: "http",
+      hostname: "127.0.0.1",
+      port: "",
+    },
+    {
+      protocol: "http",
+      hostname: "localhost",
+      port: "",
+    },
   ];
 
   const backendUrl = process.env.NEXT_PUBLIC_API_URL;

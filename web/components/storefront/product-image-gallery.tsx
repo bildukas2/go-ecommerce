@@ -55,6 +55,7 @@ export function ProductImageGallery({ images, productTitle }: ProductImageGaller
           alt={mainImage.alt || productTitle}
           width={800}
           height={800}
+          unoptimized={mainImage.url.includes("localhost") || mainImage.url.includes("127.0.0.1")}
           className="aspect-square w-full object-cover"
         />
       </div>
@@ -94,6 +95,7 @@ export function ProductImageGallery({ images, productTitle }: ProductImageGaller
                     alt={image.alt || productTitle}
                     width={240}
                     height={240}
+                    unoptimized={image.url.includes("localhost") || image.url.includes("127.0.0.1")}
                     className="aspect-square w-full object-cover"
                   />
                 </button>
