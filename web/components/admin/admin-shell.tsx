@@ -98,7 +98,7 @@ function SidebarNav({
   const isSettingsExpanded = settingsActive || settingsOpen;
   const emailActive = pathname.startsWith("/admin/email");
   const [emailOpen, setEmailOpen] = useState(false);
-  const isEmailExpanded = emailActive || emailOpen;
+  const isEmailExpanded = emailOpen;
   const customersActive = pathname.startsWith("/admin/customers") || pathname.startsWith("/admin/security");
   const [customersOpen, setCustomersOpen] = useState(false);
   const isCustomersExpanded = customersOpen;
