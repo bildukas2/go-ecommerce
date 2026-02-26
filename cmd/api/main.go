@@ -17,6 +17,7 @@ import (
 	"goecommerce/internal/modules/checkout"
 	"goecommerce/internal/modules/cms"
 	"goecommerce/internal/modules/customers"
+	"goecommerce/internal/modules/email"
 	"goecommerce/internal/modules/orders"
 	"goecommerce/internal/modules/payments"
 	"goecommerce/internal/modules/shipping"
@@ -65,6 +66,7 @@ func main() {
 	app.RegisterModule(orders.NewModule(deps))
 	app.RegisterModule(shipping.NewModule(deps))
 	app.RegisterModule(payments.NewModule(deps))
+	app.RegisterModule(email.NewModule(deps))
 	app.RegisterModule(checkout.NewModule(deps))
 	app.RegisterModule(cms.NewModule(deps))
 	app.RegisterModule(adminauth.NewModule(deps))
