@@ -162,9 +162,11 @@ export type AdminCategory = Category & {
 export type AdminPage = {
   id: string;
   title: string;
+  title_i18n: Record<string, string>;
   slug: string;
   status: "draft" | "published";
   content_html: string;
+  content_html_i18n: Record<string, string>;
   content_json?: any | null;
   editor_mode: "html" | "visual";
   meta_title?: string | null;
@@ -178,6 +180,7 @@ export type AdminNavigationItem = {
   id: string;
   menu_id: string;
   label: string;
+  label_i18n: Record<string, string>;
   type: "page" | "url" | "category";
   page_id?: string | null;
   category_id?: string | null;

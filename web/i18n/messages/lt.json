@@ -90,11 +90,31 @@
     "menu": {
       "dashboard": "Skydelis",
       "pages": "Puslapiai",
-      "content": "Turinys",
+      "pages_and_content": "Puslapiai ir turinys",
       "navigation": "Navigacija",
       "products": "Produktai",
       "orders": "Užsakymai",
-      "customers": "Klientai"
+      "customers": "Klientai",
+      "customers_list": "Klientų sąrašas",
+      "customer_logs": "Klientų veiksmų žurnalai",
+      "customer_groups": "Klientų grupės",
+      "security": "Saugumas",
+      "catalog": "Katalogas",
+      "categories": "Kategorijos",
+      "custom_options": "Pritaikomos parinktys",
+      "media": "Medija",
+      "images": "Vaizdai",
+      "video": "Vaizdo įrašai",
+      "shopping": "Apsipirkimas",
+      "shipping": "Pristatymas",
+      "payments": "Mokėjimai",
+      "logout": "Atsijungti",
+      "view_storefront": "Peržiūrėti parduotuvę",
+      "search_placeholder": "Ieškoti administracijoje...",
+      "expand_sidebar": "Išskleisti šoninę juostą",
+      "collapse_sidebar": "Suskleisti šoninę juostą",
+      "close_menu": "Uždaryti meniu",
+      "open_menu": "Atidaryti meniu"
     }
   }
 }

@@ -90,11 +90,31 @@
     "menu": {
       "dashboard": "Dashboard",
       "pages": "Pages",
-      "content": "Content",
+      "pages_and_content": "Pages & Content",
       "navigation": "Navigation",
       "products": "Products",
       "orders": "Orders",
-      "customers": "Customers"
+      "customers": "Customers",
+      "customers_list": "Customers List",
+      "customer_logs": "Customer Action Logs",
+      "customer_groups": "Customer Groups",
+      "security": "Security",
+      "catalog": "Catalog",
+      "categories": "Categories",
+      "custom_options": "Customizable Options",
+      "media": "Media",
+      "images": "Images",
+      "video": "Video",
+      "shopping": "Shopping",
+      "shipping": "Shipping",
+      "payments": "Payments",
+      "logout": "Logout",
+      "view_storefront": "View Storefront",
+      "search_placeholder": "Search admin...",
+      "expand_sidebar": "Expand sidebar",
+      "collapse_sidebar": "Collapse sidebar",
+      "close_menu": "Close admin menu",
+      "open_menu": "Open admin menu"
     }
   }
 }

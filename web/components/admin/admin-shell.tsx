@@ -4,14 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Input } from "@heroui/react";
-import { ChevronDown, Compass, CreditCard, FileText, FolderTree, ImageIcon, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, Video, X } from "lucide-react";
+import { ChevronDown, Compass, CreditCard, FileText, FolderTree, ImageIcon, Languages, LayoutDashboard, List, Menu, Search, ShieldAlert, ShoppingCart, SlidersHorizontal, Store, Truck, Users, UsersRound, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAdminCSRFToken, logoutAdmin } from "@/lib/admin-auth";
+import { useLocale, useTranslations } from "next-intl";
 
 type NavItem = {
   href: string;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
 };
 
@@ -19,36 +20,36 @@ const DESKTOP_EXPANDED_WIDTH = 280;
 const DESKTOP_COLLAPSED_WIDTH = 88;
 
 const navItems: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
-  { href: "/admin/orders", label: "Orders", icon: <ShoppingCart size={18} /> },
+  { href: "/admin", labelKey: "dashboard", icon: <LayoutDashboard size={18} /> },
+  { href: "/admin/orders", labelKey: "orders", icon: <ShoppingCart size={18} /> },
 ];
 
 const catalogItems: NavItem[] = [
-  { href: "/admin/catalog/categories", label: "Categories", icon: <FolderTree size={16} /> },
-  { href: "/admin/catalog/products", label: "Products", icon: <ShoppingCart size={16} /> },
-  { href: "/admin/catalog/custom-options", label: "Customizable Options", icon: <SlidersHorizontal size={16} /> },
+  { href: "/admin/catalog/categories", labelKey: "categories", icon: <FolderTree size={16} /> },
+  { href: "/admin/catalog/products", labelKey: "products", icon: <ShoppingCart size={16} /> },
+  { href: "/admin/catalog/custom-options", labelKey: "custom_options", icon: <SlidersHorizontal size={16} /> },
 ];
 
 const cmsItems: NavItem[] = [
-  { href: "/admin/cms/pages", label: "Pages", icon: <FileText size={16} /> },
-  { href: "/admin/cms/navigation/menus", label: "Navigation", icon: <Compass size={16} /> },
+  { href: "/admin/cms/pages", labelKey: "pages", icon: <FileText size={16} /> },
+  { href: "/admin/cms/navigation/menus", labelKey: "navigation", icon: <Compass size={16} /> },
 ];
 
 const customerItems: NavItem[] = [
-  { href: "/admin/customers", label: "Customers List", icon: <Users size={16} /> },
-  { href: "/admin/customers/logs", label: "Customer Action Logs", icon: <List size={16} /> },
-  { href: "/admin/customers/groups", label: "Customer Groups", icon: <UsersRound size={16} /> },
-  { href: "/admin/security/blocked-ips", label: "Security", icon: <ShieldAlert size={16} /> },
+  { href: "/admin/customers", labelKey: "customers_list", icon: <Users size={16} /> },
+  { href: "/admin/customers/logs", labelKey: "customer_logs", icon: <List size={16} /> },
+  { href: "/admin/customers/groups", labelKey: "customer_groups", icon: <UsersRound size={16} /> },
+  { href: "/admin/security/blocked-ips", labelKey: "security", icon: <ShieldAlert size={16} /> },
 ];
 
 const mediaItems: NavItem[] = [
-  { href: "/admin/media/images", label: "Images", icon: <ImageIcon size={16} /> },
-  { href: "/admin/media/video", label: "Video", icon: <Video size={16} /> },
+  { href: "/admin/media/images", labelKey: "images", icon: <ImageIcon size={16} /> },
+  { href: "/admin/media/video", labelKey: "video", icon: <Video size={16} /> },
 ];
 
 const settingsItems: NavItem[] = [
-  { href: "/admin/settings/shipping", label: "Shipping", icon: <Truck size={16} /> },
-  { href: "/admin/settings/payments", label: "Payments", icon: <CreditCard size={16} /> },
+  { href: "/admin/settings/shipping", labelKey: "shipping", icon: <Truck size={16} /> },
+  { href: "/admin/settings/payments", labelKey: "payments", icon: <CreditCard size={16} /> },
 ];
 
 function isActivePath(pathname: string, href: string): boolean {
@@ -76,6 +77,7 @@ function SidebarNav({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const t = useTranslations("admin.menu");
   const catalogActive = pathname.startsWith("/admin/catalog");
   const [catalogOpen, setCatalogOpen] = useState(false);
   const isCatalogExpanded = catalogOpen;
@@ -102,13 +104,14 @@ function SidebarNav({
     <nav className="flex flex-1 flex-col gap-1 px-2" aria-label="Admin navigation">
       {navItems.map((item) => {
         const active = isActivePath(pathname, item.href);
+        const label = t(item.labelKey);
 
         return (
           <Link
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            aria-label={item.label}
+            aria-label={label}
             className={[
               "group flex items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
@@ -124,7 +127,7 @@ function SidebarNav({
             >
               {item.icon}
             </motion.span>
-            {!collapsed && <span className={active ? "font-medium" : ""}>{item.label}</span>}
+            {!collapsed && <span className={active ? "font-medium" : ""}>{label}</span>}
             {active && <span aria-hidden className="ml-auto size-2 rounded-full bg-blue-500 shadow-[0_0_14px_rgba(0,114,245,0.8)]" />}
           </Link>
         );
@@ -149,7 +152,7 @@ function SidebarNav({
         </span>
         {!collapsed && (
           <>
-            <span className={catalogActive ? "font-medium" : ""}>Catalog</span>
+            <span className={catalogActive ? "font-medium" : ""}>{t("catalog")}</span>
             <ChevronDown
               size={16}
               className={`ml-auto transition-transform duration-200 ${isCatalogExpanded ? "rotate-180" : ""}`}
@@ -175,6 +178,7 @@ function SidebarNav({
               <div className="space-y-1 py-1">
                 {catalogItems.map((item) => {
                   const active = isActivePath(pathname, item.href);
+                  const label = t(item.labelKey);
 
                   return (
                     <Link
@@ -192,7 +196,7 @@ function SidebarNav({
                       <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
                         {item.icon}
                       </span>
-                      <span className={active ? "font-medium" : ""}>{item.label}</span>
+                      <span className={active ? "font-medium" : ""}>{label}</span>
                     </Link>
                   );
                 })}
@@ -221,7 +225,7 @@ function SidebarNav({
         </span>
         {!collapsed && (
           <>
-            <span className={cmsActive ? "font-medium" : ""}>Pages & Content</span>
+            <span className={cmsActive ? "font-medium" : ""}>{t("pages_and_content")}</span>
             <ChevronDown
               size={16}
               className={`ml-auto transition-transform duration-200 ${isCmsExpanded ? "rotate-180" : ""}`}
@@ -247,6 +251,7 @@ function SidebarNav({
               <div className="space-y-1 py-1">
                 {cmsItems.map((item) => {
                   const active = isActivePath(pathname, item.href);
+                  const label = t(item.labelKey);
 
                   return (
                     <Link
@@ -264,7 +269,7 @@ function SidebarNav({
                       <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
                         {item.icon}
                       </span>
-                      <span className={active ? "font-medium" : ""}>{item.label}</span>
+                      <span className={active ? "font-medium" : ""}>{label}</span>
                     </Link>
                   );
                 })}
@@ -293,7 +298,7 @@ function SidebarNav({
         </span>
         {!collapsed && (
           <>
-            <span className={mediaActive ? "font-medium" : ""}>Media</span>
+            <span className={mediaActive ? "font-medium" : ""}>{t("media")}</span>
             <ChevronDown
               size={16}
               className={`ml-auto transition-transform duration-200 ${isMediaExpanded ? "rotate-180" : ""}`}
@@ -319,6 +324,7 @@ function SidebarNav({
               <div className="space-y-1 py-1">
                 {mediaItems.map((item) => {
                   const active = isActivePath(pathname, item.href);
+                  const label = t(item.labelKey);
                   return (
                     <Link
                       key={item.href}
@@ -335,7 +341,7 @@ function SidebarNav({
                       <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
                         {item.icon}
                       </span>
-                      <span className={active ? "font-medium" : ""}>{item.label}</span>
+                      <span className={active ? "font-medium" : ""}>{label}</span>
                     </Link>
                   );
                 })}
@@ -364,7 +370,7 @@ function SidebarNav({
         </span>
         {!collapsed && (
           <>
-            <span className={settingsActive ? "font-medium" : ""}>Shopping</span>
+            <span className={settingsActive ? "font-medium" : ""}>{t("shopping")}</span>
             <ChevronDown
               size={16}
               className={`ml-auto transition-transform duration-200 ${isSettingsExpanded ? "rotate-180" : ""}`}
@@ -390,14 +396,15 @@ function SidebarNav({
               <div className="space-y-1 py-1">
                 {settingsItems.map((item) => {
                   const active = isActivePath(pathname, item.href);
+                  const label = t(item.labelKey);
 
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={onNavigate}
-                      title={collapsed ? item.label : undefined}
-                      aria-label={item.label}
+                      title={collapsed ? label : undefined}
+                      aria-label={label}
                       className={[
                         "group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
@@ -410,7 +417,7 @@ function SidebarNav({
                       <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
                         {item.icon}
                       </span>
-                      {!collapsed && <span className={active ? "font-medium" : ""}>{item.label}</span>}
+                      {!collapsed && <span className={active ? "font-medium" : ""}>{label}</span>}
                       {collapsed && active && (
                         <span aria-hidden className="size-1.5 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(0,114,245,0.8)]" />
                       )}
@@ -442,7 +449,7 @@ function SidebarNav({
         </span>
         {!collapsed && (
           <>
-            <span className={customersActive ? "font-medium" : ""}>Customers</span>
+            <span className={customersActive ? "font-medium" : ""}>{t("customers")}</span>
             <ChevronDown
               size={16}
               className={`ml-auto transition-transform duration-200 ${isCustomersExpanded ? "rotate-180" : ""}`}
@@ -467,14 +474,15 @@ function SidebarNav({
             <div className="space-y-1 py-1">
               {customerItems.map((item) => {
                 const active = isCustomersSubItemActive(pathname, item.href);
+                const label = t(item.labelKey);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
-                    title={collapsed ? item.label : undefined}
-                    aria-label={item.label}
+                    title={collapsed ? label : undefined}
+                    aria-label={label}
                     className={[
                       "group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80",
@@ -487,7 +495,7 @@ function SidebarNav({
                     <span className={active ? "text-blue-500" : "text-foreground/65 group-hover:text-blue-500"}>
                       {item.icon}
                     </span>
-                    {!collapsed && <span className={active ? "font-medium" : ""}>{item.label}</span>}
+                    {!collapsed && <span className={active ? "font-medium" : ""}>{label}</span>}
                     {collapsed && active && (
                       <span aria-hidden className="size-1.5 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(0,114,245,0.8)]" />
                     )}
@@ -513,7 +521,8 @@ function SidebarContent({
   onToggleCollapse?: () => void;
   onCloseMobile?: () => void;
 }) {
-  const collapseLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const t = useTranslations("admin.menu");
+  const collapseLabel = collapsed ? t("expand_sidebar") : t("collapse_sidebar");
 
   return (
     <div className="flex h-full flex-col p-3">
@@ -522,7 +531,7 @@ function SidebarContent({
           href="/admin"
           className="flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
           onClick={onCloseMobile}
-          aria-label="Go to admin dashboard"
+          aria-label={t("dashboard")}
         >
           <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/14 text-sm font-semibold text-blue-600 dark:text-blue-300">
             G
@@ -538,7 +547,7 @@ function SidebarContent({
           <Button
             isIconOnly
             variant="light"
-            aria-label="Close admin menu"
+            aria-label={t("close_menu")}
             onPress={onCloseMobile}
           >
             <X size={18} />
@@ -560,7 +569,31 @@ function SidebarContent({
   );
 }
 
+function AdminLocaleToggle() {
+  const locale = useLocale();
+
+  const toggleLocale = () => {
+    const nextLocale = locale === "en" ? "lt" : "en";
+    document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000`;
+    window.location.reload();
+  };
+
+  return (
+    <Button
+      isIconOnly
+      variant="light"
+      aria-label="Switch language"
+      onClick={toggleLocale}
+      className="flex flex-col items-center justify-center gap-0"
+    >
+      <Languages size={18} />
+      <span className="text-[10px] font-bold leading-none uppercase">{locale}</span>
+    </Button>
+  );
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("admin.menu");
   const pathname = usePathname();
   const prefersReducedMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
@@ -641,14 +674,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               isIconOnly
               variant="light"
               className="lg:hidden"
-              aria-label="Open admin menu"
+              aria-label={t("open_menu")}
               onPress={() => setMobileOpen(true)}
             >
               <Menu size={18} />
             </Button>
             <Input
               aria-label="Search"
-              placeholder="Search admin..."
+              placeholder={t("search_placeholder")}
               startContent={<Search size={16} className="opacity-70" aria-hidden />}
               variant="bordered"
               classNames={{
@@ -660,14 +693,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               href="/"
               isIconOnly
               variant="light"
-              aria-label="View Storefront"
-              title="View Storefront"
+              aria-label={t("view_storefront")}
+              title={t("view_storefront")}
             >
               <Store size={18} />
             </Button>
+            <AdminLocaleToggle />
             <ThemeToggle />
             <Button variant="flat" size="sm" onPress={onLogout} isLoading={loggingOut}>
-              Logout
+              {t("logout")}
             </Button>
           </div>
           <div>{children}</div>
