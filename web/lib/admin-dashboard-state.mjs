@@ -53,12 +53,12 @@ export function resolveDashboardErrorMessage(error) {
 }
 
 export function shouldUseMockDashboard(envValue) {
-  if (typeof envValue !== "string") return true;
+  if (typeof envValue !== "string") return false;
   const normalized = envValue.trim().toLowerCase();
-  if (normalized === "false" || normalized === "0" || normalized === "off") {
-    return false;
+  if (normalized === "true" || normalized === "1" || normalized === "on") {
+    return true;
   }
-  return true;
+  return false;
 }
 
 function toNonNegativeInt(value) {
