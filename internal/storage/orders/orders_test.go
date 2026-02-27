@@ -441,7 +441,7 @@ func TestListOrdersIncludesCustomerShipmentAndPaymentFields(t *testing.T) {
 	var shippingMethodID string
 	if err := db.QueryRowContext(ctx, `
 		INSERT INTO shipping_methods (zone_id, provider_key, service_code, title, enabled, sort_order, pricing_mode, pricing_rules_json)
-		VALUES ($1, $2, 'door', 'Courier Delivery', true, 0, 'fixed', '{"base_price_cents":500}'::jsonb)
+		VALUES ($1, $2, 'door', 'Courier Delivery', true, 0, 'flat', '{"base_price_cents":500}'::jsonb)
 		RETURNING id
 	`, zoneID, providerKey).Scan(&shippingMethodID); err != nil {
 		t.Fatalf("insert shipping method: %v", err)
@@ -627,5 +627,69 @@ func TestGetOrderByIDIncludesEnrichedAdminDetailFields(t *testing.T) {
 	}
 	if order.Items[0].ProductTitle != "Vintage Hoodie" || order.Items[0].VariantSKU != "HOOD-BLK-L" {
 		t.Fatalf("unexpected order item snapshot fields: %+v", order.Items[0])
+	}
+}
+
+func TestGetWeeklyRevenueTrend(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping trend test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var regclass *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.orders')").Scan(&regclass); err != nil || regclass == nil || *regclass == "" {
+		t.Skip("orders table not present; apply migrations to run this test")
+	}
+
+	orderStore, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	trend, err := orderStore.GetWeeklyRevenueTrend(ctx)
+	if err != nil {
+		t.Fatalf("GetWeeklyRevenueTrend error: %v", err)
+	}
+
+	if trend == nil {
+		t.Fatalf("trend is nil")
+	}
+}
+
+func TestGetTopProducts(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; skipping top products test")
+	}
+	ctx := context.Background()
+	db, err := platformdb.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db open error: %v", err)
+	}
+	defer db.Close()
+
+	var regclass *string
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass('public.order_items')").Scan(&regclass); err != nil || regclass == nil || *regclass == "" {
+		t.Skip("order_items table not present; apply migrations to run this test")
+	}
+
+	orderStore, err := NewStore(ctx, db)
+	if err != nil {
+		t.Fatalf("orders store init: %v", err)
+	}
+
+	products, err := orderStore.GetTopProducts(ctx, 5)
+	if err != nil {
+		t.Fatalf("GetTopProducts error: %v", err)
+	}
+
+	if products == nil {
+		t.Fatalf("products is nil")
 	}
 }

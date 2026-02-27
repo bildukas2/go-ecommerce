@@ -184,6 +184,18 @@ func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	trend, err := m.orders.GetWeeklyRevenueTrend(r.Context())
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "trend error")
+		return
+	}
+
+	topProducts, err := m.orders.GetTopProducts(r.Context(), 5)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "top products error")
+		return
+	}
+
 	recentOut := make([]map[string]any, 0, len(recent))
 	for _, o := range recent {
 		recentOut = append(recentOut, map[string]any{
@@ -199,6 +211,8 @@ func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
 		"metrics":       metrics,
 		"recent_orders": recentOut,
+		"revenue_trend": trend,
+		"top_products":  topProducts,
 	})
 }
 
@@ -354,14 +368,14 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 			TerminalName:    terminalName,
 			TerminalAddress: terminalAddress,
 			PriceCents:      o.ShippingPriceCents,
-			FullName:    o.ShippingFullName,
-			Phone:       o.ShippingPhone,
-			Address1:    o.ShippingAddress1,
-			Address2:    o.ShippingAddress2,
-			City:        o.ShippingCity,
-			State:       o.ShippingState,
-			Postcode:    o.ShippingPostcode,
-			Country:     o.ShippingCountry,
+			FullName:        o.ShippingFullName,
+			Phone:           o.ShippingPhone,
+			Address1:        o.ShippingAddress1,
+			Address2:        o.ShippingAddress2,
+			City:            o.ShippingCity,
+			State:           o.ShippingState,
+			Postcode:        o.ShippingPostcode,
+			Country:         o.ShippingCountry,
 		},
 		Billing: adminOrderBillingResponse{
 			FullName:     o.BillingFullName,
@@ -428,14 +442,14 @@ type adminOrderShippingResponse struct {
 	TerminalName    string `json:"terminal_name"`
 	TerminalAddress string `json:"terminal_address"`
 	PriceCents      int    `json:"price_cents"`
-	FullName    string `json:"full_name"`
-	Phone       string `json:"phone"`
-	Address1    string `json:"address1"`
-	Address2    string `json:"address2"`
-	City        string `json:"city"`
-	State       string `json:"state"`
-	Postcode    string `json:"postcode"`
-	Country     string `json:"country"`
+	FullName        string `json:"full_name"`
+	Phone           string `json:"phone"`
+	Address1        string `json:"address1"`
+	Address2        string `json:"address2"`
+	City            string `json:"city"`
+	State           string `json:"state"`
+	Postcode        string `json:"postcode"`
+	Country         string `json:"country"`
 }
 
 type adminOrderBillingResponse struct {
@@ -525,6 +539,8 @@ type ordersStore interface {
 	ListOrders(ctx context.Context, limit, offset int) ([]stororders.Order, error)
 	GetOrderByID(ctx context.Context, id string) (stororders.Order, error)
 	UpdateOrderStatus(ctx context.Context, id string, status string) error
+	GetWeeklyRevenueTrend(ctx context.Context) ([]stororders.DashboardTrendPoint, error)
+	GetTopProducts(ctx context.Context, limit int) ([]stororders.DashboardTopProduct, error)
 }
 
 type customersStore interface {

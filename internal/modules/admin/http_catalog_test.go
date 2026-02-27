@@ -13,28 +13,28 @@ import (
 )
 
 type fakeCatalogStore struct {
-	createCategoryFn        func(context.Context, storcat.CategoryUpsertInput) (storcat.Category, error)
-	listAdminCategoriesFn   func(context.Context) ([]storcat.AdminCategory, error)
-	updateCategoryFn        func(context.Context, string, storcat.CategoryUpsertInput) (storcat.Category, error)
-	deleteCategoryFn        func(context.Context, string) (storcat.DeleteCategoryResult, error)
-	createProductFn         func(context.Context, storcat.ProductUpsertInput) (storcat.Product, error)
-	createProductVariantFn  func(context.Context, string, storcat.ProductVariantCreateInput) (storcat.Variant, error)
-	updateProductFn         func(context.Context, string, storcat.ProductUpsertInput) (storcat.Product, error)
-	deleteProductFn         func(context.Context, string) error
-	replaceProductCatsFn    func(context.Context, string, []string) error
-	bulkAssignProductCatsFn func(context.Context, []string, []string) (int64, error)
-	bulkRemoveProductCatsFn func(context.Context, []string, []string) (int64, error)
-	applyDiscountProductsFn func(context.Context, []string, storcat.ProductDiscountInput) (int64, error)
-	listCustomOptionsFn     func(context.Context, storcat.ListCustomOptionsParams) ([]storcat.ProductCustomOption, error)
-	createCustomOptionFn    func(context.Context, storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
-	getCustomOptionByIDFn   func(context.Context, string) (storcat.ProductCustomOption, error)
-	updateCustomOptionFn    func(context.Context, string, storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
-	deleteCustomOptionFn    func(context.Context, string) error
-	listAssignmentsFn       func(context.Context, string) ([]storcat.ProductCustomOptionAssignment, error)
-	attachAssignmentFn      func(context.Context, string, string, *int) (storcat.ProductCustomOptionAssignment, error)
-	detachAssignmentFn      func(context.Context, string, string) error
-	addProductImageFn       func(context.Context, string, string, string) (storcat.Image, error)
-	removeProductImageFn    func(context.Context, string, string) error
+	createCategoryFn         func(context.Context, storcat.CategoryUpsertInput) (storcat.Category, error)
+	listAdminCategoriesFn    func(context.Context) ([]storcat.AdminCategory, error)
+	updateCategoryFn         func(context.Context, string, storcat.CategoryUpsertInput) (storcat.Category, error)
+	deleteCategoryFn         func(context.Context, string) (storcat.DeleteCategoryResult, error)
+	createProductFn          func(context.Context, storcat.ProductUpsertInput) (storcat.Product, error)
+	createProductVariantFn   func(context.Context, string, storcat.ProductVariantCreateInput) (storcat.Variant, error)
+	updateProductFn          func(context.Context, string, storcat.ProductUpsertInput) (storcat.Product, error)
+	deleteProductFn          func(context.Context, string) error
+	replaceProductCatsFn     func(context.Context, string, []string) error
+	bulkAssignProductCatsFn  func(context.Context, []string, []string) (int64, error)
+	bulkRemoveProductCatsFn  func(context.Context, []string, []string) (int64, error)
+	applyDiscountProductsFn  func(context.Context, []string, storcat.ProductDiscountInput) (int64, error)
+	listCustomOptionsFn      func(context.Context, storcat.ListCustomOptionsParams) ([]storcat.ProductCustomOption, error)
+	createCustomOptionFn     func(context.Context, storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
+	getCustomOptionByIDFn    func(context.Context, string) (storcat.ProductCustomOption, error)
+	updateCustomOptionFn     func(context.Context, string, storcat.CustomOptionUpsertInput) (storcat.ProductCustomOption, error)
+	deleteCustomOptionFn     func(context.Context, string) error
+	listAssignmentsFn        func(context.Context, string) ([]storcat.ProductCustomOptionAssignment, error)
+	attachAssignmentFn       func(context.Context, string, string, *int) (storcat.ProductCustomOptionAssignment, error)
+	detachAssignmentFn       func(context.Context, string, string) error
+	addProductImageFn        func(context.Context, string, string, string) (storcat.Image, error)
+	removeProductImageFn     func(context.Context, string, string) error
 	setDefaultProductImageFn func(context.Context, string, string) error
 }
 

@@ -304,6 +304,19 @@ type OrderMetrics struct {
 	Cancelled      int `json:"cancelled"`
 }
 
+type DashboardTrendPoint struct {
+	Date       time.Time `json:"date"`
+	TotalCents int64     `json:"total_cents"`
+	OrderCount int       `json:"order_count"`
+}
+
+type DashboardTopProduct struct {
+	ProductTitle string `json:"product_title"`
+	SKU          string `json:"sku"`
+	TotalSold    int    `json:"total_sold"`
+	TotalRevenue int64  `json:"total_revenue"`
+}
+
 func (s *Store) GetOrderMetrics(ctx context.Context) (OrderMetrics, error) {
 	var m OrderMetrics
 	err := s.db.QueryRowContext(ctx, `
@@ -317,6 +330,62 @@ func (s *Store) GetOrderMetrics(ctx context.Context) (OrderMetrics, error) {
 		FROM orders
 	`).Scan(&m.TotalOrders, &m.PendingPayment, &m.Paid, &m.Processing, &m.Completed, &m.Cancelled)
 	return m, err
+}
+
+func (s *Store) GetWeeklyRevenueTrend(ctx context.Context) ([]DashboardTrendPoint, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT 
+			DATE_TRUNC('day', created_at) as date,
+			SUM(total_cents) as total_cents,
+			COUNT(*) as order_count
+		FROM orders
+		WHERE created_at >= NOW() - INTERVAL '7 days'
+		GROUP BY 1
+		ORDER BY 1 ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	trend := make([]DashboardTrendPoint, 0)
+	for rows.Next() {
+		var p DashboardTrendPoint
+		if err := rows.Scan(&p.Date, &p.TotalCents, &p.OrderCount); err != nil {
+			return nil, err
+		}
+		trend = append(trend, p)
+	}
+	return trend, rows.Err()
+}
+
+func (s *Store) GetTopProducts(ctx context.Context, limit int) ([]DashboardTopProduct, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT 
+			product_title,
+			variant_sku as sku,
+			SUM(quantity) as total_sold,
+			SUM(unit_price_cents * quantity) as total_revenue
+		FROM order_items
+		GROUP BY product_title, variant_sku
+		ORDER BY total_revenue DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	products := make([]DashboardTopProduct, 0)
+	for rows.Next() {
+		var p DashboardTopProduct
+		if err := rows.Scan(&p.ProductTitle, &p.SKU, &p.TotalSold, &p.TotalRevenue); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, rows.Err()
 }
 
 func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
