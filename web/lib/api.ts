@@ -1774,6 +1774,8 @@ export type DashboardMetrics = {
   processing: number;
   completed: number;
   cancelled: number;
+  predicted_revenue: number;
+  real_revenue: number;
 };
 
 export type DashboardRecentOrder = {

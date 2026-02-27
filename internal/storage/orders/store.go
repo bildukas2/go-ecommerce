@@ -296,12 +296,14 @@ func (s *Store) ListOrders(ctx context.Context, limit, offset int) ([]Order, err
 }
 
 type OrderMetrics struct {
-	TotalOrders    int `json:"total_orders"`
-	PendingPayment int `json:"pending_payment"`
-	Paid           int `json:"paid"`
-	Processing     int `json:"processing"`
-	Completed      int `json:"completed"`
-	Cancelled      int `json:"cancelled"`
+	TotalOrders      int   `json:"total_orders"`
+	PendingPayment   int   `json:"pending_payment"`
+	Paid             int   `json:"paid"`
+	Processing       int   `json:"processing"`
+	Completed        int   `json:"completed"`
+	Cancelled        int   `json:"cancelled"`
+	PredictedRevenue int64 `json:"predicted_revenue"`
+	RealRevenue      int64 `json:"real_revenue"`
 }
 
 type DashboardTrendPoint struct {
@@ -326,9 +328,11 @@ func (s *Store) GetOrderMetrics(ctx context.Context) (OrderMetrics, error) {
 			COUNT(*) FILTER (WHERE status = 'paid'),
 			COUNT(*) FILTER (WHERE status = 'processing'),
 			COUNT(*) FILTER (WHERE status = 'completed'),
-			COUNT(*) FILTER (WHERE status = 'cancelled')
+			COUNT(*) FILTER (WHERE status = 'cancelled'),
+			COALESCE(SUM(total_cents) FILTER (WHERE status != 'cancelled'), 0),
+			COALESCE(SUM(total_cents) FILTER (WHERE status = 'completed'), 0)
 		FROM orders
-	`).Scan(&m.TotalOrders, &m.PendingPayment, &m.Paid, &m.Processing, &m.Completed, &m.Cancelled)
+	`).Scan(&m.TotalOrders, &m.PendingPayment, &m.Paid, &m.Processing, &m.Completed, &m.Cancelled, &m.PredictedRevenue, &m.RealRevenue)
 	return m, err
 }
 

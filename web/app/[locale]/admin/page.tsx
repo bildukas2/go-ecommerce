@@ -61,6 +61,35 @@ export default async function AdminDashboardPage() {
 
       <DashboardMetrics metrics={dashboard.metrics} />
 
+      <section className="glass rounded-2xl border p-6">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold tracking-tight">Money Logic Revenue</h2>
+          <p className="text-sm text-foreground/65">Financial overview of store performance.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl bg-blue-500/5 border border-blue-500/10 p-5">
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Predicted Revenue</p>
+            <p className="text-2xl font-bold">
+              {(dashboard.metrics.predicted_revenue / 100).toLocaleString(undefined, {
+                style: "currency",
+                currency: "USD",
+              })}
+            </p>
+            <p className="text-xs text-foreground/50 mt-2">All orders excluding cancelled</p>
+          </div>
+          <div className="rounded-2xl bg-green-500/5 border border-green-500/10 p-5">
+            <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">Real Revenue</p>
+            <p className="text-2xl font-bold">
+              {(dashboard.metrics.real_revenue / 100).toLocaleString(undefined, {
+                style: "currency",
+                currency: "USD",
+              })}
+            </p>
+            <p className="text-xs text-foreground/50 mt-2">Completed orders only</p>
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
         <section className="glass rounded-2xl border p-5">
           <div className="mb-4">
