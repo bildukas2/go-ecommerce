@@ -13,10 +13,12 @@ import (
 )
 
 type fakeOrdersStore struct {
-	getMetricsFn        func(context.Context) (stororders.OrderMetrics, error)
-	listOrdersFn        func(context.Context, int, int) ([]stororders.Order, error)
-	getOrderByIDFn      func(context.Context, string) (stororders.Order, error)
-	updateOrderStatusFn func(context.Context, string, string) error
+	getMetricsFn            func(context.Context) (stororders.OrderMetrics, error)
+	listOrdersFn            func(context.Context, int, int) ([]stororders.Order, error)
+	getOrderByIDFn          func(context.Context, string) (stororders.Order, error)
+	updateOrderStatusFn     func(context.Context, string, string) error
+	getWeeklyRevenueTrendFn func(context.Context) ([]stororders.DashboardTrendPoint, error)
+	getTopProductsFn        func(context.Context, int) ([]stororders.DashboardTopProduct, error)
 }
 
 func (f *fakeOrdersStore) GetOrderMetrics(ctx context.Context) (stororders.OrderMetrics, error) {
@@ -45,6 +47,20 @@ func (f *fakeOrdersStore) UpdateOrderStatus(ctx context.Context, id string, stat
 		return nil
 	}
 	return f.updateOrderStatusFn(ctx, id, status)
+}
+
+func (f *fakeOrdersStore) GetWeeklyRevenueTrend(ctx context.Context) ([]stororders.DashboardTrendPoint, error) {
+	if f.getWeeklyRevenueTrendFn == nil {
+		return []stororders.DashboardTrendPoint{}, nil
+	}
+	return f.getWeeklyRevenueTrendFn(ctx)
+}
+
+func (f *fakeOrdersStore) GetTopProducts(ctx context.Context, limit int) ([]stororders.DashboardTopProduct, error) {
+	if f.getTopProductsFn == nil {
+		return []stororders.DashboardTopProduct{}, nil
+	}
+	return f.getTopProductsFn(ctx, limit)
 }
 
 func TestAdminOrderDetailReturnsStructuredPayload(t *testing.T) {

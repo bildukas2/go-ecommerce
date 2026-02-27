@@ -21,6 +21,18 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
     {
       label: "Paid",
       value: metrics.paid,
+      accent: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+      ring: "ring-blue-500/20",
+    },
+    {
+      label: "Processing",
+      value: metrics.processing,
+      accent: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
+      ring: "ring-indigo-500/20",
+    },
+    {
+      label: "Completed",
+      value: metrics.completed,
       accent: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
       ring: "ring-emerald-500/20",
     },
@@ -33,7 +45,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
       {items.map((item) => (
         <div
           key={item.label}

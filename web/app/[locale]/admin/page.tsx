@@ -4,11 +4,6 @@ import { DashboardMetrics } from "@/components/admin/dashboard-metrics";
 import { RecentOrdersTable } from "@/components/admin/recent-orders-table";
 import { Button } from "@/components/ui/button";
 import {
-  ADMIN_DASHBOARD_MOCK,
-  ADMIN_DASHBOARD_MOCK_TOP_PRODUCTS,
-  ADMIN_DASHBOARD_MOCK_TREND,
-} from "@/lib/admin-dashboard-mock";
-import {
   emptyDashboard,
   normalizeDashboardData,
   resolveDashboardErrorMessage,
@@ -24,6 +19,7 @@ export default async function AdminDashboardPage() {
   let dashboard = emptyDashboard();
 
   if (useMockDashboard) {
+    const { ADMIN_DASHBOARD_MOCK } = await import("@/lib/admin-dashboard-mock");
     dashboard = normalizeDashboardData(ADMIN_DASHBOARD_MOCK);
   } else {
     try {
@@ -32,6 +28,8 @@ export default async function AdminDashboardPage() {
       fetchError = resolveDashboardErrorMessage(error);
     }
   }
+
+  const maxRevenue = Math.max(...dashboard.revenue_trend.map((t) => t.total_cents), 1);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 p-4 md:p-8">
@@ -67,42 +65,49 @@ export default async function AdminDashboardPage() {
         <section className="glass rounded-2xl border p-5">
           <div className="mb-4">
             <h2 className="text-base font-semibold">Weekly revenue trend</h2>
-            <p className="text-sm text-foreground/65">Orders and revenue preview over the last 7 days.</p>
+            <p className="text-sm text-foreground/65">Orders and revenue over the last 7 days.</p>
           </div>
           <div className="grid grid-cols-7 gap-2">
-            {ADMIN_DASHBOARD_MOCK_TREND.map((point) => (
-              <div key={point.label} className="rounded-xl bg-foreground/[0.03] p-2 text-center">
-                <div className="mb-2 flex h-20 items-end justify-center">
-                  <div
-                    className="w-5 rounded-md bg-gradient-to-t from-blue-500/35 to-cyan-400/75"
-                    style={{
-                      height: `${Math.max(
-                        16,
-                        Math.round((point.revenue_cents / 365100) * 80),
-                      )}%`,
-                    }}
-                  />
+            {dashboard.revenue_trend.map((point) => {
+              const label = useMockDashboard
+                ? point.date
+                : new Date(point.date).toLocaleDateString(undefined, { weekday: "short" });
+              return (
+                <div key={point.date} className="rounded-xl bg-foreground/[0.03] p-2 text-center">
+                  <div className="mb-2 flex h-20 items-end justify-center">
+                    <div
+                      className="w-5 rounded-md bg-gradient-to-t from-blue-500/35 to-cyan-400/75"
+                      style={{
+                        height: `${Math.max(16, Math.round((point.total_cents / maxRevenue) * 80))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs font-medium">{label}</p>
+                  <p className="text-[11px] text-foreground/65">{point.order_count} orders</p>
                 </div>
-                <p className="text-xs font-medium">{point.label}</p>
-                <p className="text-[11px] text-foreground/65">{point.orders} orders</p>
+              );
+            })}
+            {dashboard.revenue_trend.length === 0 && (
+              <div className="col-span-7 py-8 text-center text-sm text-foreground/50">
+                No data available for the last 7 days.
               </div>
-            ))}
+            )}
           </div>
         </section>
 
         <section className="glass rounded-2xl border p-5">
           <div className="mb-4">
             <h2 className="text-base font-semibold">Top products</h2>
-            <p className="text-sm text-foreground/65">Best-selling items in this preview.</p>
+            <p className="text-sm text-foreground/65">Best-selling items by revenue.</p>
           </div>
           <div className="space-y-3">
-            {ADMIN_DASHBOARD_MOCK_TOP_PRODUCTS.map((product) => (
-              <div key={product.id} className="rounded-xl bg-foreground/[0.03] p-3">
-                <p className="text-sm font-medium">{product.name}</p>
+            {dashboard.top_products.map((product) => (
+              <div key={product.sku} className="rounded-xl bg-foreground/[0.03] p-3">
+                <p className="text-sm font-medium">{product.product_title}</p>
                 <div className="mt-1 flex items-center justify-between text-xs text-foreground/65">
-                  <span>{product.units} units</span>
+                  <span>{product.total_sold} units</span>
                   <span>
-                    {(product.revenue_cents / 100).toLocaleString(undefined, {
+                    {(product.total_revenue / 100).toLocaleString(undefined, {
                       style: "currency",
                       currency: "USD",
                     })}
@@ -110,6 +115,9 @@ export default async function AdminDashboardPage() {
                 </div>
               </div>
             ))}
+            {dashboard.top_products.length === 0 && (
+              <div className="py-8 text-center text-sm text-foreground/50">No products sold yet.</div>
+            )}
           </div>
         </section>
       </div>

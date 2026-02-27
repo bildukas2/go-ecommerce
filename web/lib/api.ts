@@ -1771,6 +1771,8 @@ export type DashboardMetrics = {
   total_orders: number;
   pending_payment: number;
   paid: number;
+  processing: number;
+  completed: number;
   cancelled: number;
 };
 
@@ -1783,9 +1785,24 @@ export type DashboardRecentOrder = {
   created_at: string;
 };
 
+export type DashboardTrendPoint = {
+  date: string;
+  total_cents: number;
+  order_count: number;
+};
+
+export type DashboardTopProduct = {
+  product_title: string;
+  sku: string;
+  total_sold: number;
+  total_revenue: number;
+};
+
 export type DashboardResponse = {
   metrics: DashboardMetrics;
   recent_orders: DashboardRecentOrder[];
+  revenue_trend: DashboardTrendPoint[];
+  top_products: DashboardTopProduct[];
 };
 
 export type AdminOrderDetailItem = {

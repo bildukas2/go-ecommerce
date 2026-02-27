@@ -1,23 +1,12 @@
 import type { DashboardResponse } from "@/lib/api";
 
-export type DashboardTrendPoint = {
-  label: string;
-  orders: number;
-  revenue_cents: number;
-};
-
-export type DashboardTopProduct = {
-  id: string;
-  name: string;
-  units: number;
-  revenue_cents: number;
-};
-
 export const ADMIN_DASHBOARD_MOCK: DashboardResponse = {
   metrics: {
     total_orders: 1428,
     pending_payment: 37,
     paid: 1332,
+    processing: 45,
+    completed: 1287,
     cancelled: 59,
   },
   recent_orders: [
@@ -62,21 +51,19 @@ export const ADMIN_DASHBOARD_MOCK: DashboardResponse = {
       created_at: "2026-02-17T15:49:00Z",
     },
   ],
+  revenue_trend: [
+    { date: "Mon", order_count: 158, total_cents: 244000 },
+    { date: "Tue", order_count: 201, total_cents: 289500 },
+    { date: "Wed", order_count: 179, total_cents: 260900 },
+    { date: "Thu", order_count: 226, total_cents: 321400 },
+    { date: "Fri", order_count: 241, total_cents: 349800 },
+    { date: "Sat", order_count: 247, total_cents: 365100 },
+    { date: "Sun", order_count: 176, total_cents: 248200 },
+  ],
+  top_products: [
+    { sku: "p_hoodie_black", product_title: "Core Hoodie Black", total_sold: 182, total_revenue: 1455820 },
+    { sku: "p_cap_storm", product_title: "Storm Cap", total_sold: 149, total_revenue: 506600 },
+    { sku: "p_tee_oversized", product_title: "Oversized Tee", total_sold: 133, total_revenue: 878550 },
+    { sku: "p_jacket_city", product_title: "City Runner Jacket", total_sold: 86, total_revenue: 842800 },
+  ],
 };
-
-export const ADMIN_DASHBOARD_MOCK_TREND: DashboardTrendPoint[] = [
-  { label: "Mon", orders: 158, revenue_cents: 244000 },
-  { label: "Tue", orders: 201, revenue_cents: 289500 },
-  { label: "Wed", orders: 179, revenue_cents: 260900 },
-  { label: "Thu", orders: 226, revenue_cents: 321400 },
-  { label: "Fri", orders: 241, revenue_cents: 349800 },
-  { label: "Sat", orders: 247, revenue_cents: 365100 },
-  { label: "Sun", orders: 176, revenue_cents: 248200 },
-];
-
-export const ADMIN_DASHBOARD_MOCK_TOP_PRODUCTS: DashboardTopProduct[] = [
-  { id: "p_hoodie_black", name: "Core Hoodie Black", units: 182, revenue_cents: 1455820 },
-  { id: "p_cap_storm", name: "Storm Cap", units: 149, revenue_cents: 506600 },
-  { id: "p_tee_oversized", name: "Oversized Tee", units: 133, revenue_cents: 878550 },
-  { id: "p_jacket_city", name: "City Runner Jacket", units: 86, revenue_cents: 842800 },
-];

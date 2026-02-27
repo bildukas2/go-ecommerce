@@ -5,15 +5,21 @@ const EMPTY_DASHBOARD = Object.freeze({
     total_orders: 0,
     pending_payment: 0,
     paid: 0,
+    processing: 0,
+    completed: 0,
     cancelled: 0,
   },
   recent_orders: [],
+  revenue_trend: [],
+  top_products: [],
 });
 
 export function emptyDashboard() {
   return {
     metrics: { ...EMPTY_DASHBOARD.metrics },
     recent_orders: [],
+    revenue_trend: [],
+    top_products: [],
   };
 }
 
@@ -21,15 +27,21 @@ export function normalizeDashboardData(payload) {
   const source = isRecord(payload) ? payload : {};
   const metricsSource = isRecord(source.metrics) ? source.metrics : {};
   const recentOrdersSource = Array.isArray(source.recent_orders) ? source.recent_orders : [];
+  const revenueTrendSource = Array.isArray(source.revenue_trend) ? source.revenue_trend : [];
+  const topProductsSource = Array.isArray(source.top_products) ? source.top_products : [];
 
   return {
     metrics: {
       total_orders: toNonNegativeInt(metricsSource.total_orders),
       pending_payment: toNonNegativeInt(metricsSource.pending_payment),
       paid: toNonNegativeInt(metricsSource.paid),
+      processing: toNonNegativeInt(metricsSource.processing),
+      completed: toNonNegativeInt(metricsSource.completed),
       cancelled: toNonNegativeInt(metricsSource.cancelled),
     },
     recent_orders: recentOrdersSource.filter(isRecentOrderLike),
+    revenue_trend: revenueTrendSource.filter(isTrendPointLike),
+    top_products: topProductsSource.filter(isTopProductLike),
   };
 }
 
@@ -64,6 +76,25 @@ function isRecentOrderLike(value) {
     Number.isFinite(Number(value.total_cents)) &&
     typeof value.currency === "string" &&
     typeof value.created_at === "string"
+  );
+}
+
+function isTrendPointLike(value) {
+  return (
+    isRecord(value) &&
+    typeof value.date === "string" &&
+    Number.isFinite(Number(value.total_cents)) &&
+    Number.isFinite(Number(value.order_count))
+  );
+}
+
+function isTopProductLike(value) {
+  return (
+    isRecord(value) &&
+    typeof value.product_title === "string" &&
+    typeof value.sku === "string" &&
+    Number.isFinite(Number(value.total_sold)) &&
+    Number.isFinite(Number(value.total_revenue))
   );
 }
 
