@@ -222,6 +222,7 @@
       "email_templates": "Templates",
       "shipping": "Shipping",
       "payments": "Payments",
+      "translations": "Translations",
       "logout": "Logout",
       "view_storefront": "View Storefront",
       "search_placeholder": "Search admin...",

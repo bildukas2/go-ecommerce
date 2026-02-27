@@ -23,6 +23,7 @@ const DESKTOP_COLLAPSED_WIDTH = 88;
 const navItems: NavItem[] = [
   { href: "/admin", labelKey: "dashboard", icon: <LayoutDashboard size={18} /> },
   { href: "/admin/orders", labelKey: "orders", icon: <ShoppingCart size={18} /> },
+  { href: "/admin/translations", labelKey: "translations", icon: <Languages size={18} /> },
 ];
 
 const catalogItems: NavItem[] = [

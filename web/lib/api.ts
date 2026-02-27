@@ -3754,3 +3754,41 @@ export async function getStorefrontShippingOptions(params: {
     }) : [],
   };
 }
+
+export type AdminTranslationsListResponse = {
+  items: string[];
+};
+
+export async function getAdminTranslations(): Promise<AdminTranslationsListResponse> {
+  const url = apiJoin("admin/translations");
+  const init = await adminRequestHeaders();
+  const res = await fetch(url, { ...init, cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch translations: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getAdminTranslationDetail(locale: string): Promise<Record<string, any>> {
+  const url = apiJoin(`admin/translations/${locale}`);
+  const init = await adminRequestHeaders();
+  const res = await fetch(url, { ...init, cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch translation detail for ${locale}: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateAdminTranslation(locale: string, translations: Record<string, any>): Promise<{ status: string }> {
+  const url = apiJoin(`admin/translations/${locale}`);
+  const init = await adminMutationHeaders();
+  const res = await fetch(url, {
+    ...init,
+    method: "PUT",
+    body: JSON.stringify(translations),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update translation for ${locale}: ${res.status}`);
+  }
+  return res.json();
+}
