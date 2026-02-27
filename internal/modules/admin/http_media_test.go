@@ -20,6 +20,7 @@ import (
 type fakeMediaStore struct {
 	createAssetFn func(context.Context, stormedia.CreateAssetInput) (stormedia.Asset, error)
 	listAssetsFn  func(context.Context, stormedia.ListAssetsParams) ([]stormedia.Asset, error)
+	deleteAssetFn func(context.Context, string) (string, error)
 }
 
 func (f *fakeMediaStore) CreateAsset(ctx context.Context, in stormedia.CreateAssetInput) (stormedia.Asset, error) {
@@ -34,6 +35,13 @@ func (f *fakeMediaStore) ListAssets(ctx context.Context, in stormedia.ListAssets
 		return []stormedia.Asset{}, nil
 	}
 	return f.listAssetsFn(ctx, in)
+}
+
+func (f *fakeMediaStore) DeleteAsset(ctx context.Context, id string) (string, error) {
+	if f.deleteAssetFn == nil {
+		return "", nil
+	}
+	return f.deleteAssetFn(ctx, id)
 }
 
 func TestAdminMediaListSuccess(t *testing.T) {

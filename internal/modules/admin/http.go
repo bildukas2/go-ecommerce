@@ -39,6 +39,7 @@ type module struct {
 	validateImportHost  func(context.Context, string) error
 	downloadImportImage func(context.Context, string) ([]byte, string, error)
 	uploadsDir          string
+	translationsDir     string
 }
 
 func NewModule(deps app.Deps) app.Module {
@@ -87,13 +88,20 @@ func NewModule(deps app.Deps) app.Module {
 		uploadsDir = "./tmp/uploads"
 	}
 	_ = os.MkdirAll(uploadsDir, 0o755)
+
+	translationsDir := strings.TrimSpace(os.Getenv("TRANSLATIONS_DIR"))
+	if translationsDir == "" {
+		translationsDir = "./web/i18n/messages"
+	}
+
 	return &module{
-		orders:     ost,
-		customers:  cust,
-		catalog:    cst,
-		media:      mst,
-		terminals:  tst,
-		uploadsDir: uploadsDir,
+		orders:          ost,
+		customers:       cust,
+		catalog:         cst,
+		media:           mst,
+		terminals:       tst,
+		uploadsDir:      uploadsDir,
+		translationsDir: translationsDir,
 	}
 }
 
@@ -150,6 +158,8 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/custom-options", m.handleCustomOptions)
 	mux.HandleFunc("/admin/custom-options/", m.handleCustomOptionDetail)
 	mux.HandleFunc("/admin/products/", m.handleProductCustomOptionAssignments)
+	mux.HandleFunc("/admin/translations", m.handleTranslations)
+	mux.HandleFunc("/admin/translations/", m.handleTranslationDetail)
 }
 
 func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {

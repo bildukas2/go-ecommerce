@@ -33,6 +33,9 @@ type fakeCatalogStore struct {
 	listAssignmentsFn       func(context.Context, string) ([]storcat.ProductCustomOptionAssignment, error)
 	attachAssignmentFn      func(context.Context, string, string, *int) (storcat.ProductCustomOptionAssignment, error)
 	detachAssignmentFn      func(context.Context, string, string) error
+	addProductImageFn       func(context.Context, string, string, string) (storcat.Image, error)
+	removeProductImageFn    func(context.Context, string, string) error
+	setDefaultProductImageFn func(context.Context, string, string) error
 }
 
 func (f *fakeCatalogStore) CreateCategory(ctx context.Context, in storcat.CategoryUpsertInput) (storcat.Category, error) {
@@ -154,6 +157,24 @@ func (f *fakeCatalogStore) DetachProductCustomOption(ctx context.Context, produc
 		return nil
 	}
 	return f.detachAssignmentFn(ctx, productID, optionID)
+}
+func (f *fakeCatalogStore) AddProductImage(ctx context.Context, productID, url, alt string) (storcat.Image, error) {
+	if f.addProductImageFn == nil {
+		return storcat.Image{}, nil
+	}
+	return f.addProductImageFn(ctx, productID, url, alt)
+}
+func (f *fakeCatalogStore) RemoveProductImage(ctx context.Context, imageID, productID string) error {
+	if f.removeProductImageFn == nil {
+		return nil
+	}
+	return f.removeProductImageFn(ctx, imageID, productID)
+}
+func (f *fakeCatalogStore) SetDefaultProductImage(ctx context.Context, imageID, productID string) error {
+	if f.setDefaultProductImageFn == nil {
+		return nil
+	}
+	return f.setDefaultProductImageFn(ctx, imageID, productID)
 }
 
 func TestCatalogCreateCategorySuccess(t *testing.T) {
