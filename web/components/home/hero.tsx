@@ -48,14 +48,9 @@ export function HomeHero() {
           <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,var(--glow-secondary)_0%,transparent_65%)] opacity-80 dark:opacity-100" />
           <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,var(--glow-primary)_0%,transparent_70%)] opacity-70 dark:opacity-90" />
           <div className="relative aspect-[16/9] rounded-2xl border border-surface-border bg-white/86 p-6 ring-1 ring-black/5 dark:bg-neutral-900/92 dark:ring-white/10">
-            <div className="flex h-full flex-col justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{t("spotlight_label")}</p>
-                <h2 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-50">{t("spotlight_title")}</h2>
-              </div>
-              <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                {t("spotlight_description")}
-              </p>
+            <div className="flex h-full flex-col items-center justify-center gap-4">
+              <Image src="/img/Volm logo small.png" alt="Volm" width={120} height={120} className="object-contain" />
+              <span className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">Volm</span>
             </div>
           </div>
         </div>
