@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 import { Providers } from "@/components/providers";
-import { StorefrontHeader } from "@/components/storefront-header";
-import { StorefrontFooter } from "@/components/storefront-footer";
+import { ui } from "@/core/ui";
 import { getCurrentAccount, getStorefrontNavigationLocation } from "@/lib/api";
 import type { StorefrontNavigationItem } from "@/lib/api";
+
+const StorefrontHeader = ui("StorefrontHeader");
+const StorefrontFooter = ui("StorefrontFooter");
 
 export default async function StorefrontLayout({
   children,
