@@ -3,19 +3,13 @@
  * This file will never be touched by upstream.
  *
  * HOW TO OVERRIDE A PAGE:
- * 1. Create your page file in this folder (or copy an .example.tsx).
- * 2. Add an export below using the stable name from web/core/pages/index.ts.
+ * 1. Copy the matching .example.tsx file and rename it (drop the .example part).
+ * 2. Uncomment the export line below for that page.
+ * 3. Edit your file freely — core files are never touched.
  *
- * Stable page names:
- *   - HomePage
- *
- * Examples:
- *   export { default as HomePage } from "./HomePage";
+ * Available pages:
  */
 
-// Add your page overrides here, e.g.:
 // export { default as HomePage } from "./HomePage";
 
-// Required: file must be a TypeScript module.
-export {}
-//export {default as HomePage} from  "./HomePage";
+export {};

@@ -3,20 +3,14 @@
  * This file will never be touched by upstream.
  *
  * HOW TO OVERRIDE A COMPONENT:
- * 1. Create your component file in this folder, e.g.:
- *      web/theme/overrides/components/MyHeader.tsx
+ * 1. Copy the matching .example.tsx file and rename it (drop the .example part).
+ * 2. Uncomment the export line below for that component.
+ * 3. Edit your file freely — core files are never touched.
  *
- * 2. Add it to the map below using the same stable name as the core component:
- *      export { MyHeader as StorefrontHeader } from "./MyHeader";
- *
- * 3. The ui() resolver will automatically use your override instead of the core component.
- *
- * Stable component names (from web/core/components/index.ts):
- *   - StorefrontHeader
- *   - StorefrontFooter
+ * Available components:
  */
 
-// No overrides yet — add your exports here.
+// export { StorefrontHeader } from "./StorefrontHeader";
+// export { StorefrontFooter } from "./StorefrontFooter";
 
-// Required: file must be a TypeScript module.
 export {};
