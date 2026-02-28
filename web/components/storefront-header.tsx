@@ -11,6 +11,7 @@ import { LogoutButton } from "@/components/account/logout-button";
 import { AdminButton } from "@/components/admin-button";
 import type { StorefrontNavigationItem } from "@/lib/api";
 import { Menu, X } from "lucide-react";
+import { Slot, SLOTS } from "@/plugins/slots";
 
 type StorefrontHeaderProps = {
   isAuthenticated: boolean;
@@ -62,6 +63,7 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
             <ThemeToggle />
             <LocaleSwitcher />
             <CartButton />
+            <Slot name={SLOTS.LAYOUT_HEADER_ACTIONS} />
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">
