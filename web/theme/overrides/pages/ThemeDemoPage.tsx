@@ -133,7 +133,7 @@ const features: FeatureCard[] = [
     icon: "🔀",
     title: "ui() resolver",
     description:
-      "Drop a file in theme/overrides/components/ and export it with the stable name. The resolver picks it up automatically.",
+      "Override pages in theme/overrides/pages/ or components in theme/overrides/components/. Export with the stable name — resolver picks it up automatically.",
     tag: "web/core/ui.tsx",
     tagColor: "bg-violet-500/10 text-violet-400 border-violet-500/20",
   },
@@ -209,7 +209,21 @@ export const brand = {
 } as const;`,
   },
   {
-    label: "2. Override a core component",
+    label: "2. Override a page",
+    code: `// web/theme/overrides/pages/HomePage.tsx
+export default async function HomePage() {
+  return (
+    <main>
+      <h1>My custom home page</h1>
+    </main>
+  );
+}
+
+// web/theme/overrides/pages/index.ts
+export { default as HomePage } from "./HomePage";`,
+  },
+  {
+    label: "3. Override a component",
     code: `// web/theme/overrides/components/MyHeader.tsx
 export function MyHeader(props) {
   return <header>My custom header</header>;
@@ -217,20 +231,6 @@ export function MyHeader(props) {
 
 // web/theme/overrides/components/index.ts
 export { MyHeader as StorefrontHeader } from "./MyHeader";`,
-  },
-  {
-    label: "3. Register a plugin",
-    code: `// web/plugins/enabled.ts
-import { myPlugin } from "./_examples/my-plugin";
-export const enabledPlugins = [myPlugin];
-
-// web/plugins/_examples/my-plugin/index.tsx
-export const myPlugin: Plugin = {
-  id: "my-plugin",
-  slots: {
-    [SLOTS.LAYOUT_HEADER_ACTIONS]: [MyBadge],
-  },
-};`,
   },
 ];
 
