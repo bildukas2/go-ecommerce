@@ -1,4 +1,4 @@
-import { ThemeDemoPage } from "@/theme/overrides/components/ThemeDemoPage";
+import { ThemeDemoPage } from "@/theme/overrides/pages/ThemeDemoPage";
 
 export const metadata = {
   title: "Theme Demo — VOLM",
