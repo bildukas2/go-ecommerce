@@ -45,7 +45,7 @@ export function HomeHero() {
           <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,var(--glow-primary)_0%,transparent_70%)] opacity-70 dark:opacity-90" />
           <div className="relative aspect-[16/9] rounded-2xl border border-surface-border bg-white/86 p-6 ring-1 ring-black/5 dark:bg-neutral-900/92 dark:ring-white/10">
             <div className="flex h-full items-center justify-center">
-              <Image src="/img/Volm logo small.png" alt="Volm" width={200} height={200} className="object-contain" />
+              <Image src="/img/Volm logo small.png" alt="Volm" width={250} height={250} className="object-contain" />
             </div>
           </div>
         </div>
