@@ -10,7 +10,8 @@
  * Available components:
  */
 
+
+export {};
 // export { StorefrontHeader } from "./StorefrontHeader";
 // export { StorefrontFooter } from "./StorefrontFooter";
 
-export {};
