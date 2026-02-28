@@ -74,3 +74,34 @@ MIT for the core.
 ## Trademark note:
 - Project name/logo trademarks of the owner. 
 - Forks are allowed under MIT, but do not use the official brand assets without permission.
+
+
+## 
+## 1) Add a “Safe Zone” that you never overwrite
+
+Create these folders:
+````
+web/
+core/                 # you own (upstream changes)
+theme/                # user owns (safe zone)
+brand.ts
+globals.css         # (optional) theme-only css
+overrides/
+components/
+app/
+plugins/              # optional add-ons
+enabled.ts
+registry.ts
+slots.ts
+_examples/
+
+````
+Rule for forks (simple):
+
+If you want to customize look/layout → edit web/theme/**
+
+If you want features → add plugin in web/plugins/**
+
+Avoid editing web/core/**
+
+This alone reduces merge pain massively.
