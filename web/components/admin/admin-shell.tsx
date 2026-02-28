@@ -616,12 +616,12 @@ function SidebarContent({
           onClick={onCloseMobile}
           aria-label={t("dashboard")}
         >
-          <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/14 text-sm font-semibold text-blue-600 dark:text-blue-300">
-            G
+          <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/14 overflow-hidden">
+            <img src="/img/Volm logo small.png" alt="Volm" width={28} height={28} className="object-contain" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">Go Ecommerce</p>
+              <p className="truncate text-sm font-semibold">Volm</p>
               <p className="truncate text-xs text-foreground/65">Admin</p>
             </div>
           )}

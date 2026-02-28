@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -32,7 +33,10 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
     <>
       <header className="relative z-40 border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="text-sm font-semibold">go-ecommerce</Link>
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/img/Volm logo small.png" alt="Volm" width={28} height={28} className="object-contain" />
+            <span className="text-sm font-semibold">Volm</span>
+          </Link>
           <nav className="hidden md:flex items-center gap-3">
             <Link href="/products" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">
               {t("products")}

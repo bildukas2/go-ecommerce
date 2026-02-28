@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
 import type { StorefrontNavigationItem } from "@/lib/api";
@@ -48,7 +49,10 @@ export function StorefrontFooter({ shopItems = [], infoItems = [] }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Logo & About */}
           <div className="flex flex-col gap-4">
-            <Link href="/" className="text-lg font-bold">go-ecommerce</Link>
+            <Link href="/" className="flex items-center gap-2">
+              <Image src="/img/Volm logo small.png" alt="Volm" width={32} height={32} className="object-contain" />
+              <span className="text-lg font-bold">Volm</span>
+            </Link>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
               {t("about_text")}
             </p>
@@ -69,7 +73,7 @@ export function StorefrontFooter({ shopItems = [], infoItems = [] }: Props) {
 
         <div className="mt-12 pt-8 border-t border-neutral-100 dark:border-neutral-900 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-neutral-400 dark:text-neutral-600">
-            &copy; {currentYear} go-ecommerce. {t("rights")}
+            &copy; {currentYear} Volm. {t("rights")}
           </p>
           <div className="flex gap-6">
             <Link href="/page/terms" className="text-xs text-neutral-400 hover:text-neutral-600 dark:text-neutral-600 dark:hover:text-neutral-400">{t("links.terms")}</Link>
