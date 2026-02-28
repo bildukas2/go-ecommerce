@@ -30,6 +30,7 @@ export function CategoryMediaPicker({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedURL, setSelectedURL] = useState(defaultImageURL);
+  const [manualURL, setManualURL] = useState(defaultImageURL);
 
   const selectedAsset = useMemo(
     () => mediaAssets.find((asset) => asset.url === selectedURL) ?? null,
@@ -58,7 +59,8 @@ export function CategoryMediaPicker({
         <input
           name="default_image_url"
           type="url"
-          defaultValue={defaultImageURL}
+          value={manualURL}
+          onChange={(e) => setManualURL(e.target.value)}
           placeholder="https://..."
           className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
         />
@@ -82,6 +84,15 @@ export function CategoryMediaPicker({
           >
             Use manual URL
           </button>
+          {(selectedURL || manualURL) && (
+            <button
+              type="button"
+              onClick={() => { setSelectedURL(""); setManualURL(""); }}
+              className="rounded-lg border border-red-500/35 bg-red-500/12 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-500/18 dark:text-red-300"
+            >
+              Remove image
+            </button>
+          )}
           <span className="text-xs text-foreground/65">
             {selectedAsset ? `Selected: ${selectedLabel}` : "No media selected"}
           </span>
