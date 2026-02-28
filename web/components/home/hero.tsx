@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,10 @@ export function HomeHero() {
     <section className="hero-aurora mx-auto max-w-6xl px-6 pb-12 pt-14 md:pb-16 md:pt-20">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-center">
         <div>
+          <div className="mb-6 flex items-center gap-3">
+            <Image src="/img/Volm logo small.png" alt="Volm" width={48} height={48} className="object-contain" />
+            <span className="text-2xl font-bold tracking-tight">Volm</span>
+          </div>
           <span className="hero-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
             <Flame size={11} className="hero-badge-flame" aria-hidden="true" />
             {t("badge")}
