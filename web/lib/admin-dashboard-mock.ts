@@ -8,6 +8,8 @@ export const ADMIN_DASHBOARD_MOCK: DashboardResponse = {
     processing: 45,
     completed: 1287,
     cancelled: 59,
+    predicted_revenue: 0,
+    real_revenue: 0,
   },
   recent_orders: [
     {

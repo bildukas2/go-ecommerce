@@ -17,3 +17,6 @@
  */
 
 // No overrides yet — add your exports here.
+
+// Required: file must be a TypeScript module.
+export {};
