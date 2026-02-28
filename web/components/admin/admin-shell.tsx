@@ -617,7 +617,7 @@ function SidebarContent({
           aria-label={t("dashboard")}
         >
           <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/14 overflow-hidden">
-            <img src="/img/Volm logo small.png" alt="Volm" width={28} height={28} className="object-contain" />
+            <img src="/img/favicon.png" alt="Volm" width={28} height={28} className="object-contain" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
