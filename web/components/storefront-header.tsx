@@ -10,7 +10,7 @@ import { CartButton, CartDrawer } from "@/components/cart-drawer";
 import { LogoutButton } from "@/components/account/logout-button";
 import { AdminButton } from "@/components/admin-button";
 import type { StorefrontNavigationItem } from "@/lib/api";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Flag } from "lucide-react";
 import { Slot, SLOTS } from "@/plugins/slots";
 
 type StorefrontHeaderProps = {
@@ -34,10 +34,19 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
     <>
       <header className="relative z-40 border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/img/favicon.png" alt="Volm" width={50} height={50} className="object-contain" />
-            <span className="text-sm font-semibold">Volm</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <Image src="/img/favicon.png" alt="Volm" width={50} height={50} className="object-contain" />
+              <span className="text-sm font-semibold">Volm</span>
+            </Link>
+            <Link
+              href="/milestones"
+              className="hidden items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700 shadow-sm transition hover:border-violet-300 hover:text-violet-600 md:inline-flex dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-violet-500 dark:hover:text-violet-400"
+            >
+              <Flag size={11} aria-hidden="true" />
+              Milestones
+            </Link>
+          </div>
           <nav className="hidden md:flex items-center gap-3">
             <Link href="/products" className="text-sm text-neutral-600 dark:text-neutral-400 hover:underline">
               {t("products")}
@@ -101,6 +110,10 @@ export function StorefrontHeader({ isAuthenticated, mobileItems = [] }: Storefro
             <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-1" />
             <Link href="/products" className="text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>
               {t("products")}
+            </Link>
+            <Link href="/milestones" className="flex items-center gap-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:underline" onClick={closeMobileMenu}>
+              <Flag size={13} aria-hidden="true" />
+              Milestones
             </Link>
             <AdminButton />
             {isAuthenticated ? (
