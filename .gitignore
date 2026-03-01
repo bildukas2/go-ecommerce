@@ -36,6 +36,7 @@ build/
 *.log
 
 # Editor/IDE
+/.claude/
 /.idea/
 /.vscode/
 /.zencoder/

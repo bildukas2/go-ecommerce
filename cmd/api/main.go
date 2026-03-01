@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,11 +34,35 @@ func main() {
 		log.Printf("No .env file found: %v", err)
 	}
 
+	socketPath := os.Getenv("UNIX_SOCKET")
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	addr := ":" + port
+
+	var (
+		ln  net.Listener
+		err error
+	)
+
+	if socketPath != "" {
+		_ = os.Remove(socketPath)
+		ln, err = net.Listen("unix", socketPath)
+		if err != nil {
+			log.Fatalf("unix listen error: %v", err)
+		}
+		if err := os.Chmod(socketPath, 0660); err != nil {
+			log.Printf("chmod socket failed: %v", err)
+		}
+		log.Printf("http server listening on unix:%s", socketPath)
+	} else {
+		addr := ":" + port
+		ln, err = net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalf("tcp listen error: %v", err)
+		}
+		log.Printf("http server listening on %s", addr)
+	}
 
 	var deps app.Deps
 	ctx := context.Background()
@@ -86,7 +111,6 @@ func main() {
 	router := app.NewRouter(deps)
 
 	srv := &http.Server{
-		Addr:         addr,
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -94,8 +118,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("http server listening on %s", addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
@@ -110,5 +133,11 @@ func main() {
 		log.Printf("graceful shutdown failed: %v", err)
 	}
 	_ = app.CloseModules()
+
+	// Cleanup socket on exit (optional but nice)
+	if socketPath != "" {
+		_ = os.Remove(socketPath)
+	}
+
 	log.Printf("server stopped")
 }
