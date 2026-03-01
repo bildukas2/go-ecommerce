@@ -1,8 +1,18 @@
-import { API_URL } from "./config";
+import { API_URL, SERVER_API_URL } from "./config";
 import { parseCheckoutResponse } from "./checkout-state";
 
 function apiJoin(path: string): string {
   const base = new URL(API_URL);
+  const clean = path.replace(/^\/+/, "");
+  if (!base.pathname.endsWith("/")) base.pathname += "/";
+  return new URL(clean, base).toString();
+}
+
+// For server-component fetches: uses SERVER_API_URL to bypass the reverse
+// proxy and talk directly to the Go API. This prevents the loopback routing
+// problem where Apache intercepts Next.js SSR requests to /admin/*.
+function serverApiJoin(path: string): string {
+  const base = new URL(SERVER_API_URL);
   const clean = path.replace(/^\/+/, "");
   if (!base.pathname.endsWith("/")) base.pathname += "/";
   return new URL(clean, base).toString();
@@ -734,7 +744,7 @@ async function throwBlockedIPErrorIfNeeded(res: Response): Promise<void> {
 }
 
 export async function getAdminCategories(): Promise<{ items: AdminCategory[] }> {
-  const url = new URL(apiJoin("admin/catalog/categories"));
+  const url = new URL(serverApiJoin("admin/catalog/categories"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -749,7 +759,7 @@ export async function getAdminCategories(): Promise<{ items: AdminCategory[] }> 
 
 // Pages
 export async function getAdminPages(params: { query?: string; status?: string; limit?: number; offset?: number } = {}): Promise<AdminPageListResponse> {
-  const url = new URL(apiJoin("admin/pages"));
+  const url = new URL(serverApiJoin("admin/pages"));
   if (params.query) url.searchParams.set("query", params.query);
   if (params.status) url.searchParams.set("status", params.status);
   if (params.limit) url.searchParams.set("limit", String(params.limit));
@@ -769,7 +779,7 @@ export async function getAdminPages(params: { query?: string; status?: string; l
 }
 
 export async function getAdminPage(id: string): Promise<AdminPage> {
-  const url = apiJoin(`admin/pages/${encodeURIComponent(id)}`);
+  const url = serverApiJoin(`admin/pages/${encodeURIComponent(id)}`);
   const res = await fetch(url, {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -833,7 +843,7 @@ export async function checkAdminPageSlug(slug: string, excludeId?: string): Prom
 
 // Navigation (legacy list endpoint kept for compatibility)
 export async function getAdminNavigation(): Promise<{ items: AdminNavigationItem[] }> {
-  const url = apiJoin("admin/navigation");
+  const url = serverApiJoin("admin/navigation");
   const res = await fetch(url, {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -848,7 +858,7 @@ export async function getAdminNavigation(): Promise<{ items: AdminNavigationItem
 
 // Navigation menus
 export async function getAdminNavigationMenus(): Promise<{ menus: AdminNavigationMenu[] }> {
-  const url = apiJoin("admin/navigation/menus");
+  const url = serverApiJoin("admin/navigation/menus");
   const res = await fetch(url, {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -907,7 +917,7 @@ export async function deleteAdminNavigationMenu(id: string): Promise<void> {
 
 // Navigation menu items
 export async function getAdminNavigationMenuItems(menuID: string): Promise<{ items: AdminNavigationItem[] }> {
-  const url = apiJoin(`admin/navigation/menus/${encodeURIComponent(menuID)}/items`);
+  const url = serverApiJoin(`admin/navigation/menus/${encodeURIComponent(menuID)}/items`);
   const res = await fetch(url, {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -1011,7 +1021,7 @@ export async function reorderAdminNavigationMenuItems(menuID: string, itemIDs: s
 
 // Navigation locations
 export async function getAdminNavigationLocations(): Promise<{ locations: AdminNavigationLocation[] }> {
-  const url = apiJoin("admin/navigation/locations");
+  const url = serverApiJoin("admin/navigation/locations");
   const res = await fetch(url, {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -2088,7 +2098,7 @@ function normalizeAdminOrderDetail(raw: unknown): AdminOrderDetail {
 }
 
 export async function getAdminOrders(params: { page?: number; limit?: number } = {}): Promise<{ items: AdminOrderSummary[]; page: number; limit: number; }> {
-  const url = new URL(apiJoin("admin/orders"));
+  const url = new URL(serverApiJoin("admin/orders"));
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
   const res = await fetch(url.toString(), {
@@ -2151,7 +2161,7 @@ export async function getAdminCustomers(params: {
   anonymous?: "anonymous" | "registered";
   sort?: "created_desc" | "created_asc" | "name_asc" | "name_desc" | "email_asc" | "email_desc" | "anonymous_asc" | "anonymous_desc";
 } = {}): Promise<{ items: AdminCustomerSummary[]; total: number; page: number; limit: number; }> {
-  const url = new URL(apiJoin("admin/customers"));
+  const url = new URL(serverApiJoin("admin/customers"));
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
   if (params.q?.trim()) url.searchParams.set("q", params.q.trim());
@@ -2275,7 +2285,7 @@ function normalizeAdminBlockedIP(raw: unknown): AdminBlockedIP | null {
 }
 
 export async function getAdminCustomerGroups(): Promise<{ items: AdminCustomerGroup[] }> {
-  const url = new URL(apiJoin("admin/customers/groups"));
+  const url = new URL(serverApiJoin("admin/customers/groups"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -2296,7 +2306,7 @@ export async function getAdminCustomerActionLogs(params: {
   from?: string;
   to?: string;
 } = {}): Promise<{ items: AdminCustomerActionLog[]; total: number; page: number; limit: number }> {
-  const url = new URL(apiJoin("admin/customers/logs"));
+  const url = new URL(serverApiJoin("admin/customers/logs"));
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
   if (params.q?.trim()) url.searchParams.set("q", params.q.trim());
@@ -2321,7 +2331,7 @@ export async function getAdminCustomerActionLogs(params: {
 }
 
 export async function getAdminBlockedIPs(): Promise<{ items: AdminBlockedIP[] }> {
-  const url = new URL(apiJoin("admin/security/blocked-ips"));
+  const url = new URL(serverApiJoin("admin/security/blocked-ips"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -2410,7 +2420,7 @@ export async function deleteAdminCustomerGroup(id: string): Promise<{ id: string
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {
-  const url = new URL(apiJoin("admin/dashboard"));
+  const url = new URL(serverApiJoin("admin/dashboard"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -2420,7 +2430,7 @@ export async function getDashboard(): Promise<DashboardResponse> {
 }
 
 export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
-  const url = new URL(apiJoin(`admin/orders/${encodeURIComponent(id)}`));
+  const url = new URL(serverApiJoin(`admin/orders/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -2506,7 +2516,7 @@ function normalizeAdminMediaAsset(raw: unknown): AdminMediaAsset | null {
 }
 
 export async function getAdminMedia(params: { limit?: number; offset?: number; media_type?: "image" | "video" } = {}): Promise<AdminMediaListResponse> {
-  const url = new URL(apiJoin("admin/media"));
+  const url = new URL(serverApiJoin("admin/media"));
   if (params.limit) url.searchParams.set("limit", String(params.limit));
   if (params.offset) url.searchParams.set("offset", String(params.offset));
   if (params.media_type) url.searchParams.set("media_type", params.media_type);
@@ -2739,7 +2749,7 @@ export async function createAdminProduct(input: AdminProductMutationInput): Prom
 }
 
 export async function getAdminCustomOptions(params: { q?: string; type_group?: string } = {}): Promise<{ items: AdminCustomOption[] }> {
-  const url = new URL(apiJoin("admin/custom-options"));
+  const url = new URL(serverApiJoin("admin/custom-options"));
   const query = params.q?.trim();
   const typeGroup = params.type_group?.trim().toLowerCase();
   if (query) url.searchParams.set("q", query);
@@ -2758,7 +2768,7 @@ export async function getAdminCustomOptions(params: { q?: string; type_group?: s
 }
 
 export async function getAdminCustomOption(id: string): Promise<AdminCustomOption> {
-  const url = new URL(apiJoin(`admin/custom-options/${encodeURIComponent(id)}`));
+  const url = new URL(serverApiJoin(`admin/custom-options/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -2812,7 +2822,7 @@ export async function deleteAdminCustomOption(id: string): Promise<{ id: string 
 }
 
 export async function getAdminProductCustomOptions(productID: string): Promise<{ items: AdminProductCustomOptionAssignment[] }> {
-  const url = new URL(apiJoin(`admin/products/${encodeURIComponent(productID)}/custom-options`));
+  const url = new URL(serverApiJoin(`admin/products/${encodeURIComponent(productID)}/custom-options`));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3060,7 +3070,7 @@ function normalizeEmailTemplate(raw: unknown): EmailTemplate | null {
 }
 
 export async function getAdminEmailSettings(): Promise<EmailSettings> {
-  const url = new URL(apiJoin("admin/email/settings"));
+  const url = new URL(serverApiJoin("admin/email/settings"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3107,7 +3117,7 @@ export async function sendAdminEmailTest(to: string, lang: string): Promise<{ ok
 }
 
 export async function listAdminEmailTemplates(): Promise<EmailTemplate[]> {
-  const url = new URL(apiJoin("admin/email/templates"));
+  const url = new URL(serverApiJoin("admin/email/templates"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3119,7 +3129,7 @@ export async function listAdminEmailTemplates(): Promise<EmailTemplate[]> {
 }
 
 export async function getAdminEmailTemplate(code: string): Promise<EmailTemplate> {
-  const url = new URL(apiJoin(`admin/email/templates/${encodeURIComponent(code)}`));
+  const url = new URL(serverApiJoin(`admin/email/templates/${encodeURIComponent(code)}`));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3289,7 +3299,7 @@ function normalizeTerminalsCacheItem(raw: unknown): TerminalsCacheItem | null {
 }
 
 export async function getShippingProviders(): Promise<ShippingProvider[]> {
-  const url = new URL(apiJoin("admin/shipping/providers"));
+  const url = new URL(serverApiJoin("admin/shipping/providers"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3369,7 +3379,7 @@ export async function testShippingProvider(
 }
 
 export async function getShippingZones(): Promise<ShippingZone[]> {
-  const url = new URL(apiJoin("admin/shipping/zones"));
+  const url = new URL(serverApiJoin("admin/shipping/zones"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3439,7 +3449,7 @@ export async function deleteShippingZone(id: string): Promise<void> {
 }
 
 export async function getShippingMethods(): Promise<ShippingMethod[]> {
-  const url = new URL(apiJoin("admin/shipping/methods"));
+  const url = new URL(serverApiJoin("admin/shipping/methods"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3620,7 +3630,7 @@ function normalizePaymentMethod(raw: unknown): PaymentMethod | null {
 }
 
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
-  const url = new URL(apiJoin("admin/payments/methods"));
+  const url = new URL(serverApiJoin("admin/payments/methods"));
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",
@@ -3779,7 +3789,7 @@ export type AdminTranslationsListResponse = {
 };
 
 export async function getAdminTranslations(): Promise<AdminTranslationsListResponse> {
-  const url = apiJoin("admin/translations");
+  const url = serverApiJoin("admin/translations");
   const init = await adminRequestHeaders();
   const res = await fetch(url, { ...init, cache: "no-store" });
   if (!res.ok) {
@@ -3789,7 +3799,7 @@ export async function getAdminTranslations(): Promise<AdminTranslationsListRespo
 }
 
 export async function getAdminTranslationDetail(locale: string): Promise<Record<string, any>> {
-  const url = apiJoin(`admin/translations/${locale}`);
+  const url = serverApiJoin(`admin/translations/${locale}`);
   const init = await adminRequestHeaders();
   const res = await fetch(url, { ...init, cache: "no-store" });
   if (!res.ok) {
