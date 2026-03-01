@@ -21,42 +21,42 @@ services:
       - "1025:1025"
       - "8025:8025"
 
-  api:
-    profiles: ["backend", "frontend"]
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.dev
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      REDIS_URL: redis://redis:6379/0
-      PORT: ${PORT}
-      EMAIL_DRIVER: ${EMAIL_DRIVER:-mailpit}
-      EMAIL_HOST: ${EMAIL_HOST:-mailpit}
-      EMAIL_PORT: ${EMAIL_PORT:-1025}
-      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Go E-commerce}
-      EMAIL_FROM_ADDR: ${EMAIL_FROM_ADDR:-noreply@local.test}
-      EMAIL_USERNAME: ${EMAIL_USERNAME:-}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
-    ports:
-      - "${PORT}:${PORT}"
-    volumes:
-      - .:/app
-    depends_on:
-      - postgres
-      - redis
-      - mailpit
+#  api:
+#    profiles: ["backend", "frontend"]
+#    build:
+#      context: .
+#      dockerfile: deploy/Dockerfile.dev
+#    environment:
+#      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+#      REDIS_URL: redis://redis:6379/0
+#      PORT: ${PORT}
+#      EMAIL_DRIVER: ${EMAIL_DRIVER:-mailpit}
+#      EMAIL_HOST: ${EMAIL_HOST:-mailpit}
+#      EMAIL_PORT: ${EMAIL_PORT:-1025}
+#      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Go E-commerce}
+#      EMAIL_FROM_ADDR: ${EMAIL_FROM_ADDR:-noreply@local.test}
+#      EMAIL_USERNAME: ${EMAIL_USERNAME:-}
+#      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+#    ports:
+#      - "${PORT}:${PORT}"
+#    volumes:
+#      - .:/app
+#    depends_on:
+#      - postgres
+#      - redis
+#      - mailpit
 
-  web:
-    profiles: ["frontend"]
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
+#  web:
+#    profiles: ["frontend"]
+#    build:
+#      context: ./web
+#      dockerfile: Dockerfile
+#    environment:
+#      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+#    ports:
+#      - "3000:3000"
+#    depends_on:
+#      - api
 
 volumes:
   pgdata:
