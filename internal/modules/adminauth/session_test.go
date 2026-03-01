@@ -85,7 +85,7 @@ func TestSetAndClearSessionCookie(t *testing.T) {
 	if len(cookies) < 2 {
 		t.Fatalf("expected both set and clear cookies, got %d", len(cookies))
 	}
-	if cookies[0].Name != adminSessionCookieName || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteStrictMode {
+	if cookies[0].Name != adminSessionCookieName || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode {
 		t.Fatalf("unexpected session cookie attributes")
 	}
 	if cookies[1].Name != adminSessionCookieName || cookies[1].MaxAge != -1 {

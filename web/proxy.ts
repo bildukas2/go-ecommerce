@@ -8,10 +8,17 @@ function apiBaseURL(): string {
   return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080";
 }
 
+function apiJoin(path: string): string {
+  const base = new URL(apiBaseURL());
+  const clean = path.replace(/^\/+/, "");
+  if (!base.pathname.endsWith("/")) base.pathname += "/";
+  return new URL(clean, base).toString();
+}
+
 async function hasAdminSession(request: NextRequest): Promise<boolean> {
   const cookie = request.headers.get("cookie") || "";
   try {
-    const res = await fetch(new URL("/api/admin/auth/me", apiBaseURL()), {
+    const res = await fetch(apiJoin("api/admin/auth/me"), {
       method: "GET",
       headers: cookie ? { Cookie: cookie } : {},
       cache: "no-store",
