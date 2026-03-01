@@ -2,7 +2,14 @@ import { API_URL } from "./config";
 
 function apiJoin(path: string): string {
   const base = new URL(API_URL);
-  const clean = path.replace(/^\/+/, "");
+  let clean = path.replace(/^\/+/, "");
+
+  // If the path starts with 'api/' and base already ends with '/api' or '/api/',
+  // we remove 'api/' from the start of path to avoid doubling.
+  if (clean.startsWith("api/") && (base.pathname.endsWith("/api") || base.pathname.endsWith("/api/"))) {
+    clean = clean.substring(4);
+  }
+
   if (!base.pathname.endsWith("/")) base.pathname += "/";
   return new URL(clean, base).toString();
 }

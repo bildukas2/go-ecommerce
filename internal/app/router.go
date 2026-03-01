@@ -26,7 +26,7 @@ type Deps struct {
 
 func NewRouter(deps Deps) http.Handler {
 	if tp := os.Getenv("TRUSTED_PROXIES"); tp != "" {
-		platformhttp.SetTrustedProxies(strings.Split(tp, ","))
+		platformhttp.SetTrustedProxies([]string{tp})
 	}
 	mux := http.NewServeMux()
 	uploadsDir := strings.TrimSpace(os.Getenv("UPLOADS_DIR"))

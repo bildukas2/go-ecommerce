@@ -11,6 +11,7 @@ import (
 	"time"
 
 	storcustomers "goecommerce/internal/storage/customers"
+	platformhttp "goecommerce/internal/platform/http"
 )
 
 type blockedReportTestStore struct {
@@ -86,6 +87,9 @@ func TestSanitizeBlockedReportMessageRejectsHTMLAndHiddenChars(t *testing.T) {
 }
 
 func TestHandleBlockedReportSuccess(t *testing.T) {
+	platformhttp.SetTrustedProxies([]string{"192.0.2.1"})
+	defer platformhttp.SetTrustedProxies(nil)
+
 	var (
 		capturedReport *storcustomers.CreateBlockedReportInput
 		capturedLog    *storcustomers.CreateCustomerActionLogInput

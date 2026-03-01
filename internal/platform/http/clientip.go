@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -17,27 +18,65 @@ var (
 // trusted and RemoteAddr is always used.
 func SetTrustedProxies(cidrs []string) {
 	var nets []*net.IPNet
-	for _, cidr := range cidrs {
-		cidr = strings.TrimSpace(cidr)
-		if cidr == "" {
-			continue
+	for _, raw := range cidrs {
+		// Handle potential multiple IPs/CIDRs in a single string if separated by spaces, commas, or semicolons
+		f := func(c rune) bool {
+			return c == ' ' || c == ',' || c == ';'
 		}
-		if !strings.Contains(cidr, "/") {
-			if strings.Contains(cidr, ":") {
-				cidr += "/128"
-			} else {
-				cidr += "/32"
+		parts := strings.FieldsFunc(raw, f)
+
+		for _, cidr := range parts {
+			cidr = strings.TrimSpace(cidr)
+			if cidr == "" {
+				continue
 			}
+
+			// Special case: some users might use / as a separator if they think it's a list (like in the bug report)
+			// e.g. ::1/78.56.202.79 (not a valid CIDR but contains /)
+			// We first try to process it as is.
+			if !isValidCIDR(cidr) && strings.Contains(cidr, "/") {
+				subParts := strings.Split(cidr, "/")
+				for _, sub := range subParts {
+					processCIDR(&nets, sub)
+				}
+				continue
+			}
+
+			processCIDR(&nets, cidr)
 		}
-		_, ipNet, err := net.ParseCIDR(cidr)
-		if err != nil {
-			continue
-		}
-		nets = append(nets, ipNet)
 	}
 	trustedMu.Lock()
 	trustedProxies = nets
 	trustedMu.Unlock()
+}
+
+func isValidCIDR(cidr string) bool {
+	if !strings.Contains(cidr, "/") {
+		return false
+	}
+	_, _, err := net.ParseCIDR(cidr)
+	return err == nil
+}
+
+func processCIDR(nets *[]*net.IPNet, cidr string) {
+	cidr = strings.TrimSpace(cidr)
+	if cidr == "" {
+		return
+	}
+	original := cidr
+	if !strings.Contains(cidr, "/") {
+		if strings.Contains(cidr, ":") {
+			cidr += "/128"
+		} else {
+			cidr += "/32"
+		}
+	}
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		slog.Warn("SetTrustedProxies: invalid CIDR or IP", "input", original, "error", err)
+		return
+	}
+	*nets = append(*nets, ipNet)
 }
 
 // ClientIP extracts the real client IP from the request. It only trusts

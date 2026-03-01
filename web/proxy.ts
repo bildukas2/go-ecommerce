@@ -23,7 +23,7 @@ async function hasAdminSession(request: NextRequest): Promise<boolean> {
   }
 }
 
-export async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // Detect if it's an admin route (with or without locale prefix)

@@ -43,6 +43,9 @@ func TestIPBlockMiddlewareAllowsReadRequests(t *testing.T) {
 }
 
 func TestIPBlockMiddlewareBlocksWriteRequest(t *testing.T) {
+	SetTrustedProxies([]string{"192.0.2.1"})
+	defer SetTrustedProxies(nil)
+
 	handler := IPBlockMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("next handler should not run for blocked IP")
 	}), &fakeIPBlockChecker{
