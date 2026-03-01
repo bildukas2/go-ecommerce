@@ -111,7 +111,7 @@ export default function MilestonesPage() {
 
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl lg:text-6xl">
           Building{" "}
-          <span className="bg-gradient-to-r from-violet-600 to-blue-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-[#1e3a8a] to-[#38bdf8] bg-clip-text text-transparent">
             Volm commerce
           </span>
           , one step at a time
