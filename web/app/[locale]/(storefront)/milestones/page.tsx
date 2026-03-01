@@ -11,93 +11,93 @@ import {
 
 const milestones = [
   {
-    year: "2022",
+    year: "2025 03",
     quarter: "Q1",
     icon: Rocket,
-    title: "Launch Day",
+    title: "Launch Day Beta 0.5.0",
     description:
-      "Volm goes live with its first storefront, offering a curated selection of home essentials and a checkout experience built for speed.",
+        "The first public milestone VOLM Commerce Beta 0.5.0 launches — the foundation of a modular, open-source commerce platform built with Go and Next.js.",
     highlight: "Day one",
     color: "bg-violet-100 text-violet-600",
     dotColor: "bg-violet-500",
   },
   {
-    year: "2022",
-    quarter: "Q3",
+    year: "2025",
+    quarter: "Q",
     icon: ShoppingBag,
-    title: "1,000 Orders Shipped",
+    title: "In progress",
     description:
-      "Our first major milestone — 1,000 orders successfully delivered to happy customers across the region.",
-    highlight: "1,000+ orders",
+      "-----",
+    highlight: "progress",
     color: "bg-blue-100 text-blue-600",
     dotColor: "bg-blue-500",
   },
-  {
-    year: "2023",
-    quarter: "Q1",
-    icon: Globe,
-    title: "Multi-region Expansion",
-    description:
-      "Extended shipping coverage to 8 new countries, bringing Volm's fast delivery promise to an international audience.",
-    highlight: "8 countries",
-    color: "bg-emerald-100 text-emerald-600",
-    dotColor: "bg-emerald-500",
-  },
-  {
-    year: "2023",
-    quarter: "Q2",
-    icon: Users,
-    title: "10,000 Registered Customers",
-    description:
-      "A growing community of loyal shoppers crossed the 10K mark, proving that fast UX and quality products keep people coming back.",
-    highlight: "10K customers",
-    color: "bg-amber-100 text-amber-600",
-    dotColor: "bg-amber-500",
-  },
-  {
-    year: "2023",
-    quarter: "Q4",
-    icon: Award,
-    title: "Best New Commerce Platform",
-    description:
-      "Recognised by the Open Source Commerce Awards for outstanding UX design and developer experience in the self-hosted category.",
-    highlight: "Award winner",
-    color: "bg-rose-100 text-rose-600",
-    dotColor: "bg-rose-500",
-  },
-  {
-    year: "2024",
-    quarter: "Q2",
-    icon: Zap,
-    title: "Sub-100ms API Response",
-    description:
-      "After aggressive performance work and Redis caching, 95th-percentile API response times dropped below 100 ms globally.",
-    highlight: "< 100 ms p95",
-    color: "bg-cyan-100 text-cyan-600",
-    dotColor: "bg-cyan-500",
-  },
-  {
-    year: "2024",
-    quarter: "Q3",
-    icon: Star,
-    title: "Open-Source Release",
-    description:
-      "Volm's core platform is released as open source on GitHub, empowering merchants worldwide to build on a solid, extensible foundation.",
-    highlight: "Open source",
-    color: "bg-purple-100 text-purple-600",
-    dotColor: "bg-purple-500",
-  },
-  {
-    year: "2025",
-    quarter: "Q1",
-    icon: TrendingUp,
-    title: "50,000 Monthly Active Shoppers",
-    description:
-      "The storefront now serves 50,000 monthly active shoppers, with zero downtime and consistent sub-second page loads.",
-    highlight: "50K MAU",
-    color: "bg-orange-100 text-orange-600",
-    dotColor: "bg-orange-500",
-  },
+  // {
+  //   year: "2023",
+  //   quarter: "Q1",
+  //   icon: Globe,
+  //   title: "Multi-region Expansion",
+  //   description:
+  //     "Extended shipping coverage to 8 new countries, bringing Volm's fast delivery promise to an international audience.",
+  //   highlight: "8 countries",
+  //   color: "bg-emerald-100 text-emerald-600",
+  //   dotColor: "bg-emerald-500",
+  // },
+  // {
+  //   year: "2023",
+  //   quarter: "Q2",
+  //   icon: Users,
+  //   title: "10,000 Registered Customers",
+  //   description:
+  //     "A growing community of loyal shoppers crossed the 10K mark, proving that fast UX and quality products keep people coming back.",
+  //   highlight: "10K customers",
+  //   color: "bg-amber-100 text-amber-600",
+  //   dotColor: "bg-amber-500",
+  // },
+  // {
+  //   year: "2023",
+  //   quarter: "Q4",
+  //   icon: Award,
+  //   title: "Best New Commerce Platform",
+  //   description:
+  //     "Recognised by the Open Source Commerce Awards for outstanding UX design and developer experience in the self-hosted category.",
+  //   highlight: "Award winner",
+  //   color: "bg-rose-100 text-rose-600",
+  //   dotColor: "bg-rose-500",
+  // },
+  // {
+  //   year: "2024",
+  //   quarter: "Q2",
+  //   icon: Zap,
+  //   title: "Sub-100ms API Response",
+  //   description:
+  //     "After aggressive performance work and Redis caching, 95th-percentile API response times dropped below 100 ms globally.",
+  //   highlight: "< 100 ms p95",
+  //   color: "bg-cyan-100 text-cyan-600",
+  //   dotColor: "bg-cyan-500",
+  // },
+  // {
+  //   year: "2024",
+  //   quarter: "Q3",
+  //   icon: Star,
+  //   title: "Open-Source Release",
+  //   description:
+  //     "Volm's core platform is released as open source on GitHub, empowering merchants worldwide to build on a solid, extensible foundation.",
+  //   highlight: "Open source",
+  //   color: "bg-purple-100 text-purple-600",
+  //   dotColor: "bg-purple-500",
+  // },
+  // {
+  //   year: "2025",
+  //   quarter: "Q1",
+  //   icon: TrendingUp,
+  //   title: "50,000 Monthly Active Shoppers",
+  //   description:
+  //     "The storefront now serves 50,000 monthly active shoppers, with zero downtime and consistent sub-second page loads.",
+  //   highlight: "50K MAU",
+  //   color: "bg-orange-100 text-orange-600",
+  //   dotColor: "bg-orange-500",
+  // },
 ];
 
 export default function MilestonesPage() {
@@ -112,7 +112,7 @@ export default function MilestonesPage() {
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl lg:text-6xl">
           Building{" "}
           <span className="bg-gradient-to-r from-violet-600 to-blue-500 bg-clip-text text-transparent">
-            Volm
+            Volm commerce
           </span>
           , one step at a time
         </h1>
@@ -243,7 +243,7 @@ export default function MilestonesPage() {
             stay ahead of every new chapter.
           </p>
           <a
-            href="https://github.com"
+            href="https://github.com/bildukas2/go-ecommerce"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-5 inline-flex items-center gap-2 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-violet-700"
