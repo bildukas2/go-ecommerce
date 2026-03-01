@@ -11,6 +11,12 @@
  */
 
 // export { default as HomePage } from "./HomePage";
+// export { default as ProductsPage } from "./ProductsPage";
+// export { default as ProductDetailPage } from "./ProductDetailPage";
+// export { default as CheckoutPage } from "./CheckoutPage";
+// export { default as AccountPage } from "./AccountPage";
+// export { default as LoginPage } from "./LoginPage";
+// export { default as RegisterPage } from "./RegisterPage";
 // export { ThemeDemoPage } from "./ThemeDemoPage";
 
 export {};
