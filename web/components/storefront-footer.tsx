@@ -50,8 +50,8 @@ export function StorefrontFooter({ shopItems = [], infoItems = [] }: Props) {
           {/* Logo & About */}
           <div className="flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/img/Volm logo small.png" alt="Volm" width={32} height={32} className="object-contain" />
-              <span className="text-lg font-bold">Volm</span>
+              <Image src="/img/favicon.png" alt="Volm" width={50} height={50} className="object-contain" />
+              <span className="text-[1.3125rem] font-semibold bg-gradient-to-r from-[#1e3a8a] to-[#38bdf8] bg-clip-text text-transparent">Volm commerce</span>
             </Link>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
               {t("about_text")}
