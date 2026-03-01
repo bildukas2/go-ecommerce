@@ -1,27 +1,3 @@
 {
-  "common": {
-    "buttons": {
-      "save": "Confirm Changes"
-    }
-  },
-  "christening": {
-    "hero_subtitle": "Welcome to",
-    "hero_title": "Our Christening",
-    "scroll_hint": "Scroll to explore",
-    "poem_label": "A blessing",
-    "poem_line1": "As toks mažytis, trapus angeliukas,",
-    "poem_line2": "Labai laimingas, kad būsiu dabar krikštijonis,",
-    "poem_line3": "Tavęs labai laukiu didžioji šventei,",
-    "poem_line4": "Ateik į mano krikštynų stebuklą!",
-    "poem_english": "Such a tiny, fragile little angel — come share in the miracle of my christening.",
-    "scene1_caption": "A sacred moment",
-    "card_title": "Invite everyone who matters",
-    "card_desc": "Beautiful, personalised christening invitations delivered to your door.",
-    "card_cta": "See our invitations",
-    "scene2_heading": "Every detail, sacred",
-    "final_heading": "Begin the celebration",
-    "final_desc": "Create a day your family will remember forever.",
-    "final_cta_primary": "Browse products",
-    "final_cta_secondary": "Customize yours"
-  }
+
 }
