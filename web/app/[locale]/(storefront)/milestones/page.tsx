@@ -118,24 +118,24 @@ export default function MilestonesPage() {
         </h1>
 
         <p className="mx-auto mt-5 max-w-2xl text-base text-neutral-500 md:text-lg">
-          From a single storefront to a thriving open-source platform — here is
-          every significant chapter in Volm's story.
+          An open-source commerce platform engineered in Go.
+          Transparent progress. Public roadmap. Continuous iteration.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm text-neutral-500">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-neutral-900">50K+</span>
-            <span>Monthly shoppers</span>
+            <span></span>
+            <span className="text-2xl font-bold text-neutral-900">Beta v0.5.0</span>
           </div>
           <div className="h-4 w-px bg-neutral-300" />
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-neutral-900">8</span>
-            <span>Countries</span>
+            <span className="text-2xl font-bold text-neutral-900">Plugin + Theme System</span>
+            <span></span>
           </div>
           <div className="h-4 w-px bg-neutral-300" />
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-neutral-900">100%</span>
-            <span>Open source</span>
+            <span className="text-2xl font-bold text-neutral-900">100% Open source</span>
+            <span></span>
           </div>
         </div>
       </section>
@@ -145,7 +145,7 @@ export default function MilestonesPage() {
           <div className="absolute left-6 top-0 h-full w-px bg-neutral-200 md:left-1/2" />
 
           <div className="space-y-10">
-            {milestones.map((ms, idx) => {
+            {[...milestones].reverse().map((ms, idx) => {
               const Icon = ms.icon;
               const isEven = idx % 2 === 0;
 
