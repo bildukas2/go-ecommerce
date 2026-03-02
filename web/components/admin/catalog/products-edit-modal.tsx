@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AdminCustomOption, AdminProductCustomOptionAssignment, ProductImage } from "@/lib/api";
 import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 import { ProductImagesManager } from "./product-images-manager";
@@ -33,25 +34,20 @@ type Props = {
 
 export function ProductsEditModal({ updateAction, returnTo, categories, customOptions, assignments, product, images = [] }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
   const [removedCustomOptionIDs, setRemovedCustomOptionIDs] = useState<string[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleRemoveOption = (optionID: string) => {
     setRemovedCustomOptionIDs((prev) => (prev.includes(optionID) ? prev.filter((id) => id !== optionID) : [...prev, optionID]));
   };
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium hover:bg-foreground/[0.05]"
-      >
-        Edit
-      </button>
-
-      {open && (
+  const modal = open ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4">
           <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
@@ -264,7 +260,19 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
             </form>
           </div>
         </div>
-      )}
+      ) : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium hover:bg-foreground/[0.05]"
+      >
+        Edit
+      </button>
+
+      {mounted ? createPortal(modal, document.body) : null}
     </>
   );
 }

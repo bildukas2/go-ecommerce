@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AdminCustomOption } from "@/lib/api";
 import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 
@@ -15,20 +16,15 @@ type Props = {
 
 export function ProductsCreateModal({ createAction, returnTo, categories, customOptions }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
-      >
-        Create product
-      </button>
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-      {open && (
+  const modal = open ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4">
           <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
@@ -142,7 +138,19 @@ export function ProductsCreateModal({ createAction, returnTo, categories, custom
             </form>
           </div>
         </div>
-      )}
+      ) : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-xl border border-blue-500/35 bg-blue-500/12 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-500/18 dark:text-blue-300"
+      >
+        Create product
+      </button>
+
+      {mounted ? createPortal(modal, document.body) : null}
     </>
   );
 }
