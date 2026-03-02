@@ -37,7 +37,7 @@ type authMeResponse struct {
 }
 
 func (m *module) handleCSRF(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || r.URL.Path != "/admin/auth/csrf" {
+	if r.Method != http.MethodGet || !isCSRFRoute(r.URL.Path) {
 		http.NotFound(w, r)
 		return
 	}
@@ -54,7 +54,7 @@ func (m *module) handleCSRF(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || r.URL.Path != "/admin/auth/login" {
+	if r.Method != http.MethodPost || !isLoginRoute(r.URL.Path) {
 		http.NotFound(w, r)
 		return
 	}
@@ -167,7 +167,7 @@ func (m *module) respondCredentialFailure(w http.ResponseWriter, r *http.Request
 }
 
 func (m *module) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || r.URL.Path != "/admin/auth/logout" {
+	if r.Method != http.MethodPost || !isLogoutRoute(r.URL.Path) {
 		http.NotFound(w, r)
 		return
 	}
@@ -180,7 +180,7 @@ func (m *module) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *module) handleMe(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || r.URL.Path != "/admin/auth/me" {
+	if r.Method != http.MethodGet || !isMeRoute(r.URL.Path) {
 		http.NotFound(w, r)
 		return
 	}
@@ -253,4 +253,20 @@ func generateCSRFToken() string {
 	b := make([]byte, csrfTokenBytes)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func isCSRFRoute(path string) bool {
+	return path == "/admin/auth/csrf" || path == "/api/admin/auth/csrf"
+}
+
+func isLoginRoute(path string) bool {
+	return path == "/admin/auth/login" || path == "/api/admin/auth/login"
+}
+
+func isLogoutRoute(path string) bool {
+	return path == "/admin/auth/logout" || path == "/api/admin/auth/logout"
+}
+
+func isMeRoute(path string) bool {
+	return path == "/admin/auth/me" || path == "/api/admin/auth/me"
 }

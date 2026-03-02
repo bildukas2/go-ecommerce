@@ -44,3 +44,4 @@ build/
 /.zenflow-images/
 /.zenflow/
 /.kilocode/
+/.env.prod
