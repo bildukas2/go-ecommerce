@@ -29,8 +29,8 @@ export function ProductsCreateModal({ createAction, returnTo, categories, custom
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4">
+          <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
               <h2 className="text-lg font-semibold">Create product</h2>
               <button
@@ -42,7 +42,7 @@ export function ProductsCreateModal({ createAction, returnTo, categories, custom
               </button>
             </div>
 
-            <form action={createAction} className="grid gap-3 p-4 md:grid-cols-2">
+            <form action={createAction} className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4 md:grid-cols-2">
               <input type="hidden" name="return_to" value={returnTo} />
               <label className="space-y-1 text-sm">
                 <span>Title</span>
