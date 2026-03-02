@@ -76,7 +76,7 @@ func TestSessionManagerCreateResolveDestroy(t *testing.T) {
 }
 
 func TestSetAndClearSessionCookie(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/auth/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/auth/me", nil)
 	rr := httptest.NewRecorder()
 	setSessionCookie(rr, req, "token123", 45*time.Minute)
 	clearSessionCookie(rr, req)

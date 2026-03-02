@@ -78,7 +78,7 @@ func (m *module) RequireRole(roleCode string) func(http.Handler) http.Handler {
 }
 
 func isPublicAdminAuthRoute(path string) bool {
-	return path == "/api/admin/auth/csrf" || path == "/api/admin/auth/login"
+	return path == "/admin/auth/csrf" || path == "/admin/auth/login"
 }
 
 func (m *module) respondUnauthenticated(w http.ResponseWriter, r *http.Request) {

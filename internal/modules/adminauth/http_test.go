@@ -40,7 +40,7 @@ func (f *fakeAdminAuthStore) UpdateLastLoginAt(_ context.Context, _ string, _ ti
 
 func TestHandleCSRF(t *testing.T) {
 	m := &module{}
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/auth/csrf", nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/auth/csrf", nil)
 	rr := httptest.NewRecorder()
 
 	m.handleCSRF(rr, req)
@@ -92,7 +92,7 @@ func TestHandleLoginAndMeSuccess(t *testing.T) {
 		Password:     "StrongPass!123",
 		CaptchaToken: "test-captcha",
 	})
-	loginReq := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+	loginReq := httptest.NewRequest(http.MethodPost, "/admin/auth/login", bytes.NewReader(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginRec := httptest.NewRecorder()
 	m.handleLogin(loginRec, loginReq)
@@ -111,7 +111,7 @@ func TestHandleLoginAndMeSuccess(t *testing.T) {
 		t.Fatalf("expected admin session cookie")
 	}
 
-	meReq := httptest.NewRequest(http.MethodGet, "/api/admin/auth/me", nil)
+	meReq := httptest.NewRequest(http.MethodGet, "/admin/auth/me", nil)
 	meReq.AddCookie(sessionCookie)
 	meRec := httptest.NewRecorder()
 	m.handleMe(meRec, meReq)
@@ -139,7 +139,7 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 		Password:     "StrongPass!123",
 		CaptchaToken: "token",
 	})
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/admin/auth/login", bytes.NewReader(body))
 	rr := httptest.NewRecorder()
 	m.handleLogin(rr, req)
 
@@ -173,7 +173,7 @@ func TestHandleLogout(t *testing.T) {
 		sessionTT: 45 * time.Minute,
 		now:       time.Now,
 	}
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/logout", nil)
+	req := httptest.NewRequest(http.MethodPost, "/admin/auth/logout", nil)
 	req.AddCookie(&http.Cookie{Name: adminSessionCookieName, Value: token})
 	rr := httptest.NewRecorder()
 	m.handleLogout(rr, req)
@@ -220,7 +220,7 @@ func TestHandleLoginCaptchaFailed(t *testing.T) {
 		Password:     "StrongPass!123",
 		CaptchaToken: "bad-token",
 	})
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+	req := httptest.NewRequest(http.MethodPost, "/admin/auth/login", bytes.NewReader(loginBody))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	m.handleLogin(rr, req)
@@ -273,7 +273,7 @@ func TestHandleLoginSuccessWithoutCaptchaWhenNotConfigured(t *testing.T) {
 		Password:     "StrongPass!123",
 		CaptchaToken: "",
 	})
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+	req := httptest.NewRequest(http.MethodPost, "/admin/auth/login", bytes.NewReader(loginBody))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	m.handleLogin(rr, req)
@@ -317,7 +317,7 @@ func TestHandleLoginLockoutAfterFiveFailures(t *testing.T) {
 			Password:     "WrongPass!123",
 			CaptchaToken: "captcha-ok",
 		})
-		req := httptest.NewRequest(http.MethodPost, "/api/admin/auth/login", bytes.NewReader(loginBody))
+		req := httptest.NewRequest(http.MethodPost, "/admin/auth/login", bytes.NewReader(loginBody))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		m.handleLogin(rr, req)

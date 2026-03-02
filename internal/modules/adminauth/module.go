@@ -57,10 +57,10 @@ func NewModule(deps app.Deps) app.Module {
 func (m *module) Name() string { return "adminauth" }
 
 func (m *module) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/admin/auth/csrf", m.handleCSRF)
-	mux.HandleFunc("/api/admin/auth/login", m.handleLogin)
-	mux.HandleFunc("/api/admin/auth/logout", m.handleLogout)
-	mux.HandleFunc("/api/admin/auth/me", m.handleMe)
+	mux.HandleFunc("/admin/auth/csrf", m.handleCSRF)
+	mux.HandleFunc("/admin/auth/login", m.handleLogin)
+	mux.HandleFunc("/admin/auth/logout", m.handleLogout)
+	mux.HandleFunc("/admin/auth/me", m.handleMe)
 }
 
 func parseSessionTTL(raw string) time.Duration {
