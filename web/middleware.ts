@@ -5,7 +5,7 @@ import {routing} from './i18n/routing';
 const intlMiddleware = createMiddleware(routing);
 
 function apiBaseURL(): string {
-  return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080";
+  return process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080";
 }
 
 function apiJoin(path: string): string {
@@ -18,7 +18,7 @@ function apiJoin(path: string): string {
 async function hasAdminSession(request: NextRequest): Promise<boolean> {
   const cookie = request.headers.get("cookie") || "";
   try {
-    const res = await fetch(apiJoin("api/admin/auth/me"), {
+    const res = await fetch(apiJoin("admin/auth/me"), {
       method: "GET",
       headers: cookie ? { Cookie: cookie } : {},
       cache: "no-store",
@@ -30,7 +30,7 @@ async function hasAdminSession(request: NextRequest): Promise<boolean> {
   }
 }
 
-export default async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // Detect if it's an admin route (with or without locale prefix)

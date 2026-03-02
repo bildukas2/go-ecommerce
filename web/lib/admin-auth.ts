@@ -47,7 +47,7 @@ async function parseAuthError(res: Response, fallback: string): Promise<AdminAut
 }
 
 export async function getAdminCSRFToken(): Promise<string> {
-  const res = await fetch(apiJoin("api/admin/auth/csrf"), {
+  const res = await fetch(apiJoin("admin/auth/csrf"), {
     method: "GET",
     credentials: "include",
     cache: "no-store",
@@ -69,7 +69,7 @@ export async function loginAdmin(input: {
   captchaToken: string;
   csrfToken: string;
 }): Promise<AdminAuthUser> {
-  const res = await fetch(apiJoin("api/admin/auth/login"), {
+  const res = await fetch(apiJoin("admin/auth/login"), {
     method: "POST",
     credentials: "include",
     cache: "no-store",
@@ -94,7 +94,7 @@ export async function loginAdmin(input: {
 }
 
 export async function logoutAdmin(csrfToken: string): Promise<void> {
-  const res = await fetch(apiJoin("api/admin/auth/logout"), {
+  const res = await fetch(apiJoin("admin/auth/logout"), {
     method: "POST",
     credentials: "include",
     cache: "no-store",
@@ -108,7 +108,7 @@ export async function logoutAdmin(csrfToken: string): Promise<void> {
 }
 
 export async function getAdminMe(): Promise<AdminAuthUser> {
-  const res = await fetch(apiJoin("api/admin/auth/me"), {
+  const res = await fetch(apiJoin("admin/auth/me"), {
     method: "GET",
     credentials: "include",
     cache: "no-store",
