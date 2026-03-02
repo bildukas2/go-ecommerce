@@ -153,9 +153,14 @@ func (m *module) handleAdminNavigationMenuItems(w http.ResponseWriter, r *http.R
 			platformhttp.Error(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		labelI18n := req.LabelI18n
+		if len(labelI18n) == 0 {
+			labelI18n = []byte("{}")
+		}
 		item, err := m.store.CreateNavigationItem(r.Context(), storcms.NavigationItem{
 			MenuID:       menuID,
 			Label:        strings.TrimSpace(req.Label),
+			LabelI18n:    labelI18n,
 			Type:         req.Type,
 			PageID:       req.PageID,
 			CategoryID:   req.CategoryID,
@@ -201,10 +206,15 @@ func (m *module) handleAdminNavigationItemDetail(w http.ResponseWriter, r *http.
 		if req.MenuID != nil {
 			menuID = strings.TrimSpace(*req.MenuID)
 		}
+		updateLabelI18n := req.LabelI18n
+		if len(updateLabelI18n) == 0 {
+			updateLabelI18n = []byte("{}")
+		}
 		item, err := m.store.UpdateNavigationItem(r.Context(), storcms.NavigationItem{
 			ID:           id,
 			MenuID:       menuID,
 			Label:        strings.TrimSpace(req.Label),
+			LabelI18n:    updateLabelI18n,
 			Type:         req.Type,
 			PageID:       req.PageID,
 			CategoryID:   req.CategoryID,
