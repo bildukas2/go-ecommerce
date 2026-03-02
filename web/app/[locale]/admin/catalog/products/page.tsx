@@ -600,7 +600,6 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ProductsCreateModal
-            createAction={createProductAction}
             returnTo={currentHref}
             categories={categories.map((category) => ({ id: category.id, name: category.name }))}
             customOptions={availableCustomOptions}
