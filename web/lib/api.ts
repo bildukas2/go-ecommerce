@@ -2451,12 +2451,12 @@ export async function updateAdminOrderStatus(orderID: string, status: string): P
   return res.json();
 }
 
-type AdminCatalogRequestMethod = "POST" | "PATCH" | "PUT";
+type AdminCatalogRequestMethod = "GET" | "POST" | "PATCH" | "PUT";
 
 type AdminCatalogRequestOptions = {
   path: string;
   method: AdminCatalogRequestMethod;
-  body: unknown;
+  body?: unknown;
 };
 
 async function adminCatalogRequest<T>({ path, method, body }: AdminCatalogRequestOptions): Promise<T> {
@@ -2465,7 +2465,7 @@ async function adminCatalogRequest<T>({ path, method, body }: AdminCatalogReques
     method,
     ...(await adminMutationHeaders()),
     cache: "no-store",
-    body: JSON.stringify(body),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) {
     let detail = `Admin catalog request failed: ${res.status}`;
@@ -2953,6 +2953,14 @@ export async function createAdminProductVariant(productID: string, input: AdminC
   const normalized = normalizeVariant(out);
   if (!normalized) throw new Error("Admin catalog request failed: invalid variant response");
   return normalized;
+}
+
+export async function getAdminProductCategoryIDs(productID: string): Promise<string[]> {
+  const out = await adminCatalogRequest<{ category_ids: string[] }>({
+    path: `admin/catalog/products/${encodeURIComponent(productID)}/categories`,
+    method: "GET",
+  });
+  return Array.isArray(out.category_ids) ? out.category_ids : [];
 }
 
 export async function setAdminProductCategories(productID: string, categoryIDs: string[]): Promise<void> {

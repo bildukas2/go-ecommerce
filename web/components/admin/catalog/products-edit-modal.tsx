@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import type { AdminCustomOption, AdminProductCustomOptionAssignment, ProductImage } from "@/lib/api";
+import { getAdminProductCategoryIDs, type AdminCustomOption, type AdminProductCustomOptionAssignment, type ProductImage } from "@/lib/api";
 import { CustomOptionAssignmentPicker } from "./custom-option-assignment-picker";
 import { ProductImagesManager } from "./product-images-manager";
 
@@ -38,10 +38,16 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
   const [removedCustomOptionIDs, setRemovedCustomOptionIDs] = useState<string[]>([]);
+  const [assignedCategoryIDs, setAssignedCategoryIDs] = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    getAdminProductCategoryIDs(product.id).then(setAssignedCategoryIDs).catch(() => {});
+  }, [open, product.id]);
 
   const toggleRemoveOption = (optionID: string) => {
     setRemovedCustomOptionIDs((prev) => (prev.includes(optionID) ? prev.filter((id) => id !== optionID) : [...prev, optionID]));
@@ -133,7 +139,7 @@ export function ProductsEditModal({ updateAction, returnTo, categories, customOp
                 <span>Categories (multi-select)</span>
                 <select multiple name="category_ids" className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2">
                   {categories.map((category) => (
-                    <option key={`${product.id}-category-${category.id}`} value={category.id}>
+                    <option key={`${product.id}-category-${category.id}`} value={category.id} selected={assignedCategoryIDs.includes(category.id)}>
                       {category.name}
                     </option>
                   ))}

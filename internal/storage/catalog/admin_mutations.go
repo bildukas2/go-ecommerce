@@ -414,6 +414,23 @@ func (s *Store) CreateProductVariant(ctx context.Context, productID string, in P
 	return variant, nil
 }
 
+func (s *Store) GetProductCategoryIDs(ctx context.Context, productID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT category_id FROM product_categories WHERE product_id = $1::uuid`, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (s *Store) ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

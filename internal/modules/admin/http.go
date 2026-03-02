@@ -568,6 +568,7 @@ type catalogStore interface {
 	CreateProductVariant(ctx context.Context, productID string, in storcat.ProductVariantCreateInput) (storcat.Variant, error)
 	UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error)
 	DeleteProduct(ctx context.Context, id string) error
+	GetProductCategoryIDs(ctx context.Context, productID string) ([]string, error)
 	ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error
 	BulkAssignProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
 	BulkRemoveProductCategories(ctx context.Context, productIDs []string, categoryIDs []string) (int64, error)
@@ -950,6 +951,18 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 	}
 	switch parts[1] {
 	case "categories":
+		if r.Method == http.MethodGet {
+			ids, err := m.catalog.GetProductCategoryIDs(r.Context(), id)
+			if err != nil {
+				writeCatalogStoreError(w, err, "get product categories error")
+				return
+			}
+			if ids == nil {
+				ids = []string{}
+			}
+			_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"category_ids": ids})
+			return
+		}
 		if r.Method != http.MethodPut {
 			http.NotFound(w, r)
 			return

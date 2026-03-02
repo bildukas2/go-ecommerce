@@ -86,6 +86,9 @@ func (f *fakeCatalogStore) DeleteProduct(ctx context.Context, id string) error {
 	}
 	return f.deleteProductFn(ctx, id)
 }
+func (f *fakeCatalogStore) GetProductCategoryIDs(ctx context.Context, productID string) ([]string, error) {
+	return []string{}, nil
+}
 func (f *fakeCatalogStore) ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error {
 	if f.replaceProductCatsFn == nil {
 		return nil
