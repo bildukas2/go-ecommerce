@@ -178,6 +178,11 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
 
   const currentHref = toHref({});
 
+  const revalidateProductsAction = async () => {
+    "use server";
+    revalidatePath("/admin/catalog/products");
+  };
+
   const createProductAction = async (formData: FormData) => {
     "use server";
     const returnTo = safeReturnTo(formData.get("return_to"));
@@ -603,6 +608,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
             returnTo={currentHref}
             categories={categories.map((category) => ({ id: category.id, name: category.name }))}
             customOptions={availableCustomOptions}
+            onCreated={revalidateProductsAction}
           />
           <Link
             href="/admin/catalog/categories"

@@ -19,7 +19,7 @@ type Props = {
   returnTo: string;
   categories: Array<{ id: string; name: string }>;
   customOptions: Array<Pick<AdminCustomOption, "id" | "title" | "type_group" | "type">>;
-  onCreated?: () => void;
+  onCreated?: () => void | Promise<void>;
 };
 
 function generateSlug(title: string): string {
@@ -74,9 +74,9 @@ export function ProductsCreateModal({ returnTo, categories, customOptions, onCre
     setCreatedProductID(null);
   }
 
-  function handleClose() {
+  async function handleClose() {
     if (createdProductID) {
-      onCreated?.();
+      await onCreated?.();
       router.refresh();
     }
     setOpen(false);
