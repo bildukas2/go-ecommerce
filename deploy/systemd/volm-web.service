@@ -1,0 +1,22 @@
+[Unit]
+Description=Volm Next.js Web
+After=network-online.target volm-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/volm/web
+EnvironmentFile=/etc/volm/volm.env
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/npm run start -- --port 3000
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

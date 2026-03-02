@@ -1,0 +1,20 @@
+[Unit]
+Description=Volm Go Ecommerce API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/volm
+EnvironmentFile=/etc/volm/volm.env
+ExecStart=/opt/volm/go-ecommerce-api
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
