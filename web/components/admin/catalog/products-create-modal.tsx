@@ -187,8 +187,16 @@ export function ProductsCreateModal({ returnTo, categories, customOptions, onCre
           </button>
         </div>
 
-        {!createdProductID ? (
-          <form onSubmit={handleSubmit} className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4 md:grid-cols-2">
+        <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4 md:grid-cols-2">
+          {createdProductID && (
+            <div className="md:col-span-2 space-y-2">
+              <p className="text-sm font-medium">Images</p>
+              <ProductImagesManager productID={createdProductID} initialImages={[]} />
+              <div className="border-b border-surface-border" />
+            </div>
+          )}
+          {!createdProductID ? (
+          <form onSubmit={handleSubmit} className="contents">
             <label className="space-y-1 text-sm">
               <span>Title</span>
               <input
@@ -298,15 +306,10 @@ export function ProductsCreateModal({ returnTo, categories, customOptions, onCre
               {submitting ? "Creating..." : "Create product"}
             </button>
           </form>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-            <p className="text-sm text-emerald-600">Product created successfully. Add images below or click Done to finish.</p>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Images</p>
-              <ProductImagesManager productID={createdProductID} initialImages={[]} />
-            </div>
-          </div>
-        )}
+          ) : (
+            <p className="md:col-span-2 text-sm text-emerald-600">Product created. Add images above or click Done to finish.</p>
+          )}
+        </div>
       </div>
     </div>
   ) : null;
