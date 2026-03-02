@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
   applyAdminProductDiscount,
   attachAdminProductCustomOption,
@@ -29,6 +30,7 @@ function generateSlug(title: string): string {
 }
 
 export function ProductsCreateModal({ returnTo, categories, customOptions, onCreated }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
@@ -75,9 +77,9 @@ export function ProductsCreateModal({ returnTo, categories, customOptions, onCre
   function handleClose() {
     if (createdProductID) {
       onCreated?.();
+      router.refresh();
     }
     setOpen(false);
-    // Reset after close animation
     setTimeout(resetModal, 200);
   }
 
