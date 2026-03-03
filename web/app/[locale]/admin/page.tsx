@@ -151,11 +151,11 @@ export default async function AdminDashboardPage() {
         </section>
       </div>
 
-      <RecentOrdersTable
-        orders={dashboard.recent_orders}
-        backendVersion={dashboard.backend_version}
-        webVersion={dashboard.web_version}
-      />
+      <RecentOrdersTable orders={dashboard.recent_orders} />
+      <div className="border-t border-surface-border pt-3 text-xs text-foreground/65">
+        <p>Backend Version: {dashboard.backend_version}</p>
+        <p>Web Version: {dashboard.web_version}</p>
+      </div>
     </div>
   );
 }
