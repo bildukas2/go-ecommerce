@@ -11,6 +11,7 @@ import {
   uploadAdminMedia,
 } from "@/lib/api";
 import { CategoryMediaPicker } from "@/components/admin/catalog/category-media-picker";
+import { CategorySlugAutoFill } from "@/components/admin/catalog/category-slug-autofill";
 
 export const dynamic = "force-dynamic";
 
@@ -239,14 +240,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
           </summary>
           <form action={createCategoryAction} className="mt-4 grid gap-3 md:grid-cols-2">
             <input type="hidden" name="return_to" value="/admin/catalog/categories" />
-            <label className="space-y-1 text-sm">
-              <span>Name</span>
-              <input name="name" required className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span>Slug</span>
-              <input name="slug" required placeholder="home-accessories" className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
-            </label>
+            <CategorySlugAutoFill />
             <label className="space-y-1 text-sm md:col-span-2">
               <span>Description</span>
               <textarea name="description" rows={3} className="w-full rounded-xl border border-surface-border bg-background px-3 py-2" />
