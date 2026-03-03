@@ -40,9 +40,10 @@ type Props = {
   assignments: AdminProductCustomOptionAssignment[];
   product: EditableProduct;
   images?: ProductImage[];
+  onSaved?: () => void | Promise<void>;
 };
 
-export function ProductsEditModal({ categories, customOptions, assignments, product, images = [] }: Props) {
+export function ProductsEditModal({ categories, customOptions, assignments, product, images = [], onSaved }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -140,6 +141,7 @@ export function ProductsEditModal({ categories, customOptions, assignments, prod
         }
       }
 
+      await onSaved?.();
       setOpen(false);
       router.refresh();
     } catch (err) {

@@ -32,6 +32,7 @@ type Props = {
   assignmentsByProductID: Record<string, AdminProductCustomOptionAssignment[]>;
   availableCustomOptions: AdminCustomOption[];
   currentHref: string;
+  onProductSaved?: () => void | Promise<void>;
   deleteProductAction: ActionFn;
   assignCategoriesToSingleAction: ActionFn;
   removeCategoriesFromSingleAction: ActionFn;
@@ -92,6 +93,7 @@ export function ProductsTableManager({
   assignmentsByProductID,
   availableCustomOptions,
   currentHref,
+  onProductSaved,
   deleteProductAction,
   assignCategoriesToSingleAction,
   removeCategoriesFromSingleAction,
@@ -225,6 +227,7 @@ export function ProductsTableManager({
                           customOptions={availableCustomOptions}
                           assignments={assignments}
                           images={product.images}
+                          onSaved={onProductSaved}
                           product={{
                             id: product.id,
                             variantID: displayVariant?.id || "",
