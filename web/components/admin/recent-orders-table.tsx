@@ -12,11 +12,7 @@ export function RecentOrdersTable({ orders, backendVersion, webVersion }: Recent
   return (
     <div className="glass rounded-2xl border text-foreground shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.38)]">
       <div className="flex items-start justify-between p-6">
-        <div>
-          <h3 className="text-lg font-semibold leading-none tracking-tight">Recent Orders</h3>
-          <p className="mt-2 text-xs text-foreground/65">Backend Version: {backendVersion}</p>
-          <p className="text-xs text-foreground/65">Web Version: {webVersion}</p>
-        </div>
+        <h3 className="text-lg font-semibold leading-none tracking-tight">Recent Orders</h3>
         <span className="rounded-full bg-foreground/6 px-2 py-1 text-xs text-foreground/75">
           {orders.length} shown
         </span>
@@ -71,6 +67,10 @@ export function RecentOrdersTable({ orders, backendVersion, webVersion }: Recent
             )}
           </tbody>
         </table>
+      </div>
+      <div className="border-t border-surface-border px-6 py-3 text-xs text-foreground/65">
+        <p>Backend Version: {backendVersion}</p>
+        <p>Web Version: {webVersion}</p>
       </div>
     </div>
   );
