@@ -12,6 +12,7 @@ import {
   createAdminProduct,
   detachAdminProductCustomOption,
   getAdminCustomOptions,
+  getAdminProductCategoryIDs,
   getAdminProductCustomOptions,
   getCategories,
   getProducts,
@@ -522,6 +523,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   let availableCustomOptions: Awaited<ReturnType<typeof getAdminCustomOptions>>["items"] = [];
   const assignmentsByProductID = new Map<string, AdminProductCustomOptionAssignment[]>();
   const customOptionsByID = new Map<string, Awaited<ReturnType<typeof getAdminCustomOptions>>["items"][number]>();
+  const categoryNamesByProductID: Record<string, string[]> = {};
   let fetchError: string | null = null;
   let customOptionsFetchError: string | null = null;
 
@@ -541,6 +543,23 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
   }
 
   const visibleProducts = applyAdminProductsState(products, state);
+
+  if (!fetchError && categories.length > 0 && visibleProducts.length > 0) {
+    const categoryByID = new Map(categories.map((c) => [c.id, c.name]));
+    const catResults = await Promise.allSettled(
+      visibleProducts.map(async (product) => {
+        const ids = await getAdminProductCategoryIDs(product.id);
+        return [product.id, ids] as const;
+      }),
+    );
+    for (const result of catResults) {
+      if (result.status === "fulfilled") {
+        const [productID, ids] = result.value;
+        categoryNamesByProductID[productID] = ids.map((id) => categoryByID.get(id) ?? id).filter(Boolean);
+      }
+    }
+  }
+
   if (!fetchError) {
     try {
       const optionsResponse = await getAdminCustomOptions();
@@ -728,6 +747,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           visibleProducts={visibleProducts}
           categories={categories.map((category) => ({ id: category.id, name: category.name }))}
           assignmentsByProductID={assignmentsByProductIDObj}
+          categoryNamesByProductID={categoryNamesByProductID}
           availableCustomOptions={availableCustomOptions}
           currentHref={currentHref}
           onProductSaved={revalidateProductsAction}

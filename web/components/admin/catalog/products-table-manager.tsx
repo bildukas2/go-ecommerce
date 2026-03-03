@@ -30,6 +30,7 @@ type Props = {
   visibleProducts: Product[];
   categories: CategoryOption[];
   assignmentsByProductID: Record<string, AdminProductCustomOptionAssignment[]>;
+  categoryNamesByProductID: Record<string, string[]>;
   availableCustomOptions: AdminCustomOption[];
   currentHref: string;
   onProductSaved?: () => void | Promise<void>;
@@ -91,6 +92,7 @@ export function ProductsTableManager({
   visibleProducts,
   categories,
   assignmentsByProductID,
+  categoryNamesByProductID,
   availableCustomOptions,
   currentHref,
   onProductSaved,
@@ -162,6 +164,7 @@ export function ProductsTableManager({
                 <th className="px-3 py-2 font-medium">Slug</th>
                 <th className="px-3 py-2 font-medium">Price</th>
                 <th className="px-3 py-2 font-medium">Stock</th>
+                <th className="px-3 py-2 font-medium">Categories</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Created</th>
                 <th className="px-3 py-2 font-medium text-right">Actions</th>
@@ -209,6 +212,19 @@ export function ProductsTableManager({
                       >
                         {view.stockTotal}
                       </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(categoryNamesByProductID[product.id] ?? []).length === 0 ? (
+                          <span className="text-xs text-foreground/40">—</span>
+                        ) : (
+                          (categoryNamesByProductID[product.id] ?? []).map((name) => (
+                            <span key={name} className="inline-flex rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+                              {name}
+                            </span>
+                          ))
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
