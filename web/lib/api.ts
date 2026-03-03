@@ -2435,10 +2435,12 @@ export type VersionCheckResponse = {
   current_version: string;
   latest_version: string;
   up_to_date: boolean;
+  channel: string;
 };
 
-export async function checkVersion(): Promise<VersionCheckResponse> {
+export async function checkVersion(channel: "dev" | "prod"): Promise<VersionCheckResponse> {
   const url = new URL(apiJoin("admin/version-check"));
+  url.searchParams.set("channel", channel);
   const res = await fetch(url.toString(), {
     ...(await adminRequestHeaders()),
     cache: "no-store",

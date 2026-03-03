@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { checkVersion, type VersionCheckResponse } from "@/lib/api";
 
+type Channel = "dev" | "prod";
+
 type Props = {
   backendVersion: string;
   webVersion: string;
 };
 
 export function VersionChecker({ backendVersion, webVersion }: Props) {
+  const [channel, setChannel] = useState<Channel>("prod");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VersionCheckResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +21,7 @@ export function VersionChecker({ backendVersion, webVersion }: Props) {
     setError(null);
     setResult(null);
     try {
-      const data = await checkVersion();
+      const data = await checkVersion(channel);
       setResult(data);
     } catch {
       setError("Could not reach GitHub. Check your network or repo config.");
@@ -29,9 +32,26 @@ export function VersionChecker({ backendVersion, webVersion }: Props) {
 
   return (
     <div className="border-t border-surface-border pt-3 text-xs text-foreground/65">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span>Backend Version: {backendVersion}</span>
         <span>Web Version: {webVersion}</span>
+
+        {/* Channel selector */}
+        <select
+          value={channel}
+          onChange={(e) => {
+            setChannel(e.target.value as Channel);
+            setResult(null);
+            setError(null);
+          }}
+          disabled={loading}
+          className="rounded-md border border-surface-border bg-background px-2 py-1 text-xs font-medium text-foreground/80 transition-colors hover:bg-foreground/5 disabled:opacity-50"
+        >
+          <option value="prod">prod</option>
+          <option value="dev">dev</option>
+        </select>
+
+        {/* Check button */}
         <button
           onClick={handleCheck}
           disabled={loading}
@@ -46,6 +66,8 @@ export function VersionChecker({ backendVersion, webVersion }: Props) {
             "Check for updates"
           )}
         </button>
+
+        {/* Result badge */}
         {result && (
           <span
             className={
@@ -59,6 +81,8 @@ export function VersionChecker({ backendVersion, webVersion }: Props) {
               : `New version available: v${result.latest_version}`}
           </span>
         )}
+
+        {/* Error badge */}
         {error && (
           <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-0.5 font-medium text-red-700 dark:text-red-400">
             {error}
