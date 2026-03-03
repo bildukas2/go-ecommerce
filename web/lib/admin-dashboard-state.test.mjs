@@ -9,18 +9,28 @@ import {
 
 test("emptyDashboard returns zeroed metrics and no recent orders", () => {
   assert.deepEqual(emptyDashboard(), {
+    backend_version: "0.5.0",
+    web_version: "0.5.0",
     metrics: {
       total_orders: 0,
       pending_payment: 0,
       paid: 0,
+      processing: 0,
+      completed: 0,
       cancelled: 0,
+      predicted_revenue: 0,
+      real_revenue: 0,
     },
     recent_orders: [],
+    revenue_trend: [],
+    top_products: [],
   });
 });
 
 test("normalizeDashboardData sanitizes invalid payload and keeps valid recent orders", () => {
   const parsed = normalizeDashboardData({
+    backend_version: "0.5.1",
+    web_version: "0.6.0",
     metrics: {
       total_orders: "12",
       pending_payment: -2,
@@ -41,11 +51,17 @@ test("normalizeDashboardData sanitizes invalid payload and keeps valid recent or
   });
 
   assert.deepEqual(parsed, {
+    backend_version: "0.5.1",
+    web_version: "0.6.0",
     metrics: {
       total_orders: 12,
       pending_payment: 0,
       paid: 0,
+      processing: 0,
+      completed: 0,
       cancelled: 1,
+      predicted_revenue: 0,
+      real_revenue: 0,
     },
     recent_orders: [
       {
@@ -57,6 +73,8 @@ test("normalizeDashboardData sanitizes invalid payload and keeps valid recent or
         created_at: "2026-02-15T00:00:00Z",
       },
     ],
+    revenue_trend: [],
+    top_products: [],
   });
 });
 
@@ -71,9 +89,9 @@ test("resolveDashboardErrorMessage handles unauthorized and generic failures", (
   );
 });
 
-test("shouldUseMockDashboard defaults to true and supports explicit off values", () => {
-  assert.equal(shouldUseMockDashboard(undefined), true);
-  assert.equal(shouldUseMockDashboard(""), true);
+test("shouldUseMockDashboard defaults to false and supports explicit on values", () => {
+  assert.equal(shouldUseMockDashboard(undefined), false);
+  assert.equal(shouldUseMockDashboard(""), false);
   assert.equal(shouldUseMockDashboard("true"), true);
   assert.equal(shouldUseMockDashboard(" 1 "), true);
   assert.equal(shouldUseMockDashboard("false"), false);

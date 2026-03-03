@@ -1815,6 +1815,8 @@ export type DashboardResponse = {
   recent_orders: DashboardRecentOrder[];
   revenue_trend: DashboardTrendPoint[];
   top_products: DashboardTopProduct[];
+  backend_version: string;
+  web_version: string;
 };
 
 export type AdminOrderDetailItem = {

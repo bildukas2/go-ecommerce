@@ -4,13 +4,19 @@ import { StatusBadge } from "./status-badge";
 
 interface RecentOrdersTableProps {
   orders: DashboardRecentOrder[];
+  backendVersion: string;
+  webVersion: string;
 }
 
-export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
+export function RecentOrdersTable({ orders, backendVersion, webVersion }: RecentOrdersTableProps) {
   return (
     <div className="glass rounded-2xl border text-foreground shadow-[0_14px_30px_rgba(2,6,23,0.08)] dark:shadow-[0_20px_38px_rgba(2,6,23,0.38)]">
-      <div className="flex items-center justify-between p-6">
-        <h3 className="text-lg font-semibold leading-none tracking-tight">Recent Orders</h3>
+      <div className="flex items-start justify-between p-6">
+        <div>
+          <h3 className="text-lg font-semibold leading-none tracking-tight">Recent Orders</h3>
+          <p className="mt-2 text-xs text-foreground/65">Backend Version: {backendVersion}</p>
+          <p className="text-xs text-foreground/65">Web Version: {webVersion}</p>
+        </div>
         <span className="rounded-full bg-foreground/6 px-2 py-1 text-xs text-foreground/75">
           {orders.length} shown
         </span>

@@ -1,6 +1,8 @@
 import type { DashboardResponse } from "@/lib/api";
 
 export const ADMIN_DASHBOARD_MOCK: DashboardResponse = {
+  backend_version: "0.5.0",
+  web_version: "0.5.0",
   metrics: {
     total_orders: 1428,
     pending_payment: 37,

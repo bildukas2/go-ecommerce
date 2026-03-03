@@ -69,6 +69,7 @@ go-ecommerce/
 ### Small, Focused Changes
 - 1 feature or fix per PR. Avoid large refactors "while you're here".
 - Do not add new dependencies unless clearly necessary.
+- On every fix/feature/change, increment dashboard version monitor values in `internal/platform/version/version.go` (`BackendVersion` and `WebVersion`) using semantic versioning.
 
 ### Don't Break Setup
 - `docker compose up` must keep working. Never make setup harder.

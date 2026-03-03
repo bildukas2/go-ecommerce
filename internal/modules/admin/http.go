@@ -19,6 +19,7 @@ import (
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
 	platformshipping "goecommerce/internal/platform/shipping"
+	platformversion "goecommerce/internal/platform/version"
 	storcat "goecommerce/internal/storage/catalog"
 	storcustomers "goecommerce/internal/storage/customers"
 	stormedia "goecommerce/internal/storage/media"
@@ -209,10 +210,12 @@ func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
-		"metrics":       metrics,
-		"recent_orders": recentOut,
-		"revenue_trend": trend,
-		"top_products":  topProducts,
+		"metrics":         metrics,
+		"recent_orders":   recentOut,
+		"revenue_trend":   trend,
+		"top_products":    topProducts,
+		"backend_version": platformversion.BackendVersion,
+		"web_version":     platformversion.WebVersion,
 	})
 }
 

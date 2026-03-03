@@ -1,6 +1,11 @@
 import { isUnauthorizedAdminError } from "./admin-orders-state.mjs";
 
+const DEFAULT_BACKEND_VERSION = "0.5.0";
+const DEFAULT_WEB_VERSION = "0.5.0";
+
 const EMPTY_DASHBOARD = Object.freeze({
+  backend_version: DEFAULT_BACKEND_VERSION,
+  web_version: DEFAULT_WEB_VERSION,
   metrics: {
     total_orders: 0,
     pending_payment: 0,
@@ -18,6 +23,8 @@ const EMPTY_DASHBOARD = Object.freeze({
 
 export function emptyDashboard() {
   return {
+    backend_version: EMPTY_DASHBOARD.backend_version,
+    web_version: EMPTY_DASHBOARD.web_version,
     metrics: { ...EMPTY_DASHBOARD.metrics },
     recent_orders: [],
     revenue_trend: [],
@@ -33,6 +40,8 @@ export function normalizeDashboardData(payload) {
   const topProductsSource = Array.isArray(source.top_products) ? source.top_products : [];
 
   return {
+    backend_version: toVersion(source.backend_version, DEFAULT_BACKEND_VERSION),
+    web_version: toVersion(source.web_version, DEFAULT_WEB_VERSION),
     metrics: {
       total_orders: toNonNegativeInt(metricsSource.total_orders),
       pending_payment: toNonNegativeInt(metricsSource.pending_payment),
@@ -69,6 +78,13 @@ function toNonNegativeInt(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
   return parsed;
+}
+
+function toVersion(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim();
+  if (!normalized) return fallback;
+  return normalized;
 }
 
 function isRecentOrderLike(value) {

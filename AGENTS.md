@@ -133,6 +133,7 @@ Ask a short clarification question instead of writing long explanation
 ### Small PRs
 - Keep changes focused: **1 feature or fix per PR**.
 - Avoid large refactors "while you're here".
+- On every fix/feature/change, increment dashboard version monitor values in `internal/platform/version/version.go` (`BackendVersion` and `WebVersion`) using semantic versioning.
 
 ### No "agent creep"
 - Do not add new dependencies unless clearly necessary.
