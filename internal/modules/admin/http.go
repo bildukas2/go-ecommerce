@@ -566,6 +566,7 @@ type catalogStore interface {
 	DeleteCategory(ctx context.Context, id string) (storcat.DeleteCategoryResult, error)
 	CreateProduct(ctx context.Context, in storcat.ProductUpsertInput) (storcat.Product, error)
 	CreateProductVariant(ctx context.Context, productID string, in storcat.ProductVariantCreateInput) (storcat.Variant, error)
+	UpdateProductVariant(ctx context.Context, productID string, variantID string, in storcat.ProductVariantUpdateInput) (storcat.Variant, error)
 	UpdateProduct(ctx context.Context, id string, in storcat.ProductUpsertInput) (storcat.Product, error)
 	DeleteProduct(ctx context.Context, id string) error
 	GetProductCategoryIDs(ctx context.Context, productID string) ([]string, error)
@@ -919,6 +920,51 @@ func (m *module) handleCatalogProductDetailActions(w http.ResponseWriter, r *htt
 			return
 		}
 		_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"id": imageID})
+		return
+	}
+
+	// Handle 3-part paths: /admin/catalog/products/{id}/variants/{variantID}
+	if len(parts) == 3 && parts[1] == "variants" {
+		variantID := strings.TrimSpace(parts[2])
+		if variantID == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodPatch {
+			platformhttp.Error(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		var req struct {
+			SKU        string `json:"sku"`
+			PriceCents int    `json:"price_cents"`
+			Stock      int    `json:"stock"`
+		}
+		if err := decodeRequest(r, &req); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if req.SKU == "" {
+			platformhttp.Error(w, http.StatusBadRequest, "sku is required")
+			return
+		}
+		if req.PriceCents < 0 {
+			platformhttp.Error(w, http.StatusBadRequest, "price_cents must be >= 0")
+			return
+		}
+		if req.Stock < 0 {
+			platformhttp.Error(w, http.StatusBadRequest, "stock must be >= 0")
+			return
+		}
+		updated, err := m.catalog.UpdateProductVariant(r.Context(), id, variantID, storcat.ProductVariantUpdateInput{
+			SKU:        strings.TrimSpace(req.SKU),
+			PriceCents: req.PriceCents,
+			Stock:      req.Stock,
+		})
+		if err != nil {
+			writeCatalogStoreError(w, err, "update variant error")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, updated)
 		return
 	}
 

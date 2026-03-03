@@ -89,6 +89,9 @@ func (f *fakeCatalogStore) DeleteProduct(ctx context.Context, id string) error {
 func (f *fakeCatalogStore) GetProductCategoryIDs(ctx context.Context, productID string) ([]string, error) {
 	return []string{}, nil
 }
+func (f *fakeCatalogStore) UpdateProductVariant(ctx context.Context, productID string, variantID string, in storcat.ProductVariantUpdateInput) (storcat.Variant, error) {
+	return storcat.Variant{ID: variantID, SKU: in.SKU, PriceCents: in.PriceCents, Stock: in.Stock}, nil
+}
 func (f *fakeCatalogStore) ReplaceProductCategories(ctx context.Context, productID string, categoryIDs []string) error {
 	if f.replaceProductCatsFn == nil {
 		return nil

@@ -730,7 +730,6 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           assignmentsByProductID={assignmentsByProductIDObj}
           availableCustomOptions={availableCustomOptions}
           currentHref={currentHref}
-          updateProductAction={updateProductAction}
           deleteProductAction={deleteProductAction}
           assignCategoriesToSingleAction={assignCategoriesToSingleAction}
           removeCategoriesFromSingleAction={removeCategoriesFromSingleAction}

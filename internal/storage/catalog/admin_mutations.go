@@ -414,6 +414,38 @@ func (s *Store) CreateProductVariant(ctx context.Context, productID string, in P
 	return variant, nil
 }
 
+type ProductVariantUpdateInput struct {
+	SKU        string
+	PriceCents int
+	Stock      int
+}
+
+func (s *Store) UpdateProductVariant(ctx context.Context, productID string, variantID string, in ProductVariantUpdateInput) (Variant, error) {
+	var (
+		variant       Variant
+		compareAtNull sql.NullInt64
+		attrsRaw      []byte
+	)
+	row := s.db.QueryRowContext(ctx, `
+		UPDATE product_variants
+		SET sku = $3, price_cents = $4, stock = $5
+		WHERE id = $1::uuid AND product_id = $2::uuid
+		RETURNING id, sku, price_cents, compare_at_price_cents, currency, stock, attributes_json
+	`, variantID, productID, in.SKU, in.PriceCents, in.Stock)
+	if err := row.Scan(&variant.ID, &variant.SKU, &variant.PriceCents, &compareAtNull, &variant.Currency, &variant.Stock, &attrsRaw); err != nil {
+		if err == sql.ErrNoRows {
+			return Variant{}, ErrNotFound
+		}
+		return Variant{}, err
+	}
+	if compareAtNull.Valid {
+		value := int(compareAtNull.Int64)
+		variant.CompareAtPriceCents = &value
+	}
+	variant.Attributes = map[string]interface{}{}
+	return variant, nil
+}
+
 func (s *Store) GetProductCategoryIDs(ctx context.Context, productID string) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT category_id FROM product_categories WHERE product_id = $1::uuid`, productID)
 	if err != nil {

@@ -32,7 +32,6 @@ type Props = {
   assignmentsByProductID: Record<string, AdminProductCustomOptionAssignment[]>;
   availableCustomOptions: AdminCustomOption[];
   currentHref: string;
-  updateProductAction: ActionFn;
   deleteProductAction: ActionFn;
   assignCategoriesToSingleAction: ActionFn;
   removeCategoriesFromSingleAction: ActionFn;
@@ -93,7 +92,6 @@ export function ProductsTableManager({
   assignmentsByProductID,
   availableCustomOptions,
   currentHref,
-  updateProductAction,
   deleteProductAction,
   assignCategoriesToSingleAction,
   removeCategoriesFromSingleAction,
@@ -223,14 +221,13 @@ export function ProductsTableManager({
                     <td className="px-3 py-3 text-right">
                       <div className="inline-flex items-center gap-2">
                         <ProductsEditModal
-                          updateAction={updateProductAction}
-                          returnTo={currentHref}
                           categories={categories}
                           customOptions={availableCustomOptions}
                           assignments={assignments}
                           images={product.images}
                           product={{
                             id: product.id,
+                            variantID: displayVariant?.id || "",
                             title: product.title,
                             slug: product.slug,
                             description: product.description,

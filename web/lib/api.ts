@@ -2955,6 +2955,21 @@ export async function createAdminProductVariant(productID: string, input: AdminC
   return normalized;
 }
 
+export async function updateAdminProductVariant(
+  productID: string,
+  variantID: string,
+  input: { sku: string; price_cents: number; stock: number },
+): Promise<ProductVariant> {
+  const out = await adminCatalogRequest<unknown>({
+    path: `admin/catalog/products/${encodeURIComponent(productID)}/variants/${encodeURIComponent(variantID)}`,
+    method: "PATCH",
+    body: input,
+  });
+  const v = normalizeVariant(out);
+  if (!v) throw new Error("Invalid variant response");
+  return v;
+}
+
 export async function getAdminProductCategoryIDs(productID: string): Promise<string[]> {
   const out = await adminCatalogRequest<{ category_ids: string[] }>({
     path: `admin/catalog/products/${encodeURIComponent(productID)}/categories`,
