@@ -197,9 +197,15 @@ export function ProductsEditModal({ categories, customOptions, assignments, prod
           </label>
           <label className="space-y-1 text-sm md:col-span-2">
             <span>Categories (multi-select)</span>
-            <select multiple name="category_ids" className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2">
+            <select
+              multiple
+              name="category_ids"
+              value={assignedCategoryIDs}
+              onChange={(e) => setAssignedCategoryIDs(Array.from(e.target.selectedOptions, (o) => o.value))}
+              className="h-28 w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+            >
               {categories.map((category) => (
-                <option key={`${product.id}-category-${category.id}`} value={category.id} selected={assignedCategoryIDs.includes(category.id)}>
+                <option key={`${product.id}-category-${category.id}`} value={category.id}>
                   {category.name}
                 </option>
               ))}
