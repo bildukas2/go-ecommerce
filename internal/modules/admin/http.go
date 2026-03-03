@@ -161,6 +161,7 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/products/", m.handleProductCustomOptionAssignments)
 	mux.HandleFunc("/admin/translations", m.handleTranslations)
 	mux.HandleFunc("/admin/translations/", m.handleTranslationDetail)
+	mux.HandleFunc("/admin/version-check", m.handleVersionCheck)
 }
 
 func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +217,69 @@ func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"top_products":    topProducts,
 		"backend_version": platformversion.BackendVersion,
 		"web_version":     platformversion.WebVersion,
+	})
+}
+
+func (m *module) handleVersionCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+
+	owner := strings.TrimSpace(os.Getenv("GITHUB_REPO_OWNER"))
+	if owner == "" {
+		owner = "your-org"
+	}
+	repo := strings.TrimSpace(os.Getenv("GITHUB_REPO_NAME"))
+	if repo == "" {
+		repo = "go-ecommerce"
+	}
+
+	apiURL := "https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest"
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadGateway, "failed to fetch latest version")
+		return
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	if token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		slog.Warn("version check: github request failed", "error", err)
+		platformhttp.Error(w, http.StatusBadGateway, "failed to fetch latest version")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("version check: github returned non-200", "status", resp.StatusCode)
+		platformhttp.Error(w, http.StatusBadGateway, "failed to fetch latest version")
+		return
+	}
+
+	var ghResp struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ghResp); err != nil {
+		platformhttp.Error(w, http.StatusBadGateway, "failed to fetch latest version")
+		return
+	}
+
+	latestVersion := strings.TrimPrefix(ghResp.TagName, "v")
+	current := platformversion.BackendVersion
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{
+		"current_version": current,
+		"latest_version":  latestVersion,
+		"up_to_date":      current == latestVersion,
 	})
 }
 

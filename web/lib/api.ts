@@ -2431,6 +2431,22 @@ export async function getDashboard(): Promise<DashboardResponse> {
   return res.json();
 }
 
+export type VersionCheckResponse = {
+  current_version: string;
+  latest_version: string;
+  up_to_date: boolean;
+};
+
+export async function checkVersion(): Promise<VersionCheckResponse> {
+  const url = new URL(apiJoin("admin/version-check"));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to check version: ${res.status}`);
+  return res.json();
+}
+
 export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {
   const url = new URL(serverApiJoin(`admin/orders/${encodeURIComponent(id)}`));
   const res = await fetch(url.toString(), {

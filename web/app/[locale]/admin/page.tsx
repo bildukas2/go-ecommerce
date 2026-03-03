@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDashboard } from "@/lib/api";
 import { DashboardMetrics } from "@/components/admin/dashboard-metrics";
 import { RecentOrdersTable } from "@/components/admin/recent-orders-table";
+import { VersionChecker } from "@/components/admin/version-checker";
 import { Button } from "@/components/ui/button";
 import {
   emptyDashboard,
@@ -152,10 +153,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       <RecentOrdersTable orders={dashboard.recent_orders} />
-      <div className="border-t border-surface-border pt-3 text-xs text-foreground/65">
-        <p>Backend Version: {dashboard.backend_version}</p>
-        <p>Web Version: {dashboard.web_version}</p>
-      </div>
+      <VersionChecker backendVersion={dashboard.backend_version} webVersion={dashboard.web_version} />
     </div>
   );
 }

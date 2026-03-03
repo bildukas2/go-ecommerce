@@ -1,6 +1,6 @@
 package version
 
 const (
-	BackendVersion = "0.5.2"
-	WebVersion     = "0.5.2"
+	BackendVersion = "0.5.3"
+	WebVersion     = "0.5.3"
 )
