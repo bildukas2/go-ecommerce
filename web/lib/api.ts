@@ -2438,6 +2438,22 @@ export type VersionCheckResponse = {
   channel: string;
 };
 
+export type SystemUpdateJob = {
+  id: string;
+  status: "pending" | "running" | "success" | "failed";
+  channel: "prod" | "dev";
+  current_version: string;
+  latest_version: string;
+  requested_by_email: string;
+  command: string;
+  log: string;
+  error: string;
+  triggered_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  api_restart_planned: boolean;
+};
+
 export async function checkVersion(channel: "dev" | "prod"): Promise<VersionCheckResponse> {
   const url = new URL(apiJoin("admin/version-check"));
   url.searchParams.set("channel", channel);
@@ -2447,6 +2463,37 @@ export async function checkVersion(channel: "dev" | "prod"): Promise<VersionChec
   });
   if (!res.ok) throw new Error(`Failed to check version: ${res.status}`);
   return res.json();
+}
+
+export async function runSystemUpdate(channel: "dev" | "prod", confirmText: string): Promise<SystemUpdateJob> {
+  const url = new URL(apiJoin("admin/system/update/run"));
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    ...(await adminMutationHeaders()),
+    cache: "no-store",
+    body: JSON.stringify({
+      channel,
+      confirm_text: confirmText,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to run system update: ${res.status}`));
+  }
+  const payload = asRecord(await res.json());
+  return asRecord(payload.job) as unknown as SystemUpdateJob;
+}
+
+export async function getSystemUpdateJob(jobID: string): Promise<SystemUpdateJob> {
+  const url = new URL(apiJoin(`admin/system/update/jobs/${encodeURIComponent(jobID)}`));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(await apiErrorMessage(res, `Failed to fetch update job: ${res.status}`));
+  }
+  const payload = asRecord(await res.json());
+  return asRecord(payload.job) as unknown as SystemUpdateJob;
 }
 
 export async function getAdminOrder(id: string): Promise<AdminOrderDetail> {

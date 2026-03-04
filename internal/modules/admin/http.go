@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ type terminalStore interface {
 }
 
 type module struct {
+	db                  *sql.DB
 	orders              ordersStore
 	customers           customersStore
 	catalog             catalogStore
@@ -41,6 +43,8 @@ type module struct {
 	downloadImportImage func(context.Context, string) ([]byte, string, error)
 	uploadsDir          string
 	translationsDir     string
+	projectRoot         string
+	updateScriptPath    string
 }
 
 func NewModule(deps app.Deps) app.Module {
@@ -94,15 +98,26 @@ func NewModule(deps app.Deps) app.Module {
 	if translationsDir == "" {
 		translationsDir = "./web/i18n/messages"
 	}
+	projectRoot := strings.TrimSpace(os.Getenv("PROJECT_ROOT"))
+	if projectRoot == "" {
+		projectRoot = "."
+	}
+	updateScriptPath := strings.TrimSpace(os.Getenv("UPDATE_SCRIPT_PATH"))
+	if updateScriptPath == "" {
+		updateScriptPath = filepath.Join(projectRoot, "deploy", "update-prod.sh")
+	}
 
 	return &module{
-		orders:          ost,
-		customers:       cust,
-		catalog:         cst,
-		media:           mst,
-		terminals:       tst,
-		uploadsDir:      uploadsDir,
-		translationsDir: translationsDir,
+		db:               deps.DB,
+		orders:           ost,
+		customers:        cust,
+		catalog:          cst,
+		media:            mst,
+		terminals:        tst,
+		uploadsDir:       uploadsDir,
+		translationsDir:  translationsDir,
+		projectRoot:      projectRoot,
+		updateScriptPath: updateScriptPath,
 	}
 }
 
@@ -162,6 +177,9 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/translations", m.handleTranslations)
 	mux.HandleFunc("/admin/translations/", m.handleTranslationDetail)
 	mux.HandleFunc("/admin/version-check", m.handleVersionCheck)
+	mux.HandleFunc("/admin/system/update/check", m.handleSystemUpdateCheck)
+	mux.HandleFunc("/admin/system/update/run", m.handleSystemUpdateRun)
+	mux.HandleFunc("/admin/system/update/jobs/", m.handleSystemUpdateJobStatus)
 }
 
 func (m *module) handleDashboard(w http.ResponseWriter, r *http.Request) {
