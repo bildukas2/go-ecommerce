@@ -455,7 +455,7 @@ func (m *module) writeUploadFileWithExt(r *http.Request, content []byte, ext str
 	if err := os.WriteFile(absolutePath, content, 0o644); err != nil {
 		return "", "", err
 	}
-	publicURL = buildPublicUploadURL(r, storagePath)
+	publicURL = buildPublicUploadURL(m.publicURL, r, storagePath)
 	return storagePath, publicURL, nil
 }
 
@@ -475,7 +475,7 @@ func (m *module) writeUploadFile(r *http.Request, content []byte, mimeType strin
 		return "", "", err
 	}
 
-	publicURL = buildPublicUploadURL(r, storagePath)
+	publicURL = buildPublicUploadURL(m.publicURL, r, storagePath)
 	return storagePath, publicURL, nil
 }
 
@@ -487,7 +487,11 @@ func randomHexFilename(ext string) (string, error) {
 	return hex.EncodeToString(buf) + ext, nil
 }
 
-func buildPublicUploadURL(r *http.Request, storagePath string) string {
+func buildPublicUploadURL(configuredBase string, r *http.Request, storagePath string) string {
+	path := "/uploads/" + strings.ReplaceAll(storagePath, "\\", "/")
+	if configuredBase != "" {
+		return configuredBase + path
+	}
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
@@ -495,12 +499,11 @@ func buildPublicUploadURL(r *http.Request, storagePath string) string {
 	if xfp := firstHeaderCSVValue(r.Header.Get("X-Forwarded-Proto")); xfp != "" {
 		scheme = strings.ToLower(xfp)
 	}
-
 	host := strings.TrimSpace(r.Host)
 	if xfh := firstHeaderCSVValue(r.Header.Get("X-Forwarded-Host")); xfh != "" {
 		host = xfh
 	}
-	return scheme + "://" + host + "/uploads/" + strings.ReplaceAll(storagePath, "\\", "/")
+	return scheme + "://" + host + path
 }
 
 func firstHeaderCSVValue(v string) string {

@@ -42,6 +42,7 @@ type module struct {
 	validateImportHost  func(context.Context, string) error
 	downloadImportImage func(context.Context, string) ([]byte, string, error)
 	uploadsDir          string
+	publicURL           string
 	translationsDir     string
 	projectRoot         string
 	updateScriptPath    string
