@@ -229,13 +229,16 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
       {actionError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{actionError}</div>}
       {fetchError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{fetchError}</div>}
 
-      <section className="glass rounded-2xl border p-4 md:p-5">
+      <section className="rounded-2xl border-2 border-blue-500/40 bg-blue-500/[0.06] p-4 shadow-sm dark:bg-blue-500/[0.08] md:p-5">
         <details className="group">
-          <summary className="cursor-pointer list-none text-lg font-semibold">
+          <summary className="cursor-pointer list-none">
             <div className="flex items-center justify-between gap-3">
-              <span>Create category</span>
-              <span className="text-xs text-foreground/65 group-open:hidden">Open</span>
-              <span className="hidden text-xs text-foreground/65 group-open:inline">Hide</span>
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/25 text-xl font-bold text-blue-600 dark:text-blue-400">+</span>
+                <span className="text-lg font-semibold text-blue-700 dark:text-blue-300">Create category</span>
+              </div>
+              <span className="rounded-lg border border-blue-400/50 bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-500/25 dark:text-blue-400 group-open:hidden">Open</span>
+              <span className="hidden rounded-lg border border-blue-400/50 bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-500/25 dark:text-blue-400 group-open:inline">Hide</span>
             </div>
           </summary>
           <form action={createCategoryAction} className="mt-4 grid gap-3 md:grid-cols-2">
