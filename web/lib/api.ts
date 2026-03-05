@@ -3124,6 +3124,16 @@ export type UpdateEmailTemplateInput = {
   body_html_i18n: Record<string, string>;
 };
 
+export type ShopSettings = {
+  id: number;
+  currency: string;
+  updated_at: string;
+};
+
+export type UpdateShopSettingsInput = {
+  currency: string;
+};
+
 function normalizeEmailSettings(raw: unknown): EmailSettings | null {
   const obj = asRecord(raw);
   const driverRaw = asString(obj.driver).toLowerCase();
@@ -3155,6 +3165,17 @@ function normalizeEmailTemplate(raw: unknown): EmailTemplate | null {
     subject_i18n: asStringRecord(obj.subject_i18n),
     body_html_i18n: asStringRecord(obj.body_html_i18n),
     created_at: asString(obj.created_at),
+    updated_at: asString(obj.updated_at),
+  };
+}
+
+function normalizeShopSettings(raw: unknown): ShopSettings | null {
+  const obj = asRecord(raw);
+  const currency = asString(obj.currency).trim().toUpperCase();
+  if (currency.length !== 3) return null;
+  return {
+    id: asNumber(obj.id),
+    currency,
     updated_at: asString(obj.updated_at),
   };
 }
@@ -3204,6 +3225,45 @@ export async function sendAdminEmailTest(to: string, lang: string): Promise<{ ok
   if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to send test email: ${res.status}`));
   const payload = asRecord(await res.json());
   return { ok: asBoolean(payload.ok) };
+}
+
+export async function getAdminShopSettings(): Promise<ShopSettings> {
+  const url = new URL(serverApiJoin("admin/settings/shop"));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to fetch shop settings: ${res.status}`));
+  const normalized = normalizeShopSettings(await res.json());
+  if (!normalized) throw new Error("Failed to fetch shop settings: invalid response");
+  return normalized;
+}
+
+export async function updateAdminShopSettings(input: UpdateShopSettingsInput): Promise<ShopSettings> {
+  const url = new URL(apiJoin("admin/settings/shop"));
+  const res = await fetch(url.toString(), {
+    method: "PUT",
+    ...(await adminMutationHeaders()),
+    cache: "no-store",
+    body: JSON.stringify({
+      currency: input.currency,
+    }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to update shop settings: ${res.status}`));
+  const normalized = normalizeShopSettings(await res.json());
+  if (!normalized) throw new Error("Failed to update shop settings: invalid response");
+  return normalized;
+}
+
+export async function getStorefrontShopSettings(): Promise<ShopSettings> {
+  const url = new URL(serverApiJoin("settings/shop"));
+  const res = await fetch(url.toString(), {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch shop settings: ${res.status}`);
+  const normalized = normalizeShopSettings(await res.json());
+  if (!normalized) throw new Error("Failed to fetch shop settings: invalid response");
+  return normalized;
 }
 
 export async function listAdminEmailTemplates(): Promise<EmailTemplate[]> {

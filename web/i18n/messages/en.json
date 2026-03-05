@@ -217,6 +217,7 @@
       "images": "Images",
       "video": "Video",
       "shopping": "Shopping",
+      "shop": "Shop",
       "email": "Email",
       "email_settings": "Settings",
       "email_templates": "Templates",
@@ -287,6 +288,18 @@
         "save_error": "Failed to save changes.",
         "test_sent": "Test email sent.",
         "test_error": "Failed to send test email."
+      }
+    },
+    "shop": {
+      "page": {
+        "title": "Shop Settings",
+        "description": "Configure storefront defaults used for price display."
+      },
+      "currency_label": "Currency",
+      "saving": "Saving...",
+      "messages": {
+        "saved": "Saved successfully.",
+        "save_error": "Failed to save changes."
       }
     }
   }

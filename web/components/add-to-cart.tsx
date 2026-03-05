@@ -9,6 +9,7 @@ import { useCart } from "@/components/cart-context";
 import type { AdminCustomOption, CartCustomOptionSelectionInput, ProductVariant } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 import { getSwatchColor } from "@/lib/color-swatches";
+import { useShopCurrency } from "@/components/shop-currency-context";
 
 type OptionSelectionState = {
   valueId: string;
@@ -59,6 +60,7 @@ export function AddToCartButton({
   const [message, setMessage] = React.useState<string>("");
   const [selectionErrors, setSelectionErrors] = React.useState<Record<string, string>>({});
   const { add } = useCart();
+  const shopCurrency = useShopCurrency();
 
   const activeCustomOptions = React.useMemo(
     () =>
@@ -253,22 +255,22 @@ export function AddToCartButton({
         <p className="mt-1 text-3xl font-semibold">
           {(() => {
             if (selectedVariant && selectedPriceCents !== null) {
-              return formatMoney(selectedPriceCents, selectedVariant.currency);
+              return formatMoney(selectedPriceCents, shopCurrency || selectedVariant.currency);
             }
             if (variants.length > 0) {
               const prices = variants.map((v) => v.priceCents);
               const minPrice = Math.min(...prices);
               const maxPrice = Math.max(...prices);
               const currency = variants[0].currency;
-              if (minPrice === maxPrice) return formatMoney(minPrice, currency);
-              return `${formatMoney(minPrice, currency)} - ${formatMoney(maxPrice, currency)}`;
+              if (minPrice === maxPrice) return formatMoney(minPrice, shopCurrency || currency);
+              return `${formatMoney(minPrice, shopCurrency || currency)} - ${formatMoney(maxPrice, shopCurrency || currency)}`;
             }
             return "N/A";
           })()}
         </p>
         {selectedVariant && customOptionsDeltaCents > 0 && (
           <p className="mt-1 text-xs text-neutral-500">
-            Includes {formatMoney(customOptionsDeltaCents, selectedVariant.currency)} custom options
+            Includes {formatMoney(customOptionsDeltaCents, shopCurrency || selectedVariant.currency)} custom options
           </p>
         )}
       </div>

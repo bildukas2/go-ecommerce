@@ -1,4 +1,4 @@
-export function formatMoney(amountMinor: number, currency = "EUR") {
+export function formatMoney(amountMinor: number, currency = "USD") {
   const amount = amountMinor / 100;
   return new Intl.NumberFormat(undefined, {
     style: "currency",

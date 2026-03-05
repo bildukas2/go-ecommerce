@@ -21,6 +21,7 @@ import (
 	moduleemail "goecommerce/internal/modules/email"
 	"goecommerce/internal/modules/orders"
 	"goecommerce/internal/modules/payments"
+	"goecommerce/internal/modules/settings"
 	"goecommerce/internal/modules/shipping"
 	platformdb "goecommerce/internal/platform/db"
 	platformredis "goecommerce/internal/platform/redis"
@@ -103,6 +104,7 @@ func main() {
 	app.RegisterModule(orders.NewModule(deps))
 	app.RegisterModule(shipping.NewModule(deps))
 	app.RegisterModule(payments.NewModule(deps))
+	app.RegisterModule(settings.NewModule(deps))
 	app.RegisterModule(moduleemail.NewModule(deps))
 	app.RegisterModule(checkout.NewModule(deps, checkout.WithEmailService(checkoutEmailService)))
 	app.RegisterModule(cms.NewModule(deps))

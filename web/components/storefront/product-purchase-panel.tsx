@@ -4,6 +4,7 @@ import * as React from "react";
 import { AddToCartButton } from "@/components/add-to-cart";
 import type { AdminCustomOption, ProductVariant } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
+import { useShopCurrency } from "@/components/shop-currency-context";
 
 type ProductPurchasePanelProps = {
   title: string;
@@ -13,6 +14,7 @@ type ProductPurchasePanelProps = {
 };
 
 export function ProductPurchasePanel({ title, description, variants, customOptions = [] }: ProductPurchasePanelProps) {
+  const shopCurrency = useShopCurrency();
   const defaultVariant = variants.find((variant) => variant.stock > 0) ?? variants[0] ?? null;
   const [selectedVariantID, setSelectedVariantID] = React.useState<string>(defaultVariant?.id ?? "");
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantID) ?? defaultVariant;
@@ -54,13 +56,13 @@ export function ProductPurchasePanel({ title, description, variants, customOptio
         {selectedVariant ? (
           <>
             <p className="mt-1 text-3xl font-semibold">
-              {formatMoney(selectedVariant.priceCents, selectedVariant.currency)}
+              {formatMoney(selectedVariant.priceCents, shopCurrency || selectedVariant.currency)}
             </p>
             {minPrice !== null && maxPrice !== null && (
               <p className="mt-1 text-xs text-neutral-500">
-                Range: {formatMoney(minPrice, selectedVariant.currency)}
+                Range: {formatMoney(minPrice, shopCurrency || selectedVariant.currency)}
                 {" - "}
-                {formatMoney(maxPrice, selectedVariant.currency)}
+                {formatMoney(maxPrice, shopCurrency || selectedVariant.currency)}
               </p>
             )}
           </>

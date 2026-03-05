@@ -217,6 +217,7 @@
       "images": "Vaizdai",
       "video": "Vaizdo įrašai",
       "shopping": "Apsipirkimas",
+      "shop": "Parduotuve",
       "shipping": "Pristatymas",
       "payments": "Mokėjimai",
       "translations": "Vertimai",
@@ -287,6 +288,18 @@
         "save_error": "Nepavyko issaugoti pakeitimu.",
         "test_sent": "Testinis laiskas issiustas.",
         "test_error": "Nepavyko issiusti testinio laisko."
+      }
+    },
+    "shop": {
+      "page": {
+        "title": "Parduotuves nustatymai",
+        "description": "Konfiguruokite numatytas parduotuves reikšmes kainu atvaizdavimui."
+      },
+      "currency_label": "Valiuta",
+      "saving": "Saugoma...",
+      "messages": {
+        "saved": "Issaugota sekmingai.",
+        "save_error": "Nepavyko issaugoti pakeitimu."
       }
     }
   }

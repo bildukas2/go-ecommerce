@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCategories, getProducts } from "@/lib/api";
+import { getCategories, getProducts, getStorefrontShopSettings } from "@/lib/api";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ProductCard } from "@/components/storefront/product-card";
 import { formatMoney } from "@/lib/money";
@@ -21,6 +21,11 @@ export default async function ProductsPage({
     getProducts({ page, limit: 12, category: category || undefined }),
     getCategories(),
   ]);
+  let displayCurrency = "USD";
+  try {
+    const shopSettings = await getStorefrontShopSettings();
+    displayCurrency = shopSettings.currency || "USD";
+  } catch {}
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const productCards = items.map((product) => {
@@ -33,7 +38,7 @@ export default async function ProductsPage({
       title: product.title,
       description: product.description,
       imageUrl: selectProductGridImage(product.images),
-      priceLabel: priceVariant ? formatMoney(priceVariant.priceCents, priceVariant.currency) : null,
+      priceLabel: priceVariant ? formatMoney(priceVariant.priceCents, displayCurrency || priceVariant.currency) : null,
     };
   });
 

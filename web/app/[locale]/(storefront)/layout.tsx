@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { Providers } from "@/components/providers";
 import { ui } from "@/core/ui";
-import { getCurrentAccount, getStorefrontNavigationLocation } from "@/lib/api";
+import { getCurrentAccount, getStorefrontNavigationLocation, getStorefrontShopSettings } from "@/lib/api";
 import type { StorefrontNavigationItem } from "@/lib/api";
 
 const StorefrontHeader = ui("StorefrontHeader");
@@ -19,6 +19,7 @@ export default async function StorefrontLayout({
   let footerShopItems: StorefrontNavigationItem[] = [];
   let footerInfoItems: StorefrontNavigationItem[] = [];
   let mobileItems: StorefrontNavigationItem[] = [];
+  let shopCurrency = "USD";
   try {
     const cookieHeader = (await cookies()).toString();
     await getCurrentAccount({ cookieHeader });
@@ -34,9 +35,15 @@ export default async function StorefrontLayout({
     footerInfoItems = footerInfo?.menu?.items ?? [];
     mobileItems = mobile?.menu?.items ?? [];
   } catch {}
+  try {
+    const settings = await getStorefrontShopSettings();
+    if (settings.currency) {
+      shopCurrency = settings.currency;
+    }
+  } catch {}
 
   return (
-    <Providers>
+    <Providers shopCurrency={shopCurrency}>
       <StorefrontHeader isAuthenticated={isAuthenticated} mobileItems={mobileItems} />
       <main className="flex-grow">
         {children}

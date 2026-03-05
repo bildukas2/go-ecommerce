@@ -50,6 +50,7 @@ const mediaItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
+  { href: "/admin/settings/shop", labelKey: "shop", icon: <Store size={16} /> },
   { href: "/admin/settings/shipping", labelKey: "shipping", icon: <Truck size={16} /> },
   { href: "/admin/settings/payments", labelKey: "payments", icon: <CreditCard size={16} /> },
 ];
