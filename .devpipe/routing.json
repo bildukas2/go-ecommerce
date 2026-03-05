@@ -1,0 +1,27 @@
+{
+  "tiers": {
+    "low": {
+      "model": "glm-4-flash",
+      "maxScore": 3,
+      "label": "GLM-4 Flash"
+    },
+    "medium": {
+      "model": "claude-sonnet-4-6",
+      "maxScore": 6,
+      "label": "Sonnet 4.6"
+    },
+    "high": {
+      "model": "gpt-5.3-codex",
+      "maxScore": 10,
+      "label": "GPT Codex"
+    }
+  },
+  "review": {
+    "model": "claude-sonnet-4-6",
+    "label": "Sonnet 4.6"
+  },
+  "escalation": {
+    "maxAttempts": 3,
+    "onFailure": "escalate"
+  }
+}
