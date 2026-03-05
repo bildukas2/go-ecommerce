@@ -181,7 +181,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
 
   const revalidateProductsAction = async () => {
     "use server";
-    revalidatePath("/admin/catalog/products");
+    revalidatePath("/[locale]/admin/catalog/products", "page");
   };
 
   const createProductAction = async (formData: FormData) => {

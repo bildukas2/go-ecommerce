@@ -46,6 +46,7 @@ type Props = {
 export function ProductsEditModal({ categories, customOptions, assignments, product, images = [], onSaved }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [openCount, setOpenCount] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [customOptionPick, setCustomOptionPick] = useState("");
   const [selectedCustomOptionIDs, setSelectedCustomOptionIDs] = useState<string[]>([]);
@@ -165,10 +166,10 @@ export function ProductsEditModal({ categories, customOptions, assignments, prod
           </button>
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit} className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4 md:grid-cols-2">
+        <form key={openCount} ref={formRef} onSubmit={handleSubmit} className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4 md:grid-cols-2">
           <div className="space-y-1 text-sm md:col-span-2">
             <span className="font-medium">Images</span>
-            <ProductImagesManager productID={product.id} initialImages={images} />
+            <ProductImagesManager key={openCount} productID={product.id} initialImages={images} />
           </div>
           <label className="space-y-1 text-sm">
             <span>Title</span>
@@ -304,7 +305,7 @@ export function ProductsEditModal({ categories, customOptions, assignments, prod
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); setOpenCount((c) => c + 1); }}
         className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium hover:bg-foreground/[0.05]"
       >
         Edit
