@@ -1,5 +1,6 @@
 import {
   getShippingProviders,
+  getShippingProviderPlugins,
   getShippingZones,
   getShippingMethods,
 } from "@/lib/api";
@@ -9,8 +10,9 @@ export const dynamic = "force-dynamic";
 
 async function fetchShippingData() {
   try {
-    const [providers, zones, methods] = await Promise.all([
+    const [providers, plugins, zones, methods] = await Promise.all([
       getShippingProviders(),
+      getShippingProviderPlugins(),
       getShippingZones(),
       getShippingMethods(),
     ]);
@@ -18,6 +20,7 @@ async function fetchShippingData() {
     return {
       error: null,
       providers,
+      plugins,
       zones,
       methods,
     };
@@ -25,6 +28,7 @@ async function fetchShippingData() {
     return {
       error: error instanceof Error ? error.message : "Failed to load shipping data",
       providers: [],
+      plugins: [],
       zones: [],
       methods: [],
     };
@@ -52,6 +56,7 @@ export default async function ShippingSettingsPage() {
       {!data.error && (
         <ShippingSettingsTabs
           initialProviders={data.providers}
+          availablePlugins={data.plugins}
           initialZones={data.zones}
           initialMethods={data.methods}
         />

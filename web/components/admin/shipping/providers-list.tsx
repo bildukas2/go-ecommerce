@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { Trash2, Edit2, Plus } from "lucide-react";
-import type { ShippingProvider } from "@/lib/api";
+import type { ShippingProvider, ShippingProviderPlugin } from "@/lib/api";
 import { deleteShippingProvider } from "@/lib/api";
 import { ProviderForm } from "./provider-form";
 
 type Props = {
   initialProviders: ShippingProvider[];
+  availablePlugins: ShippingProviderPlugin[];
   onProviderUpdated?: () => void;
 };
 
-export function ProvidersList({ initialProviders, onProviderUpdated }: Props) {
+export function ProvidersList({ initialProviders, availablePlugins, onProviderUpdated }: Props) {
   const [providers, setProviders] = useState(initialProviders);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<ShippingProvider | null>(null);
@@ -166,6 +167,7 @@ export function ProvidersList({ initialProviders, onProviderUpdated }: Props) {
           onClose={handleFormClose}
           onSuccess={handleFormSuccess}
           currentProviders={providers}
+          availablePlugins={availablePlugins}
         />
       )}
 

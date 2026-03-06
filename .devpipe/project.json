@@ -1,9 +1,9 @@
 {
-  "name": "Go commerse",
+  "name": "Go-commerce",
   "language": "TypeScript/JavaScript",
   "git": {
     "remote": "https://github.com/bildukas2/go-ecommerce.git",
-    "branch": "Krykstinoms"
+    "branch": "main"
   },
   "ignore": [
     "node_modules",
@@ -13,5 +13,6 @@
     "build",
     "coverage"
   ],
-  "createdAt": "2026-03-05T18:13:15.729Z"
+  "createdAt": "2026-03-05T18:13:15.729Z",
+  "updatedAt": "2026-03-05T21:12:17.292Z"
 }

@@ -2,6 +2,7 @@ package shipping
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -50,4 +51,17 @@ func GetCapabilities(key string) (Capabilities, error) {
 		return Capabilities{}, err
 	}
 	return p.Capabilities(), nil
+}
+
+// ListKeys returns registered provider keys sorted alphabetically.
+func ListKeys() []string {
+	providersMu.RLock()
+	defer providersMu.RUnlock()
+
+	keys := make([]string, 0, len(providers))
+	for key := range providers {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

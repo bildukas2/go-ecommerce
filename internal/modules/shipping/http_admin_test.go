@@ -4,14 +4,50 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	platformshipping "goecommerce/internal/platform/shipping"
 	"goecommerce/internal/storage/shipping"
 )
+
+var testProviderCounter uint64
+
+type testProvider struct {
+	key  string
+	name string
+}
+
+func (p *testProvider) Key() string  { return p.key }
+func (p *testProvider) Name() string { return p.name }
+func (p *testProvider) Capabilities() platformshipping.Capabilities {
+	return platformshipping.Capabilities{}
+}
+func (p *testProvider) ListTerminals(ctx context.Context, country string) ([]platformshipping.Terminal, error) {
+	return []platformshipping.Terminal{}, nil
+}
+
+func registerTestProvider(t *testing.T, prefix string, providerName string, fail bool) string {
+	t.Helper()
+	idx := atomic.AddUint64(&testProviderCounter, 1)
+	key := fmt.Sprintf("%s-%d", prefix, idx)
+
+	platformshipping.Register(key, func(config map[string]any) (platformshipping.Provider, error) {
+		if fail {
+			return nil, errors.New("factory failed")
+		}
+		return &testProvider{key: key, name: providerName}, nil
+	})
+
+	return key
+}
 
 type mockStore struct {
 	listProvidersFunc         func(ctx context.Context) ([]shipping.Provider, error)
@@ -840,4 +876,150 @@ func TestHandleAdminZones_UpdateZoneResponseShape(t *testing.T) {
 	if len(countries) != 2 || countries[0] != "LT" || countries[1] != "LV" {
 		t.Fatalf("expected countries_json [LT LV], got %#v", countries)
 	}
+}
+
+func TestHandleAdminProviders_ListProviderPluginsResponseShape(t *testing.T) {
+	testKey := registerTestProvider(t, "test-plugin-shape", "Test Plugin Shape", false)
+	m := &module{}
+
+	r := httptest.NewRequest(http.MethodGet, "/admin/shipping/providers/plugins", nil)
+	w := httptest.NewRecorder()
+
+	m.handleAdminProviders(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	items, ok := payload["items"].([]any)
+	if !ok {
+		t.Fatalf("expected items array, got %T", payload["items"])
+	}
+	if len(items) == 0 {
+		t.Fatal("expected at least one plugin item")
+	}
+
+	hasOmniva := false
+	hasTestProvider := false
+	for _, item := range items {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("expected item object, got %T", item)
+		}
+		key, ok := obj["key"].(string)
+		if !ok || key == "" {
+			t.Fatalf("expected non-empty key string, got %v", obj["key"])
+		}
+		name, ok := obj["name"].(string)
+		if !ok || strings.TrimSpace(name) == "" {
+			t.Fatalf("expected non-empty name string, got %v", obj["name"])
+		}
+
+		if key == "omniva" && name == "Omniva" {
+			hasOmniva = true
+		}
+		if key == testKey && name == "Test Plugin Shape" {
+			hasTestProvider = true
+		}
+	}
+
+	if !hasOmniva {
+		t.Fatal("expected omniva plugin in response")
+	}
+	if !hasTestProvider {
+		t.Fatalf("expected %s plugin in response", testKey)
+	}
+}
+
+func TestHandleAdminProviders_ListProviderPluginsSortedByKey(t *testing.T) {
+	registerTestProvider(t, "zzz-plugin-sort", "Last Plugin", false)
+	registerTestProvider(t, "aaa-plugin-sort", "First Plugin", false)
+	m := &module{}
+
+	r := httptest.NewRequest(http.MethodGet, "/admin/shipping/providers/plugins", nil)
+	w := httptest.NewRecorder()
+
+	m.handleAdminProviders(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	items, ok := payload["items"].([]any)
+	if !ok {
+		t.Fatalf("expected items array, got %T", payload["items"])
+	}
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("expected item object, got %T", item)
+		}
+		key, ok := obj["key"].(string)
+		if !ok {
+			t.Fatalf("expected key string, got %T", obj["key"])
+		}
+		keys = append(keys, key)
+	}
+
+	sorted := append([]string(nil), keys...)
+	sort.Strings(sorted)
+	for i := range keys {
+		if keys[i] != sorted[i] {
+			t.Fatalf("expected keys sorted lexicographically, got %v", keys)
+		}
+	}
+}
+
+func TestHandleAdminProviders_ListProviderPluginsFactoryFallbackName(t *testing.T) {
+	failingKey := registerTestProvider(t, "fallback-plugin-name", "", true)
+	m := &module{}
+
+	r := httptest.NewRequest(http.MethodGet, "/admin/shipping/providers/plugins", nil)
+	w := httptest.NewRecorder()
+
+	m.handleAdminProviders(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	items, ok := payload["items"].([]any)
+	if !ok {
+		t.Fatalf("expected items array, got %T", payload["items"])
+	}
+
+	for _, item := range items {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("expected item object, got %T", item)
+		}
+		key, _ := obj["key"].(string)
+		if key != failingKey {
+			continue
+		}
+		name, _ := obj["name"].(string)
+		expected := pluginLabelFromKey(failingKey)
+		if name != expected {
+			t.Fatalf("expected fallback name %q for key %q, got %q", expected, failingKey, name)
+		}
+		return
+	}
+
+	t.Fatalf("expected failing plugin key %q in response", failingKey)
 }

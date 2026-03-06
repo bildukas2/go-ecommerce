@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card } from "@heroui/react";
 import { Zap, MapPin, Truck, Package } from "lucide-react";
-import type { ShippingProvider, ShippingZone, ShippingMethod } from "@/lib/api";
+import type { ShippingProvider, ShippingProviderPlugin, ShippingZone, ShippingMethod } from "@/lib/api";
 import { ProvidersList } from "./providers-list";
 import { ZonesList } from "./zones-list";
 import { MethodsList } from "./methods-list";
@@ -13,6 +13,7 @@ type TabType = "providers" | "zones" | "methods" | "terminals";
 
 type Props = {
   initialProviders: ShippingProvider[];
+  availablePlugins: ShippingProviderPlugin[];
   initialZones: ShippingZone[];
   initialMethods: ShippingMethod[];
 };
@@ -30,6 +31,7 @@ const tabs: Array<{
 
 export function ShippingSettingsTabs({
   initialProviders,
+  availablePlugins,
   initialZones,
   initialMethods,
 }: Props) {
@@ -67,7 +69,10 @@ export function ShippingSettingsTabs({
 
       <div className="rounded-2xl border border-surface-border p-6">
         {currentTab === "providers" && (
-          <ProvidersList initialProviders={initialProviders} />
+          <ProvidersList
+            initialProviders={initialProviders}
+            availablePlugins={availablePlugins}
+          />
         )}
 
         {currentTab === "zones" && (

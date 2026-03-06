@@ -51,6 +51,11 @@ type providerResponse struct {
 	UpdatedAt  any                    `json:"updated_at"`
 }
 
+type providerPluginResponse struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
 type zoneResponse struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
@@ -164,6 +169,15 @@ func decodeRequest(r *http.Request, dst any) error {
 }
 
 func (m *module) handleAdminProviders(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/admin/shipping/providers/plugins" {
+		if r.Method == http.MethodGet {
+			m.handleListProviderPlugins(w, r)
+			return
+		}
+		http.NotFound(w, r)
+		return
+	}
+
 	if m.store == nil {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
 		return
@@ -358,6 +372,50 @@ func (m *module) handleListProviders(w http.ResponseWriter, r *http.Request) {
 		items = append(items, toProviderResponse(provider))
 	}
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (m *module) handleListProviderPlugins(w http.ResponseWriter, r *http.Request) {
+	keys := platformshipping.ListKeys()
+	items := make([]providerPluginResponse, 0, len(keys))
+
+	for _, key := range keys {
+		name := pluginLabelFromKey(key)
+
+		factory, err := platformshipping.Get(key)
+		if err == nil {
+			provider, err := factory(map[string]any{})
+			if err == nil {
+				resolvedName := strings.TrimSpace(provider.Name())
+				if resolvedName != "" {
+					name = resolvedName
+				}
+			}
+		}
+
+		items = append(items, providerPluginResponse{
+			Key:  key,
+			Name: name,
+		})
+	}
+
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func pluginLabelFromKey(key string) string {
+	parts := strings.FieldsFunc(key, func(r rune) bool {
+		return r == '_' || r == '-' || r == ' '
+	})
+	if len(parts) == 0 {
+		return key
+	}
+
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
 }
 
 func (m *module) handleUpdateProvider(w http.ResponseWriter, r *http.Request, key string) {

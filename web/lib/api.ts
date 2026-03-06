@@ -3318,6 +3318,11 @@ export type ShippingProvider = {
   updated_at: string;
 };
 
+export type ShippingProviderPlugin = {
+  key: string;
+  name: string;
+};
+
 export type ShippingZone = {
   id: string;
   name: string;
@@ -3365,6 +3370,18 @@ function normalizeShippingProvider(raw: unknown): ShippingProvider | null {
     config_json: asRecord(obj.config_json ?? obj.configJSON),
     created_at: asString(obj.created_at ?? obj.createdAt),
     updated_at: asString(obj.updated_at ?? obj.updatedAt),
+  };
+}
+
+function normalizeShippingProviderPlugin(raw: unknown): ShippingProviderPlugin | null {
+  const obj = asRecord(raw);
+  const key = asString(obj.key).trim();
+  const name = asString(obj.name).trim();
+  if (!key || !name) return null;
+
+  return {
+    key,
+    name,
   };
 }
 
@@ -3462,6 +3479,20 @@ export async function getShippingProviders(): Promise<ShippingProvider[]> {
       ? payload.providers
       : [];
   return itemsRaw.map(normalizeShippingProvider).filter((item): item is ShippingProvider => item !== null);
+}
+
+export async function getShippingProviderPlugins(): Promise<ShippingProviderPlugin[]> {
+  const url = new URL(serverApiJoin("admin/shipping/providers/plugins"));
+  const res = await fetch(url.toString(), {
+    ...(await adminRequestHeaders()),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch shipping provider plugins: ${res.status}`);
+  const payload = asRecord(await res.json());
+  const itemsRaw = Array.isArray(payload.items) ? payload.items : [];
+  return itemsRaw
+    .map(normalizeShippingProviderPlugin)
+    .filter((item): item is ShippingProviderPlugin => item !== null);
 }
 
 export async function updateShippingProvider(key: string, data: Partial<ShippingProvider>): Promise<ShippingProvider> {
