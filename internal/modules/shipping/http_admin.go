@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -468,7 +469,8 @@ func (m *module) handleUpdateProvider(w http.ResponseWriter, r *http.Request, ke
 
 func (m *module) handleDeleteProvider(w http.ResponseWriter, r *http.Request, key string) {
 	if err := m.store.DeleteProvider(r.Context(), key); err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "delete provider error")
+		log.Printf("[shipping] delete provider %q failed: %v", key, err)
+		platformhttp.Error(w, http.StatusInternalServerError, fmt.Sprintf("delete provider failed: %v", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -591,7 +593,8 @@ func (m *module) handleUpdateZone(w http.ResponseWriter, r *http.Request, zoneID
 
 func (m *module) handleDeleteZone(w http.ResponseWriter, r *http.Request, zoneID string) {
 	if err := m.store.DeleteZone(r.Context(), zoneID); err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "delete zone error")
+		log.Printf("[shipping] delete zone %q failed: %v", zoneID, err)
+		platformhttp.Error(w, http.StatusInternalServerError, fmt.Sprintf("delete zone failed: %v", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -729,7 +732,8 @@ func (m *module) handleUpdateMethod(w http.ResponseWriter, r *http.Request, meth
 
 func (m *module) handleDeleteMethod(w http.ResponseWriter, r *http.Request, methodID string) {
 	if err := m.store.DeleteMethod(r.Context(), methodID); err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "delete method error")
+		log.Printf("[shipping] delete method %q failed: %v", methodID, err)
+		platformhttp.Error(w, http.StatusInternalServerError, fmt.Sprintf("delete method failed: %v", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

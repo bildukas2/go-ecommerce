@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 func (s *Store) CreateZone(ctx context.Context, name string, countriesJSON []byte) (string, error) {
@@ -107,11 +108,21 @@ func (s *Store) DeleteZone(ctx context.Context, id string) error {
 		return errors.New("id is required")
 	}
 
-	result, err := s.db.ExecContext(
-		ctx,
-		"DELETE FROM shipping_zones WHERE id = $1",
-		id,
-	)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Nullify FK references in orders for methods belonging to this zone,
+	// then cascade-delete will handle the methods themselves.
+	if _, err := tx.ExecContext(ctx,
+		"UPDATE orders SET shipping_method_id = NULL WHERE shipping_method_id IN (SELECT id FROM shipping_methods WHERE zone_id = $1)", id,
+	); err != nil {
+		return fmt.Errorf("nullify order references: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, "DELETE FROM shipping_zones WHERE id = $1", id)
 	if err != nil {
 		return err
 	}
@@ -123,7 +134,7 @@ func (s *Store) DeleteZone(ctx context.Context, id string) error {
 	if rows == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (s *Store) GetZoneByCountry(ctx context.Context, country string) (*Zone, error) {

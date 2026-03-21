@@ -140,6 +140,7 @@
       "free": "Free"
     },
     "terminal_section": {
+      "title": "Select Pickup Terminal",
       "location_detected": "Location detected",
       "all_cities": "All cities",
       "search_placeholder": "Search by name or address...",
@@ -155,7 +156,8 @@
       "no_coords": "No terminals with coordinates available",
       "your_location": "Your location",
       "away": "{distance} away",
-      "select_this": "Select this terminal"
+      "select_this": "Select this terminal",
+      "selected": "Selected"
     },
     "payment_section": {
       "loading": "Loading payment methods...",

@@ -140,6 +140,7 @@
       "free": "Nemokamai"
     },
     "terminal_section": {
+      "title": "Pasirinkite paštomatą",
       "location_detected": "Vieta nustatyta",
       "all_cities": "Visi miestai",
       "search_placeholder": "Ieškoti pagal pavadinimą ar adresą...",
@@ -155,7 +156,8 @@
       "no_coords": "Nėra paštomatų su nurodytomis koordinatėmis",
       "your_location": "Jūsų vieta",
       "away": "už {distance}",
-      "select_this": "Pasirinkti šį paštomatą"
+      "select_this": "Pasirinkti šį paštomatą",
+      "selected": "Pasirinkta"
     },
     "payment_section": {
       "loading": "Kraunami mokėjimo būdai...",

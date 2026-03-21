@@ -351,7 +351,7 @@ func (m *module) handleStorefrontTerminals(w http.ResponseWriter, r *http.Reques
 	terminals, err := m.getTerminals(r.Context(), provider, country)
 	if err != nil {
 		slog.Error("error fetching terminals", "provider", provider, "country", country, "error", err)
-		platformhttp.Error(w, http.StatusServiceUnavailable, "error fetching terminals")
+		platformhttp.Error(w, http.StatusServiceUnavailable, fmt.Sprintf("error fetching terminals: %v", err))
 		return
 	}
 

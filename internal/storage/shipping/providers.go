@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 type Store struct {
@@ -119,11 +120,23 @@ func (s *Store) DeleteProvider(ctx context.Context, key string) error {
 		return errors.New("key is required")
 	}
 
-	result, err := s.db.ExecContext(
-		ctx,
-		"DELETE FROM shipping_providers WHERE key = $1",
-		key,
-	)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Nullify FK references in orders, then delete child methods.
+	if _, err := tx.ExecContext(ctx,
+		"UPDATE orders SET shipping_method_id = NULL WHERE shipping_method_id IN (SELECT id FROM shipping_methods WHERE provider_key = $1)", key,
+	); err != nil {
+		return fmt.Errorf("nullify order references: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM shipping_methods WHERE provider_key = $1", key); err != nil {
+		return fmt.Errorf("delete methods: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx, "DELETE FROM shipping_providers WHERE key = $1", key)
 	if err != nil {
 		return err
 	}
@@ -135,5 +148,5 @@ func (s *Store) DeleteProvider(ctx context.Context, key string) error {
 	if rows == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+	return tx.Commit()
 }

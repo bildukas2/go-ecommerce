@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/api.exe ./cmd/api"
+  entrypoint = "./tmp/api.exe"
+  delay = 1000
+  exclude_dir = ["tmp", "web", "node_modules", "migrations", "deploy", "docs", "phpplugins"]
+  exclude_regex = ["_test\\.go$"]
+  include_ext = ["go", "toml", "env"]
+  kill_delay = 500
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = true
