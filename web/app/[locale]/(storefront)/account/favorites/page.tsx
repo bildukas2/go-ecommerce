@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { AccountShell } from "@/components/account/account-shell";
 import { FavoriteRemoveButton } from "@/components/account/favorite-remove-button";
 import { getAccountFavorites } from "@/lib/api";
@@ -19,6 +20,7 @@ export default async function AccountFavoritesPage({ searchParams }: FavoritesPa
   const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
   const limit = 12;
   const cookieHeader = (await cookies()).toString();
+  const t = await getTranslations("account.favorites");
   let response: Awaited<ReturnType<typeof getAccountFavorites>>;
 
   try {
@@ -31,10 +33,10 @@ export default async function AccountFavoritesPage({ searchParams }: FavoritesPa
   const hasNext = response.page * response.limit < response.total;
 
   return (
-    <AccountShell title="Favorites" subtitle="Products you saved for later." active="favorites">
+    <AccountShell title={t("title")} subtitle={t("subtitle")} active="favorites">
       {response.items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-surface-border bg-surface p-6 text-sm text-neutral-600 dark:text-neutral-400">
-          No favorites yet. Save products from their detail pages.
+          {t("empty")}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -54,7 +56,7 @@ export default async function AccountFavoritesPage({ searchParams }: FavoritesPa
               <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
                 {item.price_cents !== null && item.currency
                   ? formatMoney(item.price_cents, item.currency)
-                  : "Price unavailable"}
+                  : t("price_unavailable")}
               </p>
               <div className="mt-3">
                 <FavoriteRemoveButton productID={item.product_id} />
@@ -66,13 +68,13 @@ export default async function AccountFavoritesPage({ searchParams }: FavoritesPa
 
       <div className="flex items-center justify-between rounded-2xl border border-surface-border bg-surface p-4 text-sm">
         <Link href={hasPrev ? `/account/favorites?page=${response.page - 1}` : "#"} className={hasPrev ? "underline" : "pointer-events-none text-neutral-400"}>
-          Previous
+          {t("previous")}
         </Link>
         <span>
-          Page {response.page}
+          {t("page", { page: response.page })}
         </span>
         <Link href={hasNext ? `/account/favorites?page=${response.page + 1}` : "#"} className={hasNext ? "underline" : "pointer-events-none text-neutral-400"}>
-          Next
+          {t("next")}
         </Link>
       </div>
     </AccountShell>

@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { changeAccountPassword } from "@/lib/api";
 
 export function PasswordChangeForm() {
   const router = useRouter();
+  const t = useTranslations("account.settings");
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
@@ -24,7 +26,7 @@ export function PasswordChangeForm() {
       await changeAccountPassword(currentPassword, newPassword);
       setCurrentPassword("");
       setNewPassword("");
-      setMessage("Password updated. Please log in again.");
+      setMessage(t("password_updated"));
       router.push("/account/login?next=/account");
       router.refresh();
     } catch (err) {
@@ -39,7 +41,7 @@ export function PasswordChangeForm() {
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-surface-border bg-surface p-5">
       <div className="space-y-2">
         <label htmlFor="current-password" className="text-sm font-medium">
-          Current password
+          {t("current_password")}
         </label>
         <input
           id="current-password"
@@ -54,7 +56,7 @@ export function PasswordChangeForm() {
 
       <div className="space-y-2">
         <label htmlFor="new-password" className="text-sm font-medium">
-          New password
+          {t("new_password")}
         </label>
         <input
           id="new-password"
@@ -72,7 +74,7 @@ export function PasswordChangeForm() {
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Updating..." : "Change password"}
+        {submitting ? t("updating") : t("change_password")}
       </Button>
     </form>
   );

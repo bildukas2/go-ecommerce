@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { removeAccountFavorite } from "@/lib/api";
 
@@ -11,6 +12,7 @@ type FavoriteRemoveButtonProps = {
 
 export function FavoriteRemoveButton({ productID }: FavoriteRemoveButtonProps) {
   const router = useRouter();
+  const t = useTranslations("account.favorites");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export function FavoriteRemoveButton({ productID }: FavoriteRemoveButtonProps) {
   return (
     <div className="space-y-1">
       <Button type="button" variant="outline" size="sm" onClick={onRemove} disabled={loading}>
-        {loading ? "Removing..." : "Remove"}
+        {loading ? t("removing") : t("remove")}
       </Button>
       {error ? <p className="text-xs text-red-600 dark:text-red-400">{error}</p> : null}
     </div>
