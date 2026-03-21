@@ -8,6 +8,7 @@ import (
 
 	"goecommerce/internal/app"
 	"goecommerce/internal/platform/shipping"
+	_ "goecommerce/internal/platform/shipping/providers/lpexpress"
 	_ "goecommerce/internal/platform/shipping/providers/omniva"
 	storshiping "goecommerce/internal/storage/shipping"
 )

@@ -8,12 +8,14 @@ import (
 	"net/mail"
 	"strings"
 	"text/template"
+	"time"
 
 	platformemail "goecommerce/internal/platform/email"
 	storemail "goecommerce/internal/storage/email"
 )
 
 const orderConfirmationTemplateCode = "order_confirmation"
+const testTemplateCode = "test"
 
 type Store interface {
 	GetSettings(ctx context.Context) (storemail.Settings, error)
@@ -41,9 +43,10 @@ func NewServiceWithConfig(store Store, envConfig platformemail.Config, senderFac
 
 func (s *Service) SendTest(ctx context.Context, to, lang string) error {
 	data := map[string]any{
-		"OrderNumber": "TEST-ORDER",
+		"StoreName": "Go Ecommerce",
+		"SentAt":    time.Now().Format("2006-01-02 15:04:05"),
 	}
-	return s.sendTemplate(ctx, orderConfirmationTemplateCode, to, lang, data)
+	return s.sendTemplate(ctx, testTemplateCode, to, lang, data)
 }
 
 func (s *Service) SendOrderConfirmation(ctx context.Context, to, lang string, data map[string]any) error {

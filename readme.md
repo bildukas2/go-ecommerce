@@ -59,7 +59,52 @@ Seed the backoffice admin user (idempotent):
 ADMIN_SEED_EMAIL=admin@example.com ADMIN_SEED_PASSWORD='ChangeMe#2026' go run ./cmd/admin-seed
 ```
 
---- 
+---
+
+## Local Development (with hot reload)
+
+### 1. Start infrastructure (Postgres, Redis, Mailpit)
+```bash
+docker compose up -d
+```
+
+### 2. Run migrations
+```bash
+go run ./cmd/migrate up
+```
+
+### 3. Run Go API with auto-reload
+
+Install [Air](https://github.com/air-verse/air) (once):
+```bash
+go install github.com/air-verse/air@latest
+```
+
+Then start the API — Air watches for `.go` file changes and automatically rebuilds + restarts:
+```bash
+air
+```
+
+The server runs on `http://localhost:8080` (or whatever `PORT` is set in `.env`).
+
+### 4. Run the Next.js frontend (separate terminal)
+```bash
+cd web
+pnpm install
+pnpm dev
+```
+
+Frontend runs on `http://localhost:3000`.
+
+### Without Air (manual restart)
+
+If you prefer not to use Air, you can run the API directly:
+```bash
+go run ./cmd/api
+```
+You'll need to stop and restart manually after each code change.
+
+---
 
 # Contributing
 Small PRs, one feature per PR. Avoid big refactors.

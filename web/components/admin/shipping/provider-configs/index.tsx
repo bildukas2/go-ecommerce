@@ -1,6 +1,7 @@
 "use client";
 
 import { OmnivaConfig } from "./omniva-config";
+import { LPExpressConfig } from "./lpexpress-config";
 
 type Props = {
   providerKey: string;
@@ -22,6 +23,7 @@ const providerConfigs: Record<
   }>
 > = {
   omniva: OmnivaConfig,
+  lpexpress: LPExpressConfig,
   // Future providers:
   // dpd: DPDConfig,
   // venipak: VenipakConfig,
@@ -109,3 +111,4 @@ export function ProviderConfig({
 }
 
 export { OmnivaConfig };
+export { LPExpressConfig };

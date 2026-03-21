@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -105,7 +107,8 @@ func (m *module) handleAdminSettingsTest(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := m.service.SendTest(r.Context(), to, lang); err != nil {
-		platformhttp.Error(w, http.StatusInternalServerError, "send test email error")
+		log.Printf("[email] test send failed: %v", err)
+		platformhttp.Error(w, http.StatusInternalServerError, fmt.Sprintf("send test email failed: %v", err))
 		return
 	}
 	_ = platformhttp.JSON(w, http.StatusOK, map[string]bool{"ok": true})

@@ -3,6 +3,7 @@ package email
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -177,6 +178,11 @@ func (s *smtpSender) Send(ctx context.Context, msg Message) error {
 		return fmt.Errorf("dial smtp: %w", err)
 	}
 
+	// Port 465 uses implicit TLS (SMTPS) — wrap connection before SMTP handshake.
+	if s.port == 465 {
+		conn = tls.Client(conn, &tls.Config{ServerName: s.host})
+	}
+
 	client, err := s.newSMTP(conn, s.host)
 	if err != nil {
 		_ = conn.Close()
@@ -191,7 +197,7 @@ func (s *smtpSender) Send(ctx context.Context, msg Message) error {
 	}
 
 	if strings.TrimSpace(s.username) != "" {
-		auth := smtp.PlainAuth("", s.username, s.password, s.host)
+		auth := &loginAuth{username: s.username, password: s.password}
 		if err := client.Auth(auth); err != nil {
 			return fmt.Errorf("smtp auth: %w", err)
 		}
@@ -252,4 +258,29 @@ func sanitizeHeader(in string) string {
 	in = strings.ReplaceAll(in, "\r", "")
 	in = strings.ReplaceAll(in, "\n", " ")
 	return strings.TrimSpace(in)
+}
+
+// loginAuth implements smtp.Auth using the LOGIN mechanism
+// (required by servers that don't support PLAIN).
+type loginAuth struct {
+	username string
+	password string
+}
+
+func (a *loginAuth) Start(_ *smtp.ServerInfo) (string, []byte, error) {
+	return "LOGIN", nil, nil
+}
+
+func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+	if !more {
+		return nil, nil
+	}
+	switch strings.TrimSpace(strings.ToLower(string(fromServer))) {
+	case "username:":
+		return []byte(a.username), nil
+	case "password:":
+		return []byte(a.password), nil
+	default:
+		return nil, fmt.Errorf("unexpected server challenge: %s", fromServer)
+	}
 }
