@@ -330,6 +330,7 @@
     "bank_transfer": {
       "title": "Bank Transfer Instructions",
       "subtitle": "Please complete your payment using the information below:",
+      "amount_to_pay": "Amount to pay",
       "account_holder": "Account Holder Name *",
       "account_number": "Account Number / IBAN",
       "bank_name": "Bank Name",
@@ -401,6 +402,8 @@
         "driver_smtp": "SMTP",
         "from_name": "From name",
         "from_email": "From email",
+        "owner_emails": "Owner notification emails",
+        "owner_emails_hint": "Comma-separated. These emails receive order notifications.",
         "smtp_host": "SMTP host",
         "smtp_port": "SMTP port",
         "smtp_username": "SMTP username",

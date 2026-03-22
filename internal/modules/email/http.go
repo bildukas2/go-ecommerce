@@ -23,6 +23,7 @@ type updateSettingsRequest struct {
 	SMTPPassword string `json:"smtp_password"`
 	FromName     string `json:"from_name"`
 	FromEmail    string `json:"from_email"`
+	OwnerEmails  string `json:"owner_emails"`
 }
 
 type testEmailRequest struct {
@@ -242,6 +243,7 @@ func validateUpdateSettingsRequest(req updateSettingsRequest) (storemail.UpdateS
 		SMTPPassword: password,
 		FromName:     fromName,
 		FromEmail:    fromEmail,
+		OwnerEmails:  strings.TrimSpace(req.OwnerEmails),
 	}, nil
 }
 

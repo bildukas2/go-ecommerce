@@ -3160,6 +3160,7 @@ export type EmailSettings = {
   smtp_password: string;
   from_name: string;
   from_email: string;
+  owner_emails: string;
   updated_at: string;
 };
 
@@ -3171,6 +3172,7 @@ export type UpdateEmailSettingsInput = {
   smtp_password: string;
   from_name: string;
   from_email: string;
+  owner_emails: string;
 };
 
 export type EmailTemplate = {
@@ -3212,6 +3214,7 @@ function normalizeEmailSettings(raw: unknown): EmailSettings | null {
     smtp_password: asString(obj.smtp_password),
     from_name: asString(obj.from_name),
     from_email: asString(obj.from_email),
+    owner_emails: asString(obj.owner_emails),
     updated_at: asString(obj.updated_at),
   };
 }
@@ -3270,6 +3273,7 @@ export async function updateAdminEmailSettings(input: UpdateEmailSettingsInput):
       smtp_password: input.smtp_password,
       from_name: input.from_name,
       from_email: input.from_email,
+      owner_emails: input.owner_emails,
     }),
   });
   if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to update email settings: ${res.status}`));

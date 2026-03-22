@@ -11,6 +11,7 @@ type Settings struct {
 	SMTPPassword string    `json:"smtp_password"`
 	FromName     string    `json:"from_name"`
 	FromEmail    string    `json:"from_email"`
+	OwnerEmails  string    `json:"owner_emails"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
@@ -22,6 +23,7 @@ type UpdateSettingsInput struct {
 	SMTPPassword string
 	FromName     string
 	FromEmail    string
+	OwnerEmails  string
 }
 
 type Template struct {

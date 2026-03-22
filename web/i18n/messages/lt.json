@@ -330,6 +330,7 @@
     "bank_transfer": {
       "title": "Bankinio pavedimo instrukcijos",
       "subtitle": "Prašome atlikti mokėjimą naudojantis žemiau esančia informacija:",
+      "amount_to_pay": "Suma mokėjimui",
       "account_holder": "Gavėjas *",
       "account_number": "Sąskaitos numeris / IBAN",
       "bank_name": "Bankas",
@@ -401,6 +402,8 @@
         "driver_smtp": "SMTP",
         "from_name": "Siuntejo vardas",
         "from_email": "Siuntejo el. pastas",
+        "owner_emails": "Savininko pranešimų el. paštai",
+        "owner_emails_hint": "Atskirti kableliais. Šie el. paštai gauna užsakymų pranešimus.",
         "smtp_host": "SMTP hostas",
         "smtp_port": "SMTP prievadas",
         "smtp_username": "SMTP naudotojas",

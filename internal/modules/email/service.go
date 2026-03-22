@@ -57,6 +57,29 @@ func (s *Service) SendPasswordReset(ctx context.Context, to, lang string, resetU
 	return s.sendTemplate(ctx, passwordResetTemplateCode, to, lang, data)
 }
 
+// GetOwnerEmails returns parsed owner emails from the email settings.
+func (s *Service) GetOwnerEmails(ctx context.Context) []string {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	settings, err := s.store.GetSettings(ctx)
+	if err != nil {
+		return nil
+	}
+	raw := strings.TrimSpace(settings.OwnerEmails)
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	for _, e := range strings.Split(raw, ",") {
+		e = strings.TrimSpace(e)
+		if e != "" {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 func (s *Service) SendOrderConfirmation(ctx context.Context, to, lang string, data map[string]any) error {
 	if data == nil {
 		data = map[string]any{}

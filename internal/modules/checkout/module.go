@@ -35,6 +35,7 @@ type paymentMethodStore interface {
 
 type EmailService interface {
 	SendOrderConfirmation(ctx context.Context, to, lang string, data map[string]any) error
+	GetOwnerEmails(ctx context.Context) []string
 }
 
 type Option func(*module)

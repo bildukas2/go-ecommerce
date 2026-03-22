@@ -30,7 +30,7 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	var err error
 
 	s.stmtGetSettings, err = db.PrepareContext(ctx, `
-		SELECT id, driver, smtp_host, smtp_port, smtp_username, smtp_password, from_name, from_email, updated_at
+		SELECT id, driver, smtp_host, smtp_port, smtp_username, smtp_password, from_name, from_email, owner_emails, updated_at
 		FROM email_settings
 		WHERE id = 1
 	`)
@@ -47,9 +47,10 @@ func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 		    smtp_password = $5,
 		    from_name = $6,
 		    from_email = $7,
+		    owner_emails = $8,
 		    updated_at = now()
 		WHERE id = 1
-		RETURNING id, driver, smtp_host, smtp_port, smtp_username, smtp_password, from_name, from_email, updated_at
+		RETURNING id, driver, smtp_host, smtp_port, smtp_username, smtp_password, from_name, from_email, owner_emails, updated_at
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("prepare update settings: %w", err)
@@ -118,6 +119,7 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 		&out.SMTPPassword,
 		&out.FromName,
 		&out.FromEmail,
+		&out.OwnerEmails,
 		&out.UpdatedAt,
 	)
 	if err != nil {
@@ -139,6 +141,7 @@ func (s *Store) UpdateSettings(ctx context.Context, in UpdateSettingsInput) (Set
 		in.SMTPPassword,
 		strings.TrimSpace(in.FromName),
 		strings.TrimSpace(in.FromEmail),
+		strings.TrimSpace(in.OwnerEmails),
 	).Scan(
 		&out.ID,
 		&out.Driver,
@@ -148,6 +151,7 @@ func (s *Store) UpdateSettings(ctx context.Context, in UpdateSettingsInput) (Set
 		&out.SMTPPassword,
 		&out.FromName,
 		&out.FromEmail,
+		&out.OwnerEmails,
 		&out.UpdatedAt,
 	)
 	if err != nil {

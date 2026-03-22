@@ -123,6 +123,8 @@ type Action =
 function checkoutReducer(state: CheckoutState, action: Action): CheckoutState {
   switch (action.type) {
     case "SET_CART":
+      // Don't update cart after order is placed (prevents total from resetting)
+      if (state.orderPlaced) return state;
       return { ...state, cart: action.payload };
     case "SET_CART_LOADING":
       return { ...state, cartLoading: action.payload };
@@ -153,6 +155,7 @@ function checkoutReducer(state: CheckoutState, action: Action): CheckoutState {
     case "SET_SELECTED_PAYMENT_METHOD":
       return { ...state, selectedPaymentMethod: action.payload };
     case "SET_TOTALS":
+      if (state.orderPlaced) return state;
       return { ...state, subtotal: action.payload.subtotal, total: action.payload.subtotal + state.shippingPrice };
     case "SET_CURRENT_STEP":
       return { ...state, currentStep: action.payload };

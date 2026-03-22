@@ -20,6 +20,7 @@ export function EmailSettingsForm({ initialSettings }: Props) {
     smtp_password: initialSettings.smtp_password,
     from_name: initialSettings.from_name,
     from_email: initialSettings.from_email,
+    owner_emails: initialSettings.owner_emails,
   });
   const [testTo, setTestTo] = useState(initialSettings.from_email || "");
   const [testLang, setTestLang] = useState<"en" | "lt">("en");
@@ -45,6 +46,7 @@ export function EmailSettingsForm({ initialSettings }: Props) {
         smtp_password: updated.smtp_password,
         from_name: updated.from_name,
         from_email: updated.from_email,
+        owner_emails: updated.owner_emails,
       });
       setSuccess(t("messages.saved"));
     } catch (err) {
@@ -117,6 +119,17 @@ export function EmailSettingsForm({ initialSettings }: Props) {
               onChange={(e) => setForm((prev) => ({ ...prev, from_email: e.target.value }))}
               className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
             />
+          </label>
+
+          <label className="space-y-1 text-sm md:col-span-2">
+            <span className="text-foreground/70">{t("settings.owner_emails")}</span>
+            <input
+              value={form.owner_emails}
+              onChange={(e) => setForm((prev) => ({ ...prev, owner_emails: e.target.value }))}
+              placeholder="owner@shop.com, manager@shop.com"
+              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2"
+            />
+            <span className="text-xs text-foreground/50">{t("settings.owner_emails_hint")}</span>
           </label>
         </div>
 

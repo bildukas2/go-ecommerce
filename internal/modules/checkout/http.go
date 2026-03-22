@@ -369,14 +369,12 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	if confirmEmail == "" && strings.TrimSpace(body.Email) != "" {
 		confirmEmail = strings.TrimSpace(body.Email)
 	}
+	slog.Info("checkout: place-order email resolve", "customerEmail", customer.Email, "bodyEmail", body.Email, "confirmEmail", confirmEmail, "authenticated", authenticated)
 	m.sendOrderConfirmationBestEffort(r.Context(), order, confirmEmail, authenticated, body.Company, r.Header.Get("Accept-Language"))
 
-	// Clear cart after successful order
-	if authenticated {
-		// For authenticated users, clear the cart items
-		for _, item := range cart.Items {
-			_, _ = m.cart.RemoveItem(r.Context(), cartID, item.ID)
-		}
+	// Clear cart after successful order (both authenticated and guest)
+	for _, item := range cart.Items {
+		_, _ = m.cart.RemoveItem(r.Context(), cartID, item.ID)
 	}
 
 	// Get payment URL
@@ -399,13 +397,16 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 
 func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stororders.Order, customerEmail string, authenticated bool, company *CompanyInfo, acceptLanguage string) {
 	if m.email == nil {
+		slog.Warn("checkout: email service not configured, skipping order confirmation")
 		return
 	}
 
 	to, ok := resolveConfirmationRecipient(customerEmail, authenticated, company)
 	if !ok {
+		slog.Warn("checkout: no valid email recipient found", "customerEmail", customerEmail, "authenticated", authenticated)
 		return
 	}
+	slog.Info("checkout: sending order confirmation", "to", to, "order", order.Number)
 
 	lang := resolveRequestLanguage(acceptLanguage)
 	payload := map[string]any{
@@ -438,6 +439,14 @@ func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stor
 	if err != nil {
 		slog.Warn("checkout: order confirmation email failed", "order_id", order.ID, "error", err)
 	}
+
+	// Send notification to shop owners
+	ownerEmails := m.email.GetOwnerEmails(ctx)
+	for _, ownerEmail := range ownerEmails {
+		if err := m.email.SendOrderConfirmation(ctx, ownerEmail, "en", payload); err != nil {
+			slog.Warn("checkout: owner notification email failed", "owner", ownerEmail, "order_id", order.ID, "error", err)
+		}
+	}
 }
 
 func formatCents(cents int) string {
@@ -450,14 +459,14 @@ func formatCents(cents int) string {
 }
 
 func resolveConfirmationRecipient(customerEmail string, authenticated bool, company *CompanyInfo) (string, bool) {
-	if authenticated {
-		email := strings.ToLower(strings.TrimSpace(customerEmail))
-		if isValidEmail(email) {
-			return email, true
-		}
+	// Use customer email (from authenticated account or checkout email field)
+	email := strings.ToLower(strings.TrimSpace(customerEmail))
+	if isValidEmail(email) {
+		return email, true
 	}
+	// Fallback to company invoice email
 	if company != nil {
-		email := strings.ToLower(strings.TrimSpace(company.InvoiceEmail))
+		email = strings.ToLower(strings.TrimSpace(company.InvoiceEmail))
 		if isValidEmail(email) {
 			return email, true
 		}

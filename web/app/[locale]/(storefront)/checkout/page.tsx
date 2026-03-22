@@ -114,7 +114,7 @@ export default function CheckoutPage() {
     canPlaceOrder,
   } = useCheckoutState();
 
-  const { update: updateCart, remove: removeCart, cart: contextCart } = useCart();
+  const { update: updateCart, remove: removeCart, cart: contextCart, refresh: refreshCart } = useCart();
 
   const [paymentMethods, setPaymentMethods] = React.useState<CheckoutPaymentMethod[]>([]);
   const [paymentMethodsLoading, setPaymentMethodsLoading] = React.useState(true);
@@ -255,8 +255,12 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     const success = await placeOrder();
-    if (success && state.checkoutUrl) {
-      window.location.href = state.checkoutUrl;
+    if (success) {
+      // Refresh cart to reflect cleared state
+      refreshCart().catch(() => {});
+      if (state.checkoutUrl) {
+        window.location.href = state.checkoutUrl;
+      }
     }
   };
 
@@ -294,6 +298,11 @@ export default function CheckoutPage() {
               <p className="text-muted-foreground text-sm">
                 {t("bank_transfer.subtitle")}
               </p>
+            </div>
+
+            <div className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-5 text-center dark:bg-blue-950/30 dark:border-blue-800">
+              <p className="text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">{t("bank_transfer.amount_to_pay")}</p>
+              <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">€{(state.total / 100).toFixed(2)}</p>
             </div>
 
             {selectedPaymentMethod?.description && (
