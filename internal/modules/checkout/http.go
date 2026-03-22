@@ -443,7 +443,7 @@ func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stor
 	// Send notification to shop owners
 	ownerEmails := m.email.GetOwnerEmails(ctx)
 	for _, ownerEmail := range ownerEmails {
-		if err := m.email.SendOrderConfirmation(ctx, ownerEmail, "en", payload); err != nil {
+		if err := m.email.SendOrderConfirmation(ctx, ownerEmail, lang, payload); err != nil {
 			slog.Warn("checkout: owner notification email failed", "owner", ownerEmail, "order_id", order.ID, "error", err)
 		}
 	}
