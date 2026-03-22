@@ -56,7 +56,7 @@ export default async function ProductsPage({
                 All
               </Link>
             </li>
-            {cats.items.map((c) => (
+            {cats.items.filter((c) => c.slug !== "uncategorized").map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/products?category=${encodeURIComponent(c.slug)}`}
