@@ -213,6 +213,7 @@ export async function selectCheckoutPayment(
 // Place order
 export async function placeCheckoutOrder(data: {
   email?: string;
+  lang?: string;
   shipping_address: CheckoutAddress;
   billing_address?: CheckoutAddress;
   use_same_as_billing: boolean;

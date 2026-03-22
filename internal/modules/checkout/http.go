@@ -291,6 +291,7 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		Email              string       `json:"email"`
+		Lang               string       `json:"lang"`
 		ShippingAddress    Address      `json:"shipping_address"`
 		BillingAddress     *Address     `json:"billing_address"`
 		UseSameAsBilling   bool         `json:"use_same_as_billing"`
@@ -369,8 +370,13 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	if confirmEmail == "" && strings.TrimSpace(body.Email) != "" {
 		confirmEmail = strings.TrimSpace(body.Email)
 	}
-	slog.Info("checkout: place-order email resolve", "customerEmail", customer.Email, "bodyEmail", body.Email, "confirmEmail", confirmEmail, "authenticated", authenticated)
-	m.sendOrderConfirmationBestEffort(r.Context(), order, confirmEmail, authenticated, body.Company, r.Header.Get("Accept-Language"))
+	// Prefer explicit lang from frontend, fall back to Accept-Language header
+	emailLang := strings.ToLower(strings.TrimSpace(body.Lang))
+	if emailLang == "" {
+		emailLang = resolveRequestLanguage(r.Header.Get("Accept-Language"))
+	}
+	slog.Info("checkout: place-order email resolve", "customerEmail", customer.Email, "bodyEmail", body.Email, "confirmEmail", confirmEmail, "authenticated", authenticated, "lang", emailLang)
+	m.sendOrderConfirmationBestEffort(r.Context(), order, confirmEmail, authenticated, body.Company, emailLang)
 
 	// Clear cart after successful order (both authenticated and guest)
 	for _, item := range cart.Items {
@@ -395,7 +401,7 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stororders.Order, customerEmail string, authenticated bool, company *CompanyInfo, acceptLanguage string) {
+func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stororders.Order, customerEmail string, authenticated bool, company *CompanyInfo, lang string) {
 	if m.email == nil {
 		slog.Warn("checkout: email service not configured, skipping order confirmation")
 		return
@@ -408,7 +414,9 @@ func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stor
 	}
 	slog.Info("checkout: sending order confirmation", "to", to, "order", order.Number)
 
-	lang := resolveRequestLanguage(acceptLanguage)
+	if lang == "" {
+		lang = "en"
+	}
 	payload := map[string]any{
 		"OrderNumber": order.Number,
 		"OrderID":     order.ID,

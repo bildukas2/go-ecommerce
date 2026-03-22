@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useLocale } from "next-intl";
 import {
   CheckoutAddress,
   CompanyInfo,
@@ -208,6 +209,7 @@ export interface UseCheckoutStateReturn {
 
 export function useCheckoutState(): UseCheckoutStateReturn {
   const t = useTranslations("checkout.errors");
+  const locale = useLocale();
   const [state, dispatch] = React.useReducer(checkoutReducer, initialState);
 
   // Set cart
@@ -384,6 +386,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
     try {
       const response = await placeCheckoutOrder({
         email: state.email || undefined,
+        lang: locale,
         shipping_address: state.shippingAddress,
         billing_address: state.billingAddress || undefined,
         use_same_as_billing: state.useSameAsBilling,
