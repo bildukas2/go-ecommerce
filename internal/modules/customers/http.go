@@ -2,17 +2,20 @@ package customers
 
 import (
 	"context"
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"database/sql"
 
 	"goecommerce/internal/app"
 	platformhttp "goecommerce/internal/platform/http"
@@ -41,6 +44,11 @@ type customerStore interface {
 	ListOrdersByCustomer(ctx context.Context, customerID string, page, limit int) (storcustomers.OrdersPage, error)
 	UpdatePasswordAndRevokeSessions(ctx context.Context, customerID, passwordHash string) error
 	GetOrderByCustomer(ctx context.Context, orderID, customerID string) (storcustomers.CustomerOrderDetail, error)
+	GetProfile(ctx context.Context, customerID string) (storcustomers.CustomerProfile, error)
+	UpdateProfile(ctx context.Context, customerID string, p storcustomers.CustomerProfile) error
+	CreatePasswordResetToken(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error
+	GetCustomerByResetTokenHash(ctx context.Context, tokenHash string) (storcustomers.Customer, error)
+	MarkResetTokenUsed(ctx context.Context, tokenHash string) error
 }
 
 type paymentMethodStore interface {
@@ -51,16 +59,34 @@ type terminalStore interface {
 	GetCachedTerminals(ctx context.Context, providerKey, country string) ([]byte, time.Time, error)
 }
 
+// PasswordResetEmailService sends password reset emails.
+type PasswordResetEmailService interface {
+	SendPasswordReset(ctx context.Context, to, lang, resetURL string) error
+}
+
+// CustomerOption configures optional dependencies for the customers module.
+type CustomerOption func(*module)
+
+// WithEmailService injects the email service for password reset emails.
+func WithEmailService(svc PasswordResetEmailService) CustomerOption {
+	return func(m *module) {
+		if svc != nil {
+			m.email = svc
+		}
+	}
+}
+
 type module struct {
 	store      customerStore
 	cartStore  customerCartStore
 	payments   paymentMethodStore
 	terminals  terminalStore
+	email      PasswordResetEmailService
 	sessionTTL time.Duration
 	now        func() time.Time
 }
 
-func NewModule(deps app.Deps) app.Module {
+func NewModule(deps app.Deps, opts ...CustomerOption) app.Module {
 	var store customerStore
 	var cartStore customerCartStore
 	var payments paymentMethodStore
@@ -83,7 +109,11 @@ func NewModule(deps app.Deps) app.Module {
 			slog.Error("module init: failed to create store", "module", "customers", "store", "shipping", "error", err)
 		}
 	}
-	return &module{store: store, cartStore: cartStore, payments: payments, terminals: terminals, sessionTTL: defaultSessionTTL, now: time.Now}
+	m := &module{store: store, cartStore: cartStore, payments: payments, terminals: terminals, sessionTTL: defaultSessionTTL, now: time.Now}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
 }
 
 func (m *module) Name() string { return "customers" }
@@ -113,6 +143,9 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/account/orders", m.handleOrders)
 	mux.HandleFunc("/account/orders/", m.handleOrderDetail)
 	mux.HandleFunc("/account/change-password", m.handleChangePassword)
+	mux.HandleFunc("/account/profile", m.handleProfile)
+	mux.HandleFunc("/auth/forgot-password", m.handleForgotPassword)
+	mux.HandleFunc("/auth/reset-password", m.handleResetPassword)
 	mux.HandleFunc("/support/blocked-report", m.handleBlockedReport)
 }
 
@@ -698,4 +731,204 @@ func atoiDefault(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+func (m *module) handleProfile(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/account/profile" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+	customer, _, err := ResolveAuthenticatedCustomer(r.Context(), r, m.store)
+	if err != nil {
+		platformhttp.Error(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		profile, err := m.store.GetProfile(r.Context(), customer.ID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "failed to load profile")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, profile)
+
+	case http.MethodPut:
+		var body storcustomers.CustomerProfile
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			platformhttp.Error(w, http.StatusBadRequest, "invalid body")
+			return
+		}
+		// Don't allow changing email via profile update
+		body.Email = customer.Email
+		if err := m.store.UpdateProfile(r.Context(), customer.ID, body); err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "failed to update profile")
+			return
+		}
+		// Return updated profile
+		profile, err := m.store.GetProfile(r.Context(), customer.ID)
+		if err != nil {
+			platformhttp.Error(w, http.StatusInternalServerError, "failed to load profile")
+			return
+		}
+		_ = platformhttp.JSON(w, http.StatusOK, profile)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+const resetTokenTTL = 1 * time.Hour
+
+func generateResetToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func storefrontBaseURL() string {
+	if u := strings.TrimSpace(os.Getenv("STOREFRONT_URL")); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	return "http://localhost:3000"
+}
+
+func (m *module) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/auth/forgot-password" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	var body struct {
+		Email string `json:"email"`
+		Lang  string `json:"lang"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(body.Email))
+	if email == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "email is required")
+		return
+	}
+
+	// Always return success to prevent email enumeration
+	respondOK := func() {
+		_ = platformhttp.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+
+	customer, err := m.store.GetCustomerByEmail(r.Context(), email)
+	if err != nil {
+		respondOK()
+		return
+	}
+
+	token, err := generateResetToken()
+	if err != nil {
+		slog.Error("forgot-password: generate token", "error", err)
+		respondOK()
+		return
+	}
+
+	tokenHash := hashSessionToken(token)
+	expiresAt := m.now().Add(resetTokenTTL)
+
+	if err := m.store.CreatePasswordResetToken(r.Context(), customer.ID, tokenHash, expiresAt); err != nil {
+		slog.Error("forgot-password: create token", "error", err)
+		respondOK()
+		return
+	}
+
+	lang := strings.ToLower(strings.TrimSpace(body.Lang))
+	if lang == "" {
+		lang = "en"
+	}
+
+	resetURL := fmt.Sprintf("%s/%s/account/reset-password?token=%s", storefrontBaseURL(), lang, token)
+
+	if m.email != nil {
+		slog.Info("forgot-password: sending reset email", "to", email, "lang", lang)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := m.email.SendPasswordReset(ctx, email, lang, resetURL); err != nil {
+				slog.Error("forgot-password: send email failed", "to", email, "error", err)
+			} else {
+				slog.Info("forgot-password: email sent", "to", email)
+			}
+		}()
+	} else {
+		slog.Warn("forgot-password: email service not configured", "email", email)
+	}
+
+	respondOK()
+}
+
+func (m *module) handleResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/auth/reset-password" {
+		http.NotFound(w, r)
+		return
+	}
+	if m.store == nil {
+		platformhttp.Error(w, http.StatusServiceUnavailable, "db unavailable")
+		return
+	}
+
+	var body struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+	token := strings.TrimSpace(body.Token)
+	newPassword := strings.TrimSpace(body.NewPassword)
+
+	if token == "" {
+		platformhttp.Error(w, http.StatusBadRequest, "token is required")
+		return
+	}
+	if len(newPassword) < minimumPasswordLength {
+		platformhttp.Error(w, http.StatusBadRequest, fmt.Sprintf("password must be at least %d characters", minimumPasswordLength))
+		return
+	}
+
+	tokenHash := hashSessionToken(token)
+
+	customer, err := m.store.GetCustomerByResetTokenHash(r.Context(), tokenHash)
+	if err != nil {
+		platformhttp.Error(w, http.StatusBadRequest, "invalid or expired reset link")
+		return
+	}
+
+	passwordHash, err := hashPassword(newPassword)
+	if err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "failed to process password")
+		return
+	}
+
+	if err := m.store.UpdatePasswordAndRevokeSessions(r.Context(), customer.ID, passwordHash); err != nil {
+		platformhttp.Error(w, http.StatusInternalServerError, "failed to update password")
+		return
+	}
+
+	if err := m.store.MarkResetTokenUsed(r.Context(), tokenHash); err != nil {
+		slog.Error("reset-password: mark token used", "error", err)
+	}
+
+	_ = platformhttp.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

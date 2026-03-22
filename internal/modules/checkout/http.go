@@ -290,6 +290,7 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
+		Email              string       `json:"email"`
 		ShippingAddress    Address      `json:"shipping_address"`
 		BillingAddress     *Address     `json:"billing_address"`
 		UseSameAsBilling   bool         `json:"use_same_as_billing"`
@@ -363,7 +364,12 @@ func (m *module) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m.sendOrderConfirmationBestEffort(r.Context(), order, customer.Email, authenticated, body.Company, r.Header.Get("Accept-Language"))
+	// Resolve email: authenticated customer > body.email > company invoice_email
+	confirmEmail := customer.Email
+	if confirmEmail == "" && strings.TrimSpace(body.Email) != "" {
+		confirmEmail = strings.TrimSpace(body.Email)
+	}
+	m.sendOrderConfirmationBestEffort(r.Context(), order, confirmEmail, authenticated, body.Company, r.Header.Get("Accept-Language"))
 
 	// Clear cart after successful order
 	if authenticated {

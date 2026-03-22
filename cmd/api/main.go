@@ -87,26 +87,34 @@ func main() {
 		}
 	}
 
-	var checkoutEmailService checkout.EmailService
+	var emailService *moduleemail.Service
 	if deps.DB != nil {
 		emailStore, err := storemail.NewStore(ctx, deps.DB)
 		if err != nil {
 			log.Printf("email store init error: %v", err)
 		} else {
-			checkoutEmailService = moduleemail.NewService(emailStore)
+			emailService = moduleemail.NewService(emailStore)
 			defer emailStore.Close()
 		}
 	}
 
 	app.RegisterModule(catalog.NewModule(deps))
 	app.RegisterModule(cart.NewModule(deps))
-	app.RegisterModule(customers.NewModule(deps))
+	if emailService != nil {
+		app.RegisterModule(customers.NewModule(deps, customers.WithEmailService(emailService)))
+	} else {
+		app.RegisterModule(customers.NewModule(deps))
+	}
 	app.RegisterModule(orders.NewModule(deps))
 	app.RegisterModule(shipping.NewModule(deps))
 	app.RegisterModule(payments.NewModule(deps))
 	app.RegisterModule(settings.NewModule(deps))
 	app.RegisterModule(moduleemail.NewModule(deps))
-	app.RegisterModule(checkout.NewModule(deps, checkout.WithEmailService(checkoutEmailService)))
+	if emailService != nil {
+		app.RegisterModule(checkout.NewModule(deps, checkout.WithEmailService(emailService)))
+	} else {
+		app.RegisterModule(checkout.NewModule(deps))
+	}
 	app.RegisterModule(cms.NewModule(deps))
 	app.RegisterModule(adminauth.NewModule(deps))
 	app.RegisterModule(admin.NewModule(deps))

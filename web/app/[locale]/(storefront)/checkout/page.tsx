@@ -6,6 +6,7 @@ import { useCheckoutState, type CheckoutStep } from "@/hooks/use-checkout-state"
 import type { CheckoutShippingMethod, CheckoutPaymentMethod } from "@/lib/checkout-api";
 import type { BankTransferConfig } from "@/lib/api";
 import { getPaymentMethods } from "@/lib/checkout-api";
+import { getAccountProfile } from "@/lib/api";
 import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { AddressSection } from "@/components/checkout/address-section";
@@ -93,6 +94,7 @@ export default function CheckoutPage() {
     state,
     setCart,
     setCartLoading,
+    setEmail,
     setShippingAddress,
     setBillingAddress,
     setUseSameAsBilling,
@@ -116,6 +118,42 @@ export default function CheckoutPage() {
 
   const [paymentMethods, setPaymentMethods] = React.useState<CheckoutPaymentMethod[]>([]);
   const [paymentMethodsLoading, setPaymentMethodsLoading] = React.useState(true);
+
+  // Pre-fill from saved customer profile
+  React.useEffect(() => {
+    getAccountProfile()
+      .then((profile) => {
+        if (profile.email) setEmail(profile.email);
+        // Pre-fill shipping address if saved
+        const hasAddress = profile.shipping_full_name || profile.shipping_address1;
+        if (hasAddress) {
+          setShippingAddress({
+            full_name: profile.shipping_full_name,
+            phone: profile.shipping_phone,
+            address1: profile.shipping_address1,
+            address2: profile.shipping_address2,
+            city: profile.shipping_city,
+            state: profile.shipping_state,
+            postcode: profile.shipping_postcode,
+            country: profile.shipping_country || "LT",
+          });
+          if (profile.shipping_country) {
+            setShippingCountry(profile.shipping_country);
+          }
+        }
+        // Pre-fill company info
+        if (profile.company_name || profile.company_vat || profile.invoice_email) {
+          setCompany({
+            name: profile.company_name,
+            vat: profile.company_vat,
+            invoice_email: profile.invoice_email,
+          });
+        }
+      })
+      .catch(() => {
+        // Not logged in — ignore
+      });
+  }, [setEmail, setShippingAddress, setShippingCountry, setCompany]);
 
   // Fetch payment methods on mount
   React.useEffect(() => {
@@ -377,6 +415,8 @@ export default function CheckoutPage() {
               {state.currentStep === "address" && (
                 <div className={`${sectionPanel} space-y-6`}>
                   <AddressSection
+                    email={state.email}
+                    onEmailChange={setEmail}
                     shippingAddress={state.shippingAddress}
                     billingAddress={state.billingAddress}
                     useSameAsBilling={state.useSameAsBilling}
@@ -497,6 +537,7 @@ export default function CheckoutPage() {
                       <h4 className="font-medium text-sm mb-2">{t("shipping_address")}</h4>
                       <p className="text-sm text-foreground/70">
                         {state.shippingAddress.full_name}<br />
+                        {state.email && <>{state.email}<br /></>}
                         {state.shippingAddress.address1}<br />
                         {state.shippingAddress.address2 && <>{state.shippingAddress.address2}<br /></>}
                         {state.shippingAddress.city}, {state.shippingAddress.postcode}<br />

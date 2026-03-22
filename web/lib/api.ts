@@ -1637,6 +1637,70 @@ export async function changeAccountPassword(currentPassword: string, newPassword
   }
 }
 
+// ── Customer profile ──────────────────────────────────────
+
+export interface CustomerProfile {
+  email: string;
+  phone: string;
+  first_name: string;
+  last_name: string;
+  shipping_full_name: string;
+  shipping_phone: string;
+  shipping_address1: string;
+  shipping_address2: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_postcode: string;
+  shipping_country: string;
+  company_name: string;
+  company_vat: string;
+  invoice_email: string;
+  wants_invoice: boolean;
+}
+
+export async function getAccountProfile(options?: AccountRequestOptions): Promise<CustomerProfile> {
+  const res = await fetch(
+    apiJoin("account/profile"),
+    accountFetchInit({ method: "GET", credentials: "include" }, options),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to load profile: ${res.status}`));
+  return res.json();
+}
+
+export async function updateAccountProfile(profile: Partial<CustomerProfile>, options?: AccountRequestOptions): Promise<CustomerProfile> {
+  const res = await fetch(
+    apiJoin("account/profile"),
+    accountFetchInit(
+      { method: "PUT", headers: mutHeaders(), credentials: "include", body: JSON.stringify(profile) },
+      options,
+    ),
+  );
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed to update profile: ${res.status}`));
+  return res.json();
+}
+
+// ── Password reset ───────────────────────────────────────
+
+export async function requestPasswordReset(email: string, lang: string): Promise<void> {
+  const res = await fetch(apiJoin("auth/forgot-password"), {
+    method: "POST",
+    headers: mutHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ email, lang }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed: ${res.status}`));
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const res = await fetch(apiJoin("auth/reset-password"), {
+    method: "POST",
+    headers: mutHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, `Failed: ${res.status}`));
+}
+
 export async function submitBlockedReport(input: BlockedReportInput): Promise<void> {
   const url = new URL(apiJoin("support/blocked-report"));
   const res = await fetch(url.toString(), {

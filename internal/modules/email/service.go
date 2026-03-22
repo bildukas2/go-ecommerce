@@ -16,6 +16,7 @@ import (
 
 const orderConfirmationTemplateCode = "order_confirmation"
 const testTemplateCode = "test"
+const passwordResetTemplateCode = "password_reset"
 
 type Store interface {
 	GetSettings(ctx context.Context) (storemail.Settings, error)
@@ -47,6 +48,13 @@ func (s *Service) SendTest(ctx context.Context, to, lang string) error {
 		"SentAt":    time.Now().Format("2006-01-02 15:04:05"),
 	}
 	return s.sendTemplate(ctx, testTemplateCode, to, lang, data)
+}
+
+func (s *Service) SendPasswordReset(ctx context.Context, to, lang string, resetURL string) error {
+	data := map[string]any{
+		"ResetURL": resetURL,
+	}
+	return s.sendTemplate(ctx, passwordResetTemplateCode, to, lang, data)
 }
 
 func (s *Service) SendOrderConfirmation(ctx context.Context, to, lang string, data map[string]any) error {

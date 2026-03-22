@@ -37,6 +37,7 @@ export interface CheckoutState {
   cartLoading: boolean;
 
   // Address
+  email: string;
   shippingAddress: CheckoutAddress | null;
   billingAddress: CheckoutAddress | null;
   useSameAsBilling: boolean;
@@ -71,6 +72,7 @@ export interface CheckoutState {
 const initialState: CheckoutState = {
   cart: null,
   cartLoading: true,
+  email: "",
   shippingAddress: null,
   billingAddress: null,
   useSameAsBilling: true,
@@ -97,6 +99,7 @@ const initialState: CheckoutState = {
 type Action =
   | { type: "SET_CART"; payload: Cart | null }
   | { type: "SET_CART_LOADING"; payload: boolean }
+  | { type: "SET_EMAIL"; payload: string }
   | { type: "SET_SHIPPING_ADDRESS"; payload: CheckoutAddress | null }
   | { type: "SET_BILLING_ADDRESS"; payload: CheckoutAddress | null }
   | { type: "SET_USE_SAME_AS_BILLING"; payload: boolean }
@@ -123,6 +126,8 @@ function checkoutReducer(state: CheckoutState, action: Action): CheckoutState {
       return { ...state, cart: action.payload };
     case "SET_CART_LOADING":
       return { ...state, cartLoading: action.payload };
+    case "SET_EMAIL":
+      return { ...state, email: action.payload };
     case "SET_SHIPPING_ADDRESS":
       return { ...state, shippingAddress: action.payload };
     case "SET_BILLING_ADDRESS":
@@ -176,6 +181,7 @@ export interface UseCheckoutStateReturn {
   // Actions
   setCart: (cart: Cart | null) => void;
   setCartLoading: (loading: boolean) => void;
+  setEmail: (email: string) => void;
   setShippingAddress: (address: CheckoutAddress | null) => void;
   setBillingAddress: (address: CheckoutAddress | null) => void;
   setUseSameAsBilling: (value: boolean) => void;
@@ -211,6 +217,10 @@ export function useCheckoutState(): UseCheckoutStateReturn {
 
   const setCartLoading = React.useCallback((loading: boolean) => {
     dispatch({ type: "SET_CART_LOADING", payload: loading });
+  }, []);
+
+  const setEmail = React.useCallback((email: string) => {
+    dispatch({ type: "SET_EMAIL", payload: email });
   }, []);
 
   const setShippingAddress = React.useCallback((address: CheckoutAddress | null) => {
@@ -370,6 +380,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
     dispatch({ type: "SET_ERROR", payload: null });
     try {
       const response = await placeCheckoutOrder({
+        email: state.email || undefined,
         shipping_address: state.shippingAddress,
         billing_address: state.billingAddress || undefined,
         use_same_as_billing: state.useSameAsBilling,
@@ -392,6 +403,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
       dispatch({ type: "SET_LOADING", payload: false });
     }
   }, [
+    state.email,
     state.shippingAddress,
     state.billingAddress,
     state.useSameAsBilling,
@@ -422,6 +434,7 @@ export function useCheckoutState(): UseCheckoutStateReturn {
     state,
     setCart,
     setCartLoading,
+    setEmail,
     setShippingAddress,
     setBillingAddress,
     setUseSameAsBilling,

@@ -10,6 +10,8 @@ import { MapPin, Building } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 interface AddressSectionProps {
+  email: string;
+  onEmailChange: (email: string) => void;
   shippingAddress: CheckoutAddress | null;
   billingAddress: CheckoutAddress | null;
   useSameAsBilling: boolean;
@@ -41,6 +43,8 @@ const emptyCompany: CompanyInfo = {
 };
 
 export function AddressSection({
+  email,
+  onEmailChange,
   shippingAddress,
   billingAddress,
   useSameAsBilling,
@@ -115,14 +119,15 @@ export function AddressSection({
   };
 
   const isValid = React.useMemo(() => {
+    const emailValid = email.trim().length > 0 && email.includes("@");
     const required = ["full_name", "phone", "address1", "city", "postcode", "country"];
     const shippingValid = required.every((f) => localShipping[f as keyof CheckoutAddress]?.trim());
     if (!useSameAsBilling) {
       const billingValid = required.every((f) => localBilling[f as keyof CheckoutAddress]?.trim());
-      return shippingValid && billingValid;
+      return emailValid && shippingValid && billingValid;
     }
-    return shippingValid;
-  }, [localShipping, localBilling, useSameAsBilling]);
+    return emailValid && shippingValid;
+  }, [email, localShipping, localBilling, useSameAsBilling]);
 
   return (
     <div className="space-y-6">
@@ -131,6 +136,17 @@ export function AddressSection({
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-blue-500" />
           <h3 className="text-lg font-semibold">{commonT("shipping_address")}</h3>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">{t("email")} *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            placeholder="john@example.com"
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

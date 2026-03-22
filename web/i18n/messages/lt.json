@@ -160,6 +160,28 @@
       "page": "Puslapis {page}",
       "next": "Kitas"
     },
+    "profile": {
+      "title": "Mano duomenys",
+      "subtitle": "Jūsų pristatymo adresas ir kontaktinė informacija. Bus automatiškai užpildyta atsiskaityme.",
+      "first_name": "Vardas",
+      "last_name": "Pavardė",
+      "phone": "Telefonas",
+      "shipping_title": "Pristatymo adresas",
+      "full_name": "Vardas, Pavardė",
+      "address": "Adresas",
+      "apartment": "Butas, korpusas ir kt.",
+      "city": "Miestas",
+      "postcode": "Pašto kodas",
+      "country": "Šalis",
+      "company_title": "Įmonė / Sąskaita",
+      "company_name": "Įmonės pavadinimas",
+      "vat_number": "PVM kodas",
+      "invoice_email": "Sąskaitų el. paštas",
+      "save": "Išsaugoti pakeitimus",
+      "saving": "Saugoma...",
+      "saved": "Profilis sėkmingai išsaugotas.",
+      "error": "Nepavyko išsaugoti profilio."
+    },
     "settings": {
       "title": "Paskyros nustatymai",
       "subtitle": "Atnaujinkite slaptažodį ir apsaugokite savo paskyrą.",
@@ -190,6 +212,27 @@
       "has_account": "Jau turite paskyrą?",
       "log_in": "Prisijungti",
       "submitting": "Palaukite..."
+    },
+    "forgot_password": {
+      "title": "Pamiršote slaptažodį",
+      "subtitle": "Įveskite el. paštą ir mes atsiųsime slaptažodžio atstatymo nuorodą.",
+      "email": "El. paštas",
+      "email_placeholder": "Įveskite el. paštą",
+      "submit": "Siųsti atstatymo nuorodą",
+      "submitting": "Siunčiama...",
+      "success": "Jei paskyra su šiuo el. paštu egzistuoja, netrukus gausite slaptažodžio atstatymo nuorodą.",
+      "back_to_login": "Grįžti į prisijungimą"
+    },
+    "reset_password": {
+      "title": "Atstatyti slaptažodį",
+      "subtitle": "Įveskite naują slaptažodį.",
+      "new_password": "Naujas slaptažodis",
+      "new_password_placeholder": "Bent 8 simboliai",
+      "submit": "Atstatyti slaptažodį",
+      "submitting": "Atstatoma...",
+      "success": "Slaptažodis atstatytas. Dabar galite prisijungti.",
+      "invalid_link": "Ši atstatymo nuoroda negalioja arba pasibaigė jos galiojimas.",
+      "go_to_login": "Eiti į prisijungimą"
     }
   },
   "checkout": {
@@ -228,6 +271,7 @@
     "payment_method": "Mokėjimo būdas",
     "terminal": "Paštomatas",
     "address_section": {
+      "email": "El. paštas",
       "full_name": "Vardas, Pavardė",
       "phone": "Telefonas",
       "address": "Adresas",

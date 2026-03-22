@@ -118,6 +118,25 @@ type AdminCustomer struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
+// CustomerProfile holds the editable profile fields for the storefront account page.
+type CustomerProfile struct {
+	Email            string `json:"email"`
+	Phone            string `json:"phone"`
+	FirstName        string `json:"first_name"`
+	LastName         string `json:"last_name"`
+	ShippingFullName string `json:"shipping_full_name"`
+	ShippingPhone    string `json:"shipping_phone"`
+	ShippingAddress1 string `json:"shipping_address1"`
+	ShippingAddress2 string `json:"shipping_address2"`
+	ShippingCity     string `json:"shipping_city"`
+	ShippingState    string `json:"shipping_state"`
+	ShippingPostcode string `json:"shipping_postcode"`
+	ShippingCountry  string `json:"shipping_country"`
+	CompanyName      string `json:"company_name"`
+	CompanyVAT       string `json:"company_vat"`
+	InvoiceEmail     string `json:"invoice_email"`
+	WantsInvoice     bool   `json:"wants_invoice"`
+}
 
 type CustomerOrderItem struct {
 	ID             string
@@ -562,7 +581,6 @@ func (s *Store) listOrderItemsForHistory(ctx context.Context, orderID string) ([
 	}
 	return out, nil
 }
-
 
 func (s *Store) GetOrderByCustomer(ctx context.Context, orderID, customerID string) (CustomerOrderDetail, error) {
 	var o CustomerOrderDetail
@@ -2043,4 +2061,86 @@ func (s *Store) DeleteBlockedIP(ctx context.Context, id string) (BlockedIP, erro
 		out.ExpiresAt = &expiresAtOut.Time
 	}
 	return out, nil
+}
+
+func (s *Store) GetProfile(ctx context.Context, customerID string) (CustomerProfile, error) {
+	var p CustomerProfile
+	var phone, invoiceEmail sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT email, phone, first_name, last_name,
+		       shipping_full_name, shipping_phone, shipping_address1, shipping_address2,
+		       shipping_city, shipping_state, shipping_postcode, shipping_country,
+		       company_name, company_vat, invoice_email, wants_invoice
+		FROM customers WHERE id = $1`, customerID,
+	).Scan(
+		&p.Email, &phone, &p.FirstName, &p.LastName,
+		&p.ShippingFullName, &p.ShippingPhone, &p.ShippingAddress1, &p.ShippingAddress2,
+		&p.ShippingCity, &p.ShippingState, &p.ShippingPostcode, &p.ShippingCountry,
+		&p.CompanyName, &p.CompanyVAT, &invoiceEmail, &p.WantsInvoice,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return p, ErrNotFound
+		}
+		return p, err
+	}
+	if phone.Valid {
+		p.Phone = phone.String
+	}
+	if invoiceEmail.Valid {
+		p.InvoiceEmail = invoiceEmail.String
+	}
+	return p, nil
+}
+
+func (s *Store) UpdateProfile(ctx context.Context, customerID string, p CustomerProfile) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE customers SET
+			phone = $2, first_name = $3, last_name = $4,
+			shipping_full_name = $5, shipping_phone = $6, shipping_address1 = $7, shipping_address2 = $8,
+			shipping_city = $9, shipping_state = $10, shipping_postcode = $11, shipping_country = $12,
+			company_name = $13, company_vat = $14, invoice_email = $15, wants_invoice = $16,
+			updated_at = now()
+		WHERE id = $1`,
+		customerID,
+		p.Phone, p.FirstName, p.LastName,
+		p.ShippingFullName, p.ShippingPhone, p.ShippingAddress1, p.ShippingAddress2,
+		p.ShippingCity, p.ShippingState, p.ShippingPostcode, p.ShippingCountry,
+		p.CompanyName, p.CompanyVAT, p.InvoiceEmail, p.WantsInvoice,
+	)
+	return err
+}
+
+func (s *Store) CreatePasswordResetToken(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO password_reset_tokens (customer_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
+		customerID, tokenHash, expiresAt,
+	)
+	return err
+}
+
+func (s *Store) GetCustomerByResetTokenHash(ctx context.Context, tokenHash string) (Customer, error) {
+	var c Customer
+	err := s.db.QueryRowContext(ctx, `
+		SELECT c.id, c.email, c.password_hash, c.status, c.created_at
+		FROM password_reset_tokens t
+		JOIN customers c ON c.id = t.customer_id
+		WHERE t.token_hash = $1 AND t.used_at IS NULL AND t.expires_at > now()`,
+		tokenHash,
+	).Scan(&c.ID, &c.Email, &c.PasswordHash, &c.Status, &c.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c, ErrNotFound
+		}
+		return c, err
+	}
+	return c, nil
+}
+
+func (s *Store) MarkResetTokenUsed(ctx context.Context, tokenHash string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE password_reset_tokens SET used_at = now() WHERE token_hash = $1`,
+		tokenHash,
+	)
+	return err
 }

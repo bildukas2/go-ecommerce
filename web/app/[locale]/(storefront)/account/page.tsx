@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AccountShell } from "@/components/account/account-shell";
+import { ProfileForm } from "@/components/account/profile-form";
 import { LogoutButton } from "@/components/account/logout-button";
 import { getCurrentAccount } from "@/lib/api";
 
@@ -25,6 +26,8 @@ export default async function AccountPage() {
         <p className="mt-1 text-lg font-semibold">{customer.email}</p>
         <p className="mt-1 text-xs text-neutral-500">{t("member_since", { date: new Date(customer.created_at).toLocaleDateString() })}</p>
       </div>
+
+      <ProfileForm />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <AccountLink href="/account/orders" title={t("orders_title")} subtitle={t("orders_subtitle")} />

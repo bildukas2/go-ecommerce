@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -121,9 +122,9 @@ export function AccountAuthForm({ mode, nextPath = "/account", uiVariant = "defa
             />
             {tLogin("remember_me")}
           </label>
-          <button type="button" className="text-foreground/60 hover:text-foreground/90">
+          <Link href="/account/forgot-password" className="text-foreground/60 hover:text-foreground/90">
             {tLogin("forgot_password")}
-          </button>
+          </Link>
         </div>
       ) : null}
 
