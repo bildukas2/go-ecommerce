@@ -417,10 +417,22 @@ func (m *module) sendOrderConfirmationBestEffort(ctx context.Context, order stor
 	if lang == "" {
 		lang = "en"
 	}
+
+	// Use shop settings currency if available, fall back to order currency
+	currency := strings.ToUpper(strings.TrimSpace(order.Currency))
+	if m.db != nil {
+		var shopCurrency string
+		if err := m.db.QueryRowContext(ctx, "SELECT currency FROM shop_settings WHERE id = 1").Scan(&shopCurrency); err == nil {
+			if c := strings.ToUpper(strings.TrimSpace(shopCurrency)); c != "" {
+				currency = c
+			}
+		}
+	}
+
 	payload := map[string]any{
 		"OrderNumber": order.Number,
 		"OrderID":     order.ID,
-		"Currency":    strings.ToUpper(strings.TrimSpace(order.Currency)),
+		"Currency":    currency,
 		"Total":       formatCents(order.TotalCents),
 	}
 
