@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button, Tooltip, Alert } from "@heroui/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button, Tooltip } from "@heroui/react";
 import { Edit, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { AdminPage } from "@/lib/api";
@@ -38,9 +38,10 @@ export function PagesTable({ pages, deleteAction }: Props) {
     <div className="flex flex-col gap-4">
       {error && (
         <div className="px-4 pt-4">
-          <Alert color="danger" title="Error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
+          <div className="flex items-center justify-between rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger border border-danger-200">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-4 text-danger hover:opacity-70">✕</button>
+          </div>
         </div>
       )}
       <Table 
