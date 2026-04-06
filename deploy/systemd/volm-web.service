@@ -7,11 +7,11 @@ Wants=network-online.target
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/volm/web
-EnvironmentFile=/etc/volm/volm.env
+WorkingDirectory=/var/www/VolmDemo/go-ecommerce/web
+EnvironmentFile=/var/www/VolmDemo/go-ecommerce/volm.env
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
-ExecStart=/usr/bin/npm run start -- --port 3000
+ExecStart=/usr/bin/npm run start -- --port 3005
 Restart=always
 RestartSec=3
 KillSignal=SIGTERM

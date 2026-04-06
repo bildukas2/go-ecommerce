@@ -150,3 +150,33 @@ If you want features → add plugin in web/plugins/**
 Avoid editing web/core/**
 
 This alone reduces merge pain massively.
+
+
+````
+$env:GOOS="linux"
+$env:GOARCH="amd64"
+$env:CGO_ENABLED="0"
+go build -o go-ecommerce-migrate ./cmd/migrate
+````
+
+````
+$env:GOOS="linux"
+$env:GOARCH="arm64"
+$env:CGO_ENABLED="0"
+go build -o go-ecommerce-api ./cmd/api
+
+go build -o go-ecommerce-migrate ./cmd/migrate
+go build -o go-ecommerce-import-terminals ./cmd/import-terminals
+````
+````
+Remove-Item Env:GOOS
+Remove-Item Env:GOARCH
+Remove-Item Env:CGO_ENABLED
+````
+git restore go-ecommerce-api
+git pull
+chmod +x go-ecommerce-api
+sudo systemctl restart volm-api
+
+
+sudo systemctl restart volm-web

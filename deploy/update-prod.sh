@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="${ROOT_DIR:-/var/www/volm_krikstynoms}"
+ROOT_DIR="${ROOT_DIR:-/var/www/VolmDemo/go-ecommerce}"
 WEB_DIR="$ROOT_DIR/web"
 API_BIN="$ROOT_DIR/go-ecommerce-api"
 SKIP_API_RESTART="${SKIP_API_RESTART:-0}"
