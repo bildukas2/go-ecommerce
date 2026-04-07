@@ -73,6 +73,13 @@ docker compose up -d
 go run ./cmd/migrate up
 ```
 
+### 2. Run project localy 
+```bash
+air -c .air.toml  
+```
+
+
+
 ### 3. Run Go API with auto-reload
 
 Install [Air](https://github.com/air-verse/air) (once):

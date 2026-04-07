@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { isBlockedIPError, loginAccount, registerAccount } from "@/lib/api";
+import { WalletLoginButton } from "@/components/account/wallet-login-button";
 
 type AuthMode = "login" | "register";
 
@@ -133,6 +134,14 @@ export function AccountAuthForm({ mode, nextPath = "/account", uiVariant = "defa
       <Button type="submit" className={isHero ? "h-12 w-full rounded-xl bg-blue-600 text-base font-semibold text-white hover:bg-blue-700" : "w-full"} disabled={submitting}>
         {submitting ? submittingLabel : modeLabel}
       </Button>
+
+      <div className="relative flex items-center py-1">
+        <div className="flex-1 border-t border-surface-border" />
+        <span className="mx-3 text-xs text-foreground/40">or</span>
+        <div className="flex-1 border-t border-surface-border" />
+      </div>
+
+      <WalletLoginButton nextPath={nextPath} />
     </form>
   );
 }
