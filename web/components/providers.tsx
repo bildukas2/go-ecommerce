@@ -10,9 +10,9 @@ export function Providers({ children, shopCurrency = "USD" }: { children: React.
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
+      defaultTheme="dark"
+      enableSystem={false}
+      storageKey="volm-theme"
     >
       <HeroUIProvider>
         <ShopCurrencyProvider currency={shopCurrency}>
