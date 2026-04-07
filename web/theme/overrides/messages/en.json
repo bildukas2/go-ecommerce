@@ -1,3 +1,41 @@
 {
-
+  "home_intro": {
+    "badge": "100% Open Source · Go + Next.js · Made for Vibers",
+    "beta_badge": "BETA · v0.5.4",
+    "title_line1": "VOLM",
+    "title_line2": "Ecommerce",
+    "description": "A fast, modern, open-source ecommerce starter. Go API + Next.js storefront. Simple to set up. Easy to extend. Built for AI to easy handling.",
+    "btn_browse": "Browse Products →",
+    "btn_github": "GitHub ↗",
+    "stats": {
+      "endpoints": "REST endpoints",
+      "migrations": "DB migrations",
+      "modules": "Feature modules",
+      "open_source": "Open Source"
+    },
+    "features_eyebrow": "What's inside",
+    "features_title": "Everything you need, nothing you don't",
+    "features": {
+      "go_title": "Go Backend",
+      "go_desc": "Chi router, raw database/sql, goose migrations, Redis caching. No ORMs, no bloat. Just fast, idiomatic Go.",
+      "nextjs_title": "Next.js Storefront",
+      "nextjs_desc": "App Router, React 19, Tailwind 4, shadcn/ui + HeroUI. Server components by default. Feels instant.",
+      "modular_title": "Modular Architecture",
+      "modular_desc": "7 feature modules: catalog, cart, checkout, orders, customers, shipping, admin. Plugin-style registration. Add features without touching core.",
+      "cart_title": "Full Cart & Checkout",
+      "cart_desc": "Cookie-based cart, multi-step checkout, Stripe payments, shipping zones with Omniva integration.",
+      "admin_title": "Admin Panel",
+      "admin_desc": "Session auth + CSRF + Cloudflare Turnstile captcha. Manage products, orders, customers, CMS pages, email templates.",
+      "theme_title": "Theme Override System",
+      "theme_desc": "Override any page or component from your safe zone. Never conflicts with upstream updates. Brand tokens in one file."
+    },
+    "stack_eyebrow": "Tech stack",
+    "stack_title": "Boring tech that just works",
+    "quickstart_eyebrow": "Get started",
+    "quickstart_title": "Up and running in minutes",
+    "cta_title": "Build your store with VOLM",
+    "cta_desc": "100% open source. Made for Vibers. Fork it, customize it, ship it.",
+    "btn_star_github": "Star on GitHub ↗",
+    "btn_browse_demo": "Browse Demo Store"
+  }
 }

@@ -1,3 +1,41 @@
 {
-
+  "home_intro": {
+    "badge": "100% Atviras kodas · Go + Next.js · Sukurta Vibers",
+    "beta_badge": "BETA · v0.5.4",
+    "title_line1": "VOLM",
+    "title_line2": "El. prekyba",
+    "description": "Greitas, modernus, atviro kodo el. prekybos starteris. Go API + Next.js parduotuvė. Paprasta paleisti. Lengva plėsti. Sukurta AI paprastam valdymui.",
+    "btn_browse": "Naršyti produktus →",
+    "btn_github": "GitHub ↗",
+    "stats": {
+      "endpoints": "REST galutiniai taškai",
+      "migrations": "DB migracijos",
+      "modules": "Funkcijų moduliai",
+      "open_source": "Atviras kodas"
+    },
+    "features_eyebrow": "Kas viduje",
+    "features_title": "Viskas ko reikia, nieko nereikalingo",
+    "features": {
+      "go_title": "Go serveris",
+      "go_desc": "Chi maršrutizatorius, gryna database/sql, goose migracijos, Redis talpykla. Be ORM, be pertekliaus. Tik greitas, idiomatiškas Go.",
+      "nextjs_title": "Next.js parduotuvė",
+      "nextjs_desc": "App Router, React 19, Tailwind 4, shadcn/ui + HeroUI. Serverio komponentai pagal nutylėjimą. Jaučiasi greitai.",
+      "modular_title": "Modulinė architektūra",
+      "modular_desc": "7 funkcijų moduliai: katalogas, krepšelis, atsiskaitymas, užsakymai, klientai, pristatymas, administravimas. Paprastas registravimas. Pridėkite funkcijas nepaliesdami branduolio.",
+      "cart_title": "Pilnas krepšelis ir atsiskaitymas",
+      "cart_desc": "Slapukais pagrįstas krepšelis, daugiapakopis atsiskaitymas, Stripe mokėjimai, pristatymo zonos su Omniva integracija.",
+      "admin_title": "Administravimo skydelis",
+      "admin_desc": "Sesijų autentifikacija + CSRF + Cloudflare Turnstile captcha. Valdykite produktus, užsakymus, klientus, CMS puslapius, el. laiškų šablonus.",
+      "theme_title": "Temos perrašymo sistema",
+      "theme_desc": "Perrašykite bet kurį puslapį ar komponentą iš savo saugios zonos. Niekada nesikerta su atnaujinimais. Prekės ženklo žetonai viename faile."
+    },
+    "stack_eyebrow": "Technologijų rinkinys",
+    "stack_title": "Nusibodusios technologijos, kurios tiesiog veikia",
+    "quickstart_eyebrow": "Pradžia",
+    "quickstart_title": "Paruošta per kelias minutes",
+    "cta_title": "Kurkite savo parduotuvę su VOLM",
+    "cta_desc": "100% atviras kodas. Sukurta Vibers. Forkinkite, pritaikykite, paleiskite.",
+    "btn_star_github": "Žvaigždutė GitHub ↗",
+    "btn_browse_demo": "Naršyti demo parduotuvę"
+  }
 }
