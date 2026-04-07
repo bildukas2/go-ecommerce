@@ -49,6 +49,12 @@ type customerStore interface {
 	CreatePasswordResetToken(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error
 	GetCustomerByResetTokenHash(ctx context.Context, tokenHash string) (storcustomers.Customer, error)
 	MarkResetTokenUsed(ctx context.Context, tokenHash string) error
+	// Wallet / SIWE auth
+	SaveWalletNonce(ctx context.Context, nonce string, expiresAt time.Time) error
+	ConsumeWalletNonce(ctx context.Context, nonce string) error
+	GetCustomerByWalletAddress(ctx context.Context, address string) (storcustomers.Customer, error)
+	CreateCustomerWithWallet(ctx context.Context, walletAddress string) (storcustomers.Customer, error)
+	LinkWalletToCustomer(ctx context.Context, customerID, walletAddress string) error
 }
 
 type paymentMethodStore interface {
@@ -147,6 +153,8 @@ func (m *module) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/auth/forgot-password", m.handleForgotPassword)
 	mux.HandleFunc("/auth/reset-password", m.handleResetPassword)
 	mux.HandleFunc("/support/blocked-report", m.handleBlockedReport)
+	mux.HandleFunc("/auth/wallet/nonce", m.handleWalletNonce)
+	mux.HandleFunc("/auth/wallet/verify", m.handleWalletVerify)
 }
 
 type credentialsRequest struct {

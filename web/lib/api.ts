@@ -1498,6 +1498,32 @@ export async function logoutAccount(options?: AccountRequestOptions): Promise<vo
   }
 }
 
+export async function getWalletNonce(): Promise<string> {
+  const res = await fetch(apiJoin("auth/wallet/nonce"), {
+    method: "POST",
+    headers: mutHeaders(),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to get nonce"));
+  const data = await res.json();
+  return String(data.nonce ?? "");
+}
+
+export async function verifyWalletLogin(
+  address: string,
+  message: string,
+  signature: string,
+): Promise<AccountCustomer> {
+  const res = await fetch(apiJoin("auth/wallet/verify"), {
+    method: "POST",
+    headers: mutHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ address, message, signature }),
+  });
+  if (!res.ok) throw new Error(await apiErrorMessage(res, "Wallet login failed"));
+  return normalizeAccountCustomer(await res.json());
+}
+
 export async function getCurrentAccount(options?: AccountRequestOptions): Promise<AccountCustomer> {
   const res = await fetch(
     apiJoin("auth/me"),

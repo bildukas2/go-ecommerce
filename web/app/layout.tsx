@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import packageJson from "@/package.json";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,11 +13,47 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://volm.dev";
+const webVersion = packageJson.version;
+const siteTitle = `Volm v${webVersion}`;
+const siteDescription = `Volm is a modern ecommerce storefront by ByteRan.com. Fast shopping, clean product discovery, and the current storefront release v${webVersion}.`;
+
 export const metadata: Metadata = {
-  title: "Volm",
-  description: "Demo storefront",
+  metadataBase: new URL(siteUrl),
+  title: siteTitle,
+  description: siteDescription,
+  applicationName: "Volm",
+  authors: [{ name: "ByteRan", url: "https://byteran.com" }],
+  creator: "ByteRan.com",
+  publisher: "ByteRan.com",
   icons: {
-    icon: "/img/favicon.png",
+    icon: [
+      { url: "/img/Volm logo small.png", type: "image/png" },
+      { url: "/img/favicon.png", type: "image/png" },
+    ],
+    apple: "/img/Volm logo small.png",
+  },
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: siteUrl,
+    siteName: "Volm",
+    type: "website",
+    images: [
+      {
+        url: "/img/Volm logo small.png",
+        width: 512,
+        height: 512,
+        alt: "Volm logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: siteTitle,
+    description: siteDescription,
+    creator: "@ByteRanCom",
+    images: ["/img/Volm logo small.png"],
   },
 };
 
