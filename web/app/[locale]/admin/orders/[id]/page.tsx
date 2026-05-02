@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getAdminOrder } from "@/lib/api";
 import { isNotFoundAdminError, isUnauthorizedAdminError } from "@/lib/admin-orders-state";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -35,6 +36,10 @@ function asDateTime(value: string): string {
 
 function maybeValue(value: string): string {
   return value.trim() || "-";
+}
+
+function productImageUrl(value: string): string {
+  return value.trim() || "/images/noImage.png";
 }
 
 function addressLines(address: {
@@ -379,74 +384,90 @@ export default async function AdminOrderDetailPage({ params }: Params) {
             </div>
           )}
 
-          {order.items.map((item) => (
-            <article key={item.id} className="rounded-xl border border-surface-border bg-foreground/[0.02] p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h4 className="font-semibold">{maybeValue(item.product_title)}</h4>
-                  <p className="mt-1 text-xs text-foreground/60">
-                    SKU: <span className="font-mono">{maybeValue(item.variant_sku)}</span>
-                  </p>
-                  <p className="mt-1 text-xs text-foreground/60">
-                    Variant ID: <span className="font-mono">{maybeValue(item.product_variant_id)}</span>
-                  </p>
-                  <p className="mt-1 text-xs text-foreground/60">
-                    Item ID: <span className="font-mono">{item.id}</span>
-                  </p>
-                </div>
-                <div className="rounded-lg border border-surface-border bg-background/70 px-3 py-2 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <span className="text-foreground/60">Qty</span>
-                    <span className="font-medium">{item.quantity}</span>
-                  </div>
-                  <div className="mt-1 flex justify-between gap-4">
-                    <span className="text-foreground/60">Unit</span>
-                    <span className="font-medium">{asMoney(item.unit_price_cents, item.currency || moneyCurrency)}</span>
-                  </div>
-                  <div className="mt-1 flex justify-between gap-4 border-t border-surface-border pt-1">
-                    <span className="text-foreground/60">Line Total</span>
-                    <span className="font-semibold">
-                      {asMoney(item.unit_price_cents * item.quantity, item.currency || moneyCurrency)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+          {order.items.map((item) => {
+            const imageUrl = productImageUrl(item.image_url);
 
-              <div className="mt-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Selected Custom Options</p>
-                  <div className="mt-2 space-y-2 text-sm">
-                    {item.custom_options_json.length === 0 ? (
-                      <p className="text-foreground/60">-</p>
-                    ) : (
-                      item.custom_options_json.map((option, index) => {
-                        const values = [
-                          option.value_title,
-                          option.value_titles.join(", "),
-                          option.value_text,
-                          option.value_id,
-                          option.value_ids.join(", "),
-                        ]
-                          .map((value) => value.trim())
-                          .filter((value) => value.length > 0);
-                        return (
-                          <div key={`${option.option_id}:${index}`} className="rounded-md border border-surface-border bg-background/70 px-3 py-2">
-                            <p className="font-medium">
-                              {maybeValue(option.title)} <span className="text-foreground/60">({maybeValue(option.type)})</span>
-                            </p>
-                            <p className="text-foreground/70">{values[0] || "-"}</p>
-                            {option.price_delta_cents !== 0 && (
-                              <p className="text-xs text-foreground/60">Price delta: {asMoney(option.price_delta_cents, item.currency || moneyCurrency)}</p>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
+            return (
+              <article key={item.id} className="rounded-xl border border-surface-border bg-foreground/[0.02] p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="flex min-w-0 gap-4">
+                    <div className="image-default-bg relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-surface-border bg-background/70">
+                      <Image
+                        src={imageUrl}
+                        alt={item.product_title || "Ordered product"}
+                        fill
+                        sizes="80px"
+                        unoptimized={imageUrl.includes("localhost") || imageUrl.includes("127.0.0.1")}
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold">{maybeValue(item.product_title)}</h4>
+                      <p className="mt-1 text-xs text-foreground/60">
+                        SKU: <span className="font-mono">{maybeValue(item.variant_sku)}</span>
+                      </p>
+                      <p className="mt-1 text-xs text-foreground/60">
+                        Variant ID: <span className="font-mono">{maybeValue(item.product_variant_id)}</span>
+                      </p>
+                      <p className="mt-1 break-all text-xs text-foreground/60">
+                        Item ID: <span className="font-mono">{item.id}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-surface-border bg-background/70 px-3 py-2 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-foreground/60">Qty</span>
+                      <span className="font-medium">{item.quantity}</span>
+                    </div>
+                    <div className="mt-1 flex justify-between gap-4">
+                      <span className="text-foreground/60">Unit</span>
+                      <span className="font-medium">{asMoney(item.unit_price_cents, item.currency || moneyCurrency)}</span>
+                    </div>
+                    <div className="mt-1 flex justify-between gap-4 border-t border-surface-border pt-1">
+                      <span className="text-foreground/60">Line Total</span>
+                      <span className="font-semibold">
+                        {asMoney(item.unit_price_cents * item.quantity, item.currency || moneyCurrency)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          ))}
+
+                <div className="mt-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">Selected Custom Options</p>
+                    <div className="mt-2 space-y-2 text-sm">
+                      {item.custom_options_json.length === 0 ? (
+                        <p className="text-foreground/60">-</p>
+                      ) : (
+                        item.custom_options_json.map((option, index) => {
+                          const values = [
+                            option.value_title,
+                            option.value_titles.join(", "),
+                            option.value_text,
+                            option.value_id,
+                            option.value_ids.join(", "),
+                          ]
+                            .map((value) => value.trim())
+                            .filter((value) => value.length > 0);
+                          return (
+                            <div key={`${option.option_id}:${index}`} className="rounded-md border border-surface-border bg-background/70 px-3 py-2">
+                              <p className="font-medium">
+                                {maybeValue(option.title)} <span className="text-foreground/60">({maybeValue(option.type)})</span>
+                              </p>
+                              <p className="text-foreground/70">{values[0] || "-"}</p>
+                              {option.price_delta_cents !== 0 && (
+                                <p className="text-xs text-foreground/60">Price delta: {asMoney(option.price_delta_cents, item.currency || moneyCurrency)}</p>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>

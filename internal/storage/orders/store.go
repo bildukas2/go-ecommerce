@@ -68,6 +68,7 @@ type OrderItem struct {
 	Currency          string
 	Quantity          int
 	ProductTitle      string
+	ImageURL          string
 	VariantSKU        string
 	VariantAttrsJSON  []byte
 	CustomOptionsJSON []byte
@@ -486,14 +487,40 @@ func (s *Store) GetOrderByID(ctx context.Context, id string) (Order, error) {
 	); err != nil {
 		return Order{}, err
 	}
-	rows, err := s.db.QueryContext(ctx, "SELECT id, order_id, product_variant_id, unit_price_cents, currency, quantity, product_title, variant_sku, variant_attributes_json, custom_options_json, created_at, updated_at FROM order_items WHERE order_id = $1 ORDER BY created_at ASC", o.ID)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			oi.id,
+			oi.order_id,
+			oi.product_variant_id,
+			oi.unit_price_cents,
+			oi.currency,
+			oi.quantity,
+			oi.product_title,
+			COALESCE(img.url, '') AS image_url,
+			oi.variant_sku,
+			oi.variant_attributes_json,
+			oi.custom_options_json,
+			oi.created_at,
+			oi.updated_at
+		FROM order_items oi
+		JOIN product_variants pv ON pv.id = oi.product_variant_id
+		LEFT JOIN LATERAL (
+			SELECT url
+			FROM images
+			WHERE product_id = pv.product_id
+			ORDER BY is_default DESC, sort ASC
+			LIMIT 1
+		) img ON true
+		WHERE oi.order_id = $1
+		ORDER BY oi.created_at ASC
+	`, o.ID)
 	if err != nil {
 		return Order{}, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var it OrderItem
-		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductVariantID, &it.UnitPriceCents, &it.Currency, &it.Quantity, &it.ProductTitle, &it.VariantSKU, &it.VariantAttrsJSON, &it.CustomOptionsJSON, &it.CreatedAt, &it.UpdatedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductVariantID, &it.UnitPriceCents, &it.Currency, &it.Quantity, &it.ProductTitle, &it.ImageURL, &it.VariantSKU, &it.VariantAttrsJSON, &it.CustomOptionsJSON, &it.CreatedAt, &it.UpdatedAt); err != nil {
 			return Order{}, err
 		}
 		o.Items = append(o.Items, it)

@@ -121,6 +121,7 @@ func TestAdminOrderDetailReturnsStructuredPayload(t *testing.T) {
 						Currency:          "USD",
 						Quantity:          1,
 						ProductTitle:      "Classic Tee",
+						ImageURL:          "https://images.example.com/classic-tee.jpg",
 						VariantSKU:        "TEE-BLK-M",
 						VariantAttrsJSON:  []byte(`{"color":"black","size":"M"}`),
 						CustomOptionsJSON: []byte(`[{"title":"Gift wrap","type":"checkbox","value_titles":["Yes"]}]`),
@@ -173,6 +174,9 @@ func TestAdminOrderDetailReturnsStructuredPayload(t *testing.T) {
 	}
 	if item["product_title"] != "Classic Tee" || item["variant_sku"] != "TEE-BLK-M" {
 		t.Fatalf("unexpected item payload: %#v", item)
+	}
+	if item["image_url"] != "https://images.example.com/classic-tee.jpg" {
+		t.Fatalf("unexpected image_url: %#v", item["image_url"])
 	}
 	if _, ok := item["variant_attributes_json"].(map[string]any); !ok {
 		t.Fatalf("expected variant_attributes_json object, got %#v", item["variant_attributes_json"])

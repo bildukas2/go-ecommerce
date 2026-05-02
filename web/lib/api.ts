@@ -1917,6 +1917,7 @@ export type AdminOrderDetailItem = {
   currency: string;
   quantity: number;
   product_title: string;
+  image_url: string;
   variant_sku: string;
   variant_attributes_json: Record<string, string | number | boolean | null>;
   custom_options_json: AdminOrderItemCustomOption[];
@@ -2051,6 +2052,7 @@ function normalizeAdminOrderDetailItem(raw: unknown): AdminOrderDetailItem | nul
     currency: asString(obj.currency ?? obj.Currency),
     quantity: asNumber(obj.quantity ?? obj.Quantity),
     product_title: asString(obj.product_title ?? obj.ProductTitle),
+    image_url: asString(obj.image_url ?? obj.ImageURL),
     variant_sku: asString(obj.variant_sku ?? obj.VariantSKU),
     variant_attributes_json: normalizeAdminOrderVariantAttributes(obj.variant_attributes_json),
     custom_options_json: customOptionsRaw

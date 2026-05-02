@@ -426,6 +426,7 @@ func (m *module) handleOrderDetail(w http.ResponseWriter, r *http.Request) {
 			Currency:          it.Currency,
 			Quantity:          it.Quantity,
 			ProductTitle:      it.ProductTitle,
+			ImageURL:          it.ImageURL,
 			VariantSKU:        it.VariantSKU,
 			VariantAttributes: json.RawMessage(it.VariantAttrsJSON),
 			CustomOptions:     json.RawMessage(it.CustomOptionsJSON),
@@ -603,6 +604,7 @@ type adminOrderDetailItemResponse struct {
 	Currency          string          `json:"currency"`
 	Quantity          int             `json:"quantity"`
 	ProductTitle      string          `json:"product_title"`
+	ImageURL          string          `json:"image_url"`
 	VariantSKU        string          `json:"variant_sku"`
 	VariantAttributes json.RawMessage `json:"variant_attributes_json"`
 	CustomOptions     json.RawMessage `json:"custom_options_json"`
