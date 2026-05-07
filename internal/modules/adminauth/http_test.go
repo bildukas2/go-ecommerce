@@ -11,6 +11,7 @@ import (
 	"time"
 
 	storadminauth "goecommerce/internal/storage/adminauth"
+	storcustomers "goecommerce/internal/storage/customers"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,6 +37,15 @@ func (f *fakeAdminAuthStore) ListRoleCodesByUserID(_ context.Context, userID str
 
 func (f *fakeAdminAuthStore) UpdateLastLoginAt(_ context.Context, _ string, _ time.Time) error {
 	return nil
+}
+
+type fakeAdminAuthAuditStore struct {
+	logs []storcustomers.CreateCustomerActionLogInput
+}
+
+func (f *fakeAdminAuthAuditStore) InsertCustomerActionLog(_ context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error) {
+	f.logs = append(f.logs, in)
+	return storcustomers.CustomerActionLog{}, nil
 }
 
 func TestHandleCSRF(t *testing.T) {
@@ -125,13 +135,15 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 		userByEmail: map[string]storadminauth.User{},
 		rolesByUser: map[string][]string{},
 	}
+	audit := &fakeAdminAuthAuditStore{}
 	cache := &memSessionCache{data: map[string]string{}}
 	m := &module{
-		store:     store,
-		sessions:  NewSessionManager(cache, 45*time.Minute),
-		protect:   newTestLoginProtection(),
-		sessionTT: 45 * time.Minute,
-		now:       time.Now,
+		store:      store,
+		auditStore: audit,
+		sessions:   NewSessionManager(cache, 45*time.Minute),
+		protect:    newTestLoginProtection(),
+		sessionTT:  45 * time.Minute,
+		now:        time.Now,
 	}
 
 	body, _ := json.Marshal(loginRequest{
@@ -140,6 +152,8 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 		CaptchaToken: "token",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/admin/auth/login", bytes.NewReader(body))
+	req.RemoteAddr = "203.0.113.10:12345"
+	req.Header.Set("User-Agent", "curl/8.0")
 	rr := httptest.NewRecorder()
 	m.handleLogin(rr, req)
 
@@ -152,6 +166,26 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 	}
 	if out.Code != "invalid_credentials" || out.Error != "invalid email or password" {
 		t.Fatalf("unexpected auth error response: %#v", out)
+	}
+	if len(audit.logs) != 1 {
+		t.Fatalf("expected one audit log, got %d", len(audit.logs))
+	}
+	log := audit.logs[0]
+	if log.IP != "203.0.113.10" {
+		t.Fatalf("expected request ip in audit log, got %q", log.IP)
+	}
+	if log.Action != adminLoginFailedAction {
+		t.Fatalf("expected action %q, got %q", adminLoginFailedAction, log.Action)
+	}
+	if log.UserAgent == nil || *log.UserAgent != "curl/8.0" {
+		t.Fatalf("expected user agent in audit log, got %#v", log.UserAgent)
+	}
+	var meta map[string]any
+	if err := json.Unmarshal(log.MetaJSON, &meta); err != nil {
+		t.Fatalf("decode audit meta: %v", err)
+	}
+	if meta["email"] != "missing@example.com" || meta["reason"] != "invalid_credentials" || meta["is_bot"] != true {
+		t.Fatalf("unexpected audit meta: %#v", meta)
 	}
 }
 

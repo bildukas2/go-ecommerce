@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"goecommerce/internal/app"
 	storadminauth "goecommerce/internal/storage/adminauth"
+	storcustomers "goecommerce/internal/storage/customers"
 )
 
 const (
@@ -26,31 +27,43 @@ type adminAuthStore interface {
 	UpdateLastLoginAt(ctx context.Context, userID string, at time.Time) error
 }
 
+type adminAuthAuditStore interface {
+	InsertCustomerActionLog(ctx context.Context, in storcustomers.CreateCustomerActionLogInput) (storcustomers.CustomerActionLog, error)
+}
+
 type module struct {
-	store     adminAuthStore
-	sessions  *SessionManager
-	protect   *loginProtection
-	sessionTT time.Duration
-	now       func() time.Time
+	store      adminAuthStore
+	auditStore adminAuthAuditStore
+	sessions   *SessionManager
+	protect    *loginProtection
+	sessionTT  time.Duration
+	now        func() time.Time
 }
 
 func NewModule(deps app.Deps) app.Module {
 	var store adminAuthStore
+	var auditStore adminAuthAuditStore
 	if deps.DB != nil {
 		if st, err := storadminauth.NewStore(context.Background(), deps.DB); err == nil {
 			store = st
 		} else {
 			slog.Error("module init: failed to create store", "module", "adminauth", "store", "adminauth", "error", err)
 		}
+		if st, err := storcustomers.NewStore(context.Background(), deps.DB); err == nil {
+			auditStore = st
+		} else {
+			slog.Error("module init: failed to create store", "module", "adminauth", "store", "customers", "error", err)
+		}
 	}
 
 	sessionTTL := parseSessionTTL(strings.TrimSpace(os.Getenv("ADMIN_SESSION_TTL_MINUTES")))
 	return &module{
-		store:     store,
-		sessions:  NewSessionManager(newRedisSessionCache(deps.Redis), sessionTTL),
-		protect:   newLoginProtection(deps.Redis, newTurnstileVerifierFromEnv()),
-		sessionTT: sessionTTL,
-		now:       time.Now,
+		store:      store,
+		auditStore: auditStore,
+		sessions:   NewSessionManager(newRedisSessionCache(deps.Redis), sessionTTL),
+		protect:    newLoginProtection(deps.Redis, newTurnstileVerifierFromEnv()),
+		sessionTT:  sessionTTL,
+		now:        time.Now,
 	}
 }
 

@@ -69,12 +69,14 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	var req loginRequest
 	if err := decodeAuthRequest(r, &req); err != nil {
+		m.writeLoginFailureLog(r, "", "invalid_body")
 		writeAuthError(w, http.StatusBadRequest, "validation_error", "invalid body", nil)
 		return
 	}
 
 	email, password, validationErrs := validateLoginRequest(req, m.protect.IsCaptchaRequired())
 	if len(validationErrs) > 0 {
+		m.writeLoginFailureLog(r, req.Email, "validation_failed")
 		writeAuthError(w, http.StatusBadRequest, "validation_error", "validation failed", validationErrs)
 		return
 	}
@@ -83,6 +85,7 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "auth unavailable")
 		return
 	} else if !allowed {
+		m.writeLoginFailureLog(r, email, "ip_rate_limited")
 		m.protect.SleepFailureDelay()
 		writeAuthError(w, http.StatusTooManyRequests, "too_many_attempts", "too many attempts", nil)
 		return
@@ -91,11 +94,13 @@ func (m *module) handleLogin(w http.ResponseWriter, r *http.Request) {
 		platformhttp.Error(w, http.StatusServiceUnavailable, "auth unavailable")
 		return
 	} else if locked {
+		m.writeLoginFailureLog(r, email, "email_locked")
 		m.protect.SleepFailureDelay()
 		writeAuthError(w, http.StatusTooManyRequests, "too_many_attempts", "too many attempts", nil)
 		return
 	}
 	if ok, err := m.protect.VerifyCaptcha(r.Context(), req.CaptchaToken, clientIP); err != nil || !ok {
+		m.writeLoginFailureLog(r, email, "captcha_failed")
 		m.protect.SleepFailureDelay()
 		writeAuthError(w, http.StatusBadRequest, "captcha_failed", "captcha failed", nil)
 		return
@@ -157,6 +162,11 @@ func (m *module) respondCredentialFailure(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		platformhttp.Error(w, http.StatusInternalServerError, "login error")
 		return
+	}
+	if locked {
+		m.writeLoginFailureLog(r, email, "invalid_credentials_email_locked")
+	} else {
+		m.writeLoginFailureLog(r, email, "invalid_credentials")
 	}
 	m.protect.SleepFailureDelay()
 	if locked {
