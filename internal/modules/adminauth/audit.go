@@ -3,7 +3,9 @@ package adminauth
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	platformhttp "goecommerce/internal/platform/http"
 	storcustomers "goecommerce/internal/storage/customers"
@@ -12,7 +14,7 @@ import (
 const adminLoginFailedAction = "admin.login_failed"
 
 func (m *module) writeLoginFailureLog(r *http.Request, email string, reason string) {
-	if m == nil || m.auditStore == nil || r == nil {
+	if m == nil || r == nil {
 		return
 	}
 
@@ -31,6 +33,10 @@ func (m *module) writeLoginFailureLog(r *http.Request, email string, reason stri
 	if err != nil {
 		raw = []byte(`{"reason":"login_failed"}`)
 	}
+	m.appendLoginFailureFile(ip, userAgent, raw)
+	if m.auditStore == nil {
+		return
+	}
 	severity := "security"
 	_, _ = m.auditStore.InsertCustomerActionLog(r.Context(), storcustomers.CreateCustomerActionLogInput{
 		IP:        ip,
@@ -39,6 +45,31 @@ func (m *module) writeLoginFailureLog(r *http.Request, email string, reason stri
 		Severity:  &severity,
 		MetaJSON:  json.RawMessage(raw),
 	})
+}
+
+func (m *module) appendLoginFailureFile(ip string, userAgent string, meta json.RawMessage) {
+	path := strings.TrimSpace(m.loginFailureLogPath)
+	if path == "" {
+		return
+	}
+	entry := map[string]any{
+		"ts":         time.Now().UTC().Format(time.RFC3339),
+		"action":     adminLoginFailedAction,
+		"severity":   "security",
+		"ip":         strings.TrimSpace(ip),
+		"user_agent": strings.TrimSpace(userAgent),
+		"meta":       json.RawMessage(meta),
+	}
+	raw, err := json.Marshal(entry)
+	if err != nil {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(append(raw, '\n'))
 }
 
 func loginFailureMeta(r *http.Request, email string, reason string) map[string]any {

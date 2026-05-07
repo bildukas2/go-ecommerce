@@ -32,12 +32,13 @@ type adminAuthAuditStore interface {
 }
 
 type module struct {
-	store      adminAuthStore
-	auditStore adminAuthAuditStore
-	sessions   *SessionManager
-	protect    *loginProtection
-	sessionTT  time.Duration
-	now        func() time.Time
+	store               adminAuthStore
+	auditStore          adminAuthAuditStore
+	sessions            *SessionManager
+	protect             *loginProtection
+	sessionTT           time.Duration
+	loginFailureLogPath string
+	now                 func() time.Time
 }
 
 func NewModule(deps app.Deps) app.Module {
@@ -58,12 +59,13 @@ func NewModule(deps app.Deps) app.Module {
 
 	sessionTTL := parseSessionTTL(strings.TrimSpace(os.Getenv("ADMIN_SESSION_TTL_MINUTES")))
 	return &module{
-		store:      store,
-		auditStore: auditStore,
-		sessions:   NewSessionManager(newRedisSessionCache(deps.Redis), sessionTTL),
-		protect:    newLoginProtection(deps.Redis, newTurnstileVerifierFromEnv()),
-		sessionTT:  sessionTTL,
-		now:        time.Now,
+		store:               store,
+		auditStore:          auditStore,
+		sessions:            NewSessionManager(newRedisSessionCache(deps.Redis), sessionTTL),
+		protect:             newLoginProtection(deps.Redis, newTurnstileVerifierFromEnv()),
+		sessionTT:           sessionTTL,
+		loginFailureLogPath: parseLoginFailureLogPath(strings.TrimSpace(os.Getenv("ADMIN_LOGIN_ERROR_LOG_PATH"))),
+		now:                 time.Now,
 	}
 }
 
@@ -97,6 +99,13 @@ func parseSessionTTL(raw string) time.Duration {
 		n = maxSessionTTLMinutes
 	}
 	return time.Duration(n) * time.Minute
+}
+
+func parseLoginFailureLogPath(raw string) string {
+	if raw == "" {
+		return "admin-loging-error.log"
+	}
+	return raw
 }
 
 func newRedisSessionCache(client *redis.Client) sessionCache {

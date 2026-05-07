@@ -27,6 +27,28 @@ func TestCORSAllowedOrigin(t *testing.T) {
 	}
 }
 
+func TestParseAllowedOriginsIncludesLocalDevPorts(t *testing.T) {
+	origins := ParseAllowedOrigins("")
+	want := map[string]bool{
+		"http://localhost:3000": false,
+		"http://localhost:3001": false,
+		"http://localhost:3005": false,
+		"http://127.0.0.1:3000": false,
+		"http://127.0.0.1:3001": false,
+		"http://127.0.0.1:3005": false,
+	}
+	for _, origin := range origins {
+		if _, ok := want[origin]; ok {
+			want[origin] = true
+		}
+	}
+	for origin, found := range want {
+		if !found {
+			t.Fatalf("expected default CORS origin %s", origin)
+		}
+	}
+}
+
 func TestCORSPreflight(t *testing.T) {
 	handler := CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("next should not be called for preflight")

@@ -7,6 +7,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,14 +139,16 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 		rolesByUser: map[string][]string{},
 	}
 	audit := &fakeAdminAuthAuditStore{}
+	logPath := filepath.Join(t.TempDir(), "admin-loging-error.log")
 	cache := &memSessionCache{data: map[string]string{}}
 	m := &module{
-		store:      store,
-		auditStore: audit,
-		sessions:   NewSessionManager(cache, 45*time.Minute),
-		protect:    newTestLoginProtection(),
-		sessionTT:  45 * time.Minute,
-		now:        time.Now,
+		store:               store,
+		auditStore:          audit,
+		sessions:            NewSessionManager(cache, 45*time.Minute),
+		protect:             newTestLoginProtection(),
+		sessionTT:           45 * time.Minute,
+		loginFailureLogPath: logPath,
+		now:                 time.Now,
 	}
 
 	body, _ := json.Marshal(loginRequest{
@@ -186,6 +191,16 @@ func TestHandleLoginInvalidCredentialsMessage(t *testing.T) {
 	}
 	if meta["email"] != "missing@example.com" || meta["reason"] != "invalid_credentials" || meta["is_bot"] != true {
 		t.Fatalf("unexpected audit meta: %#v", meta)
+	}
+	rawFile, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read login failure log file: %v", err)
+	}
+	if !strings.Contains(string(rawFile), `"admin.login_failed"`) || !strings.Contains(string(rawFile), `"missing@example.com"`) {
+		t.Fatalf("unexpected login failure log file: %s", string(rawFile))
+	}
+	if strings.Contains(string(rawFile), "StrongPass!123") {
+		t.Fatalf("login failure log file must not contain password")
 	}
 }
 

@@ -7,7 +7,11 @@ import (
 
 var defaultCORSOrigins = []string{
 	"http://localhost:3000",
+	"http://localhost:3001",
+	"http://localhost:3005",
 	"http://127.0.0.1:3000",
+	"http://127.0.0.1:3001",
+	"http://127.0.0.1:3005",
 }
 
 func ParseAllowedOrigins(raw string) []string {
